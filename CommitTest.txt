@@ -1,1 +1,3 @@
 Testowy commit
+
+Zmiana!
