@@ -1,4 +1,2 @@
-# Ignorowanie środowiska wirutalnego
-
 venviron/
 
