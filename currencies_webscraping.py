@@ -1,6 +1,8 @@
+# import bibliotek używanych w kodzie
+
 import requests
 import pandas as pd
-import pandas_gbq
+import pandas-gbq
 import functions_framework
 from datetime import date
 from google.cloud import bigquery
@@ -9,6 +11,8 @@ from flask import Flask, request
 
 @functions_framework.cloud_event
 def currencies_webscraping(cloud_event):
+
+    # zdefiniowanie ścieżek do pobierania aktualnych kursów walut
     path1 = "http://api.nbp.pl/api/exchangerates/rates/A/USD/"
     path2 = "http://api.nbp.pl/api/exchangerates/rates/A/EUR/"
     
