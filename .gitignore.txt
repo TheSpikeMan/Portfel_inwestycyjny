@@ -1,0 +1,3 @@
+# Ignorowanie środowiska wirutalnego
+
+venviron\
