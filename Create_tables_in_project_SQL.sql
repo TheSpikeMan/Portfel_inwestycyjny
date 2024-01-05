@@ -32,7 +32,8 @@ CREATE TABLE IF NOT EXISTS `projekt-inwestycyjny.Dane_instrumentow.Instruments`(
   Market STRING NOT NULL,
   Distribution_policy STRING NOT NULL,
   Instrument_type_id INT64 NOT NULL,
-  Instrument_headquarter STRING NOT NULL
+  Instrument_headquarter STRING NOT NULL,
+  Status INT64 NOT NULL
 );
 
 -- Tabela przechowująca typy instrumentów -- 
