@@ -40,11 +40,15 @@ def webscraping_investing_data(cloud_event):
 
       # Specify your SQL query
       query = """
-      SELECT
+        SELECT
         Ticker,
         Status
-      FROM `projekt-inwestycyjny.Dane_instrumentow.Instruments`
-      WHERE Status = 1
+        FROM `projekt-inwestycyjny.Dane_instrumentow.Instruments` ins
+        LEFT JOIN
+        `projekt-inwestycyjny.Dane_instrumentow.Instrument_types` ins_typ
+        ON ins.Instrument_type_id = ins_typ.Instrument_type_id
+        WHERE Status = 1
+        AND ins.Instrument_type_id IN (1,3)
       """
 
       # Run the query
