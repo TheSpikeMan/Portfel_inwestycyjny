@@ -40,9 +40,11 @@ def webscraping_investing_data(cloud_event):
 
       # Specify your SQL query
       query = """
-      SELECT *
-      FROM `projekt-inwestycyjny.Dane_instrumentow.Tickers`
-      WHERE Status is True
+      SELECT
+        Ticker,
+        Status
+      FROM `projekt-inwestycyjny.Dane_instrumentow.Instruments`
+      WHERE Status = 1
       """
 
       # Run the query
@@ -125,6 +127,7 @@ Konfiguracja:
     
 Punkt wejscia:
     webscraping_investing_data
+
 
 Requirements:
     functions-framework==3.*
