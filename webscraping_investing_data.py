@@ -110,4 +110,29 @@ def webscraping_investing_data(cloud_event):
       return "Nie udało się połączyć"
     
 
+"""
+Konfiguracja:
+    Region: europe-central2 
+    Typ aktywatora: Pub/Sub
+    Pamięć przydzielona: 512 MiB
+    CPU: 0.333
+    Przekroczony limit czasu: 60
+    Maksymalna liczba żądań na instancję: 1
+    Minimalna liczba instancji: 0
+    Maksymalna liczba instancji: 100
+    Konto usługi srodowiska wykonawczego:
+        App Engine Default Service Account
+    
+Punkt wejscia:
+    webscraping_investing_data
+
+Requirements:
+    functions-framework==3.*
+    bs4
+    requests
+    datetime
+    pandas
+    pandas_gbq
+    google.cloud
+"""
 
