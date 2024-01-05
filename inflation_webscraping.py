@@ -73,3 +73,33 @@ def Inflation_webscraping(cloud_event):
     except Exception as e:
         print(f"Error uploading data to BigQuery: {str(e)}")
         #return "Error"
+
+
+# % Parametryzacja w Google Cloud Functions:
+"""
+Konfiguracja:
+    Region: europe-central2 
+    Typ aktywatora: Pub/Sub
+    Pamięć przydzielona: 512 MiB
+    CPU: 0.162
+    Przekroczony limit czasu: 60
+    Maksymalna liczba żądań na instancję: 1
+    Minimalna liczba instancji: 0
+    Maksymalna liczba instancji: 100
+    Konto usługi srodowiska wykonawczego:
+        Default Compute Service Account
+    
+Punkt wejscia:
+    Inflation_webscraping
+
+
+Requirements:
+    functions-framework==3.*
+    bs4
+    requests
+    datetime
+    pandas
+    pandas_gbq
+    google.cloud
+    datetime
+"""
