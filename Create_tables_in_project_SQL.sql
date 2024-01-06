@@ -42,12 +42,6 @@ CREATE TABLE IF NOT EXISTS `projekt-inwestycyjny.Dane_instrumentow.Instruments_t
   Instrument_type STRING NOT NULL
 );
 
--- Tabela przechowująca Tickery wykorzystane do scrapowania - do przerobienia --
-CREATE TABLE IF NOT EXISTS `projekt-inwestycyjny.Dane_instrumentow.Tickers`(
-  Ticker STRING NOT NULL,
-  Status BOOL NOT NULL
-);
-
 -- W zbiorze znajduje się również widok 'Trends_analysis'
 
 
