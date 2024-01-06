@@ -1,186 +1,143 @@
+-- IMPORTING THE DATA INTO TABLES -- 
 /*
-OPIS WIDOKU
-
-W widoku tym zawarte są wszystkie aktualne instrumenty, tzn. takie, które znajdują się obecnie w portfelu.
-*/
-
--- POBRANIE DANYCH --
-/* 
-W pierwszym kroku pobierane są dane transakcyjne, dane z giełdy oraz dane instrumentów.
+W tym kroku pobierane są dane:
+- transakcyjne, przechowujące dane o transakcjach finansowych,
+- walutowe, przechowujące dane o wartości walut USD oraz EUR,
+- dane instrumentów finansowych (tickery),
+- dane dat wyznaczania wartości walut USD oraz EUR, dla celów wyznaczenia kursu walutowego z poprzedniego dnia roboczego,
+- dane kalendarzowe, dla celów podpięcia kwartału do daty transakcji.
 */
 
 WITH 
-transaction_view AS (SELECT * FROM `projekt-inwestycyjny.Transactions.Transactions_view`),
-daily AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Daily`),
-instruments AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instruments`),
+transactions_data AS (SELECT * FROM `projekt-inwestycyjny.Transactions.Transactions`),
+currency_data AS (SELECT * FROM `projekt-inwestycyjny.Waluty.Currency`),
+tickers_data AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instruments`),
+unique_dates AS (SELECT DISTINCT Currency_date FROM currency_data),
+calendar_dates AS (SELECT * FROM `projekt-inwestycyjny.Calendar.Dates`),
 
+-- DATES AGGREAGTION --
+/*
+Widok stworzony na potrzeby wyznaczania ostatniego dnia roboczego danej transakcji.
+Do daty transakcji przypisywany jest ostatni dzień wyznaczenia kursu walutowego wobec danej dany, za pomocą funkcji LAG.
+*/
+
+dates_list AS (
+  SELECT DISTINCT 
+    Currency_date as Currency_date,
+    LAG(Currency_date) OVER(ORDER BY Currency_date) as last_working_day
+  FROM
+    unique_dates
+  ORDER BY Currency_date
+),
 
 -- INITIAL AGGREGATION --
 /*
-W kroku tym każdej transakcji przyporządkowany jest numer, którego zasada przydzielania jest następująca:
-- Stwórz okno dla każdego Tickera,
-- Wszystkie wiersze ułóż malejąco wg daty transakcji,
-- Wszystkim transakcjom przypisz numerację, od najnowszej transakcji do najstarszek
-
-W kroku tym wyciągana jest ostatnia operacja (zakup, sprzedaż instrumentu) dla danego Tickera.
+W kroku tym pobierane są wszystkie dane transakcyjne, a następnie dołączane do nich dane tickerów oraz dane z kwerendy określającej ostatnią datę wyznaczenia kursu walutowego.
 */
 
 initial_aggregation AS (
-  SELECT
-    *,
-    ROW_NUMBER() OVER(PARTITION BY Ticker ORDER BY Transaction_date DESC) AS last_transaction_id
-  FROM
-    transaction_view
-  WHERE
-    Transaction_type IN ('Buy', 'Sell')
+  SELECT 
+    * EXCEPT (Instrument_id),
+    tickers_data.Instrument_id
+  FROM transactions_data
+  LEFT JOIN tickers_data
+  ON transactions_data.Instrument_id = tickers_data.Instrument_id
+  LEFT JOIN dates_list
+  ON transactions_data.Transaction_date = dates_list.Currency_date
 ),
 
--- MED AGGREGATION --
+-- DATA MID AGGREGATION --
 /*
-Wyciągnięcie tickerów instrumentów, które znajdują się w aktualnym porfelu.
-Uwzględniamy tylk takie, które posiadają niezerowe woluemeny.
+W kolejnym kroku wyciągane są wszystkie dane z poprzedniego widoku oraz dokładane:
+- dane walutowe na podstawie połączenia ostatniego dnia roboczego z poprzedniego kroku oraz dnia wyznaczenia wartości waluty,
+- dane kalendarzowe w celu podpięcia odpowiedniego kwartał pod dane.
+Wyznaczana jest dodatkowo wartość transakcji w jednostkch PLN.
 */
 
-med_aggregation AS (
+data_mid_aggregation AS (
   SELECT
-    Ticker AS Ticker,
-  FROM
-    initial_aggregation
-  WHERE
-    last_transaction_id = 1 AND
-    transaction_date_ticker_amount <> 0
+    * EXCEPT (Currency_date, Currency, Currency_close, Date),
+    IFNULL(currency_data.Currency_date, transaction_date) as Currency_data,
+    initial_aggregation.Currency as Currency,
+    IFNULL(currency_data.Currency_close, 1) as Currency_close,
+    CASE
+      WHEN initial_aggregation.Currency = 'PLN' THEN ROUND(Transaction_amount * Transaction_price, 2)
+    ELSE ROUND (Transaction_amount * Transaction_price * Currency_close, 2)
+    END AS Transaction_value_pln
+  FROM initial_aggregation
+  LEFT JOIN currency_data
+  ON currency_data.Currency_date = initial_aggregation.last_working_day
+  AND currency_data.Currency = initial_aggregation.Currency 
+  LEFT JOIN calendar_dates
+  ON calendar_dates.Date = initial_aggregation.Transaction_date
+  ORDER BY initial_aggregation.Transaction_id DESC
 ),
 
 -- INTERMEDIATE AGGREGATION --
 /*
-W kroku tym zestawiana jest kumulowana ilość zakupów dane instrumentów, z łączną ilością sprzedaży.
-Na tej podstawie wyznaczany jest wskaźnik, który przyjmuje dwie wartości:
-- "Sprzedany", jeśli instrument z danej tranakcji został sprzedany,
-- "Aktualny", jeśli instrument z danej transakcji wciąż znajduje się w portfelu.
+W kroku tym dokonywana jest przypisanie do wolumentu oraz sprzedaży wartości znaku:
+- Dla wolumenu i wartości zakupowych przyjęty jest znak "+"
+- Dla wolumenu i wartośći sprzedażowych przyjęty jest znak "-"
+
+Dodatkowo obliczany jest wiek instrumentu w postaci zmiennej age_of_instrument
 */
 
 intermediate_aggregation AS (
   SELECT
-    * EXCEPT(Ticker),
-    med_aggregation.Ticker,
+    *,
     CASE
-      WHEN (transaction_date_buy_ticker_amount - cumulative_sell_amount_per_ticker <= 0) THEN "Sprzedany"
-    ELSE "Aktualny"
-    END AS transaction_status
-  FROM
-    transaction_view
-  INNER JOIN med_aggregation
-  ON transaction_view.Ticker = med_aggregation.Ticker
-  WHERE
-    transaction_view.Transaction_Type IN ("Buy", "Sell")
+      WHEN Transaction_type = 'Buy' THEN Transaction_amount
+      WHEN Transaction_type = 'Sell' THEN (-1) * Transaction_amount
+      ELSE 0
+    END AS Transaction_amount_with_sign,
+    DATE_DIFF(CURRENT_DATE(), Transaction_date, DAY) AS age_of_instrument
+  FROM data_mid_aggregation
 ),
 
 
--- PRESENT INSTRUMENTS VIEW --
+-- PRE FINAL AGGREGATION --
 /*
-W tym kroku odfiltrowane są wszystkie sprzedane instrumenty.
-Dodatkowo wyznaczane są następujące parametry:
-- Aktualny wolumen,
-- Wartość zakupu,
-- Średnia cena zakupu,
-- Maksymalną liczbę dni od zakupu danego instrumentu.
+W tym kroku wyznaczona jest wartość instrumentu oraz jego wolumen, in total, na moment transakcji.
+Dodatkowo wyznaczona jest łączna wartość sprzedaży - wyświetlana wyłącznie dla typu 'Sell' oraz łączna wartość zakupów po typie 'Buy'.
+Oznaczenie kolumn:
+- transaction_date_buy_ticker_amount - suma wolumenu zakupowego lub sprzedażowego na moment transakcji - wartość jest sumowana po typie transakcji (buy/sell)
+- transaction_date_ticker_amount - suma wolumenu uwzględniająca rodzaj transakcji - jest to aktualna ilość wolumenu danego instrumentu na moment transakcji
+- cumulative_sell_amoutn_per_ticker - jest to łączna, niezależna od daty transakcji wartość wolumenu sprzedanego danego instrumentu
 */
 
-present_instruments_view AS (
+pre_final_aggregation AS (
   SELECT
-    Ticker,
-    Name, 
-    MAX(transaction_date_ticker_amount) AS ticker_present_amount,
-    MAX(age_of_instrument) AS max_age_of_instrument,
-    ROUND(SUM(transaction_value_pln), 2) AS ticker_buy_value,
-    ROUND(SUM(transaction_value_pln)/MAX(transaction_date_ticker_amount), 2) AS ticker_average_close
-  FROM intermediate_aggregation
-  WHERE
-    transaction_status = "Aktualny"
-  GROUP BY
-    1,2
-  ORDER BY
-    1,2
+    *,
+    SUM(Transaction_amount_with_sign) 
+      OVER (PARTITION BY Ticker ORDER BY Transaction_date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS transaction_date_ticker_amount,
+    SUM(Transaction_amount) 
+      OVER (PARTITION BY Ticker, Transaction_type ORDER BY Transaction_date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) 
+      AS transaction_date_buy_ticker_amount,
+    ROUND (SUM(Transaction_amount_with_sign)
+      OVER (PARTITION BY Ticker ORDER BY Transaction_date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) * Transaction_price *
+      Currency_close, 2) AS transaction_date_ticker_value,
+    CASE
+      WHEN Transaction_type = 'Sell' THEN SUM(Transaction_amount) 
+      OVER (PARTITION BY Ticker, Transaction_type ORDER BY Transaction_date ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
+    ELSE NULL
+    END AS cumulative_sell_amount_per_ticker
+  FROM
+    intermediate_aggregation
 ),
 
--- DAILY DATA --
+-- FINAL AGGREGATION --
 /*
-W tym kroku wyciągane są ostatnie dane z giełdy, dzięki którym możliwe jest wyznaczenie aktualnego kursu, wolumenu i obrotu dla danego instrumentu
+W kroku tym następuje przypianie do okna dla danego tickera, w zakresie kolumny cumulative_sell_amount_per_ticker wartości dla każdego typu danych (wcześniej była ona podpięta tylko do wartości sprzedaży) - tym samym cała kolumna dla danego tickera prezentuje skumulowaną wartość jego sprzedaży.
+Jeżeli nie ma żadnych sprzedaży wartość tego parametru przyjmie 0.
 */
 
-daily_data AS (
+final_aggregation AS (
   SELECT
-  * EXCEPT(row_num)
+    * EXCEPT(cumulative_sell_amount_per_ticker),
+    IFNULL(MAX(cumulative_sell_amount_per_ticker) OVER (PARTITION BY Ticker), 0) AS cumulative_sell_amount_per_ticker
   FROM
-  (
-    SELECT
-      *,
-      ROW_NUMBER() OVER(PARTITION BY Ticker ORDER BY `Date` DESC) AS row_num
-    FROM
-      daily
-  )
-  WHERE
-    row_num = 1
-),
-
--- DIVIDENT SUM --
-/*
-Wyciągnięcie sumy wartości dywidend dla danego tickera.
-*/
-divident_sum AS (
-  SELECT
-    Ticker AS Ticker,
-    ROUND(SUM(Transaction_value_pln), 2) AS dividend_sum
-  FROM
-    transaction_view
-  WHERE
-    transaction_view.Transaction_Type = "Dywidenda"
-  GROUP BY
-    Ticker
-),
-
-
--- PRESENT INSTRUMENTS PLUS PRESENT INDICATORS --
-/*
-W tym kroku połączone są dane portfelowe z danymi giełdowymi oraz danymi instrumentów i danymi dywidentowymi i liczone są wskaźniki:
-- current_price - najnowsza cena danego instrumentu  z uwzględnieniem jednostki (unit)
-- ticker_present_value - obecna wartość danego instrumentu
-- share_of_portfolio - udział wartości instrumentu w ogólnej wartości portfela,
-- yearly_rate_of_return - roczna stopa zwrotu instruemntu, bez uwzglęnienia dywidend, odsetek i podatku
-- yearly_rate_of_return_incl_div - roczna stopa zwrotu instrument, z uwzględnieniem dywident, bez uwzględnienia podatku
-- rate_of_return - stopa zwrotu instrumentu, bez uwzględnienia dywidend, odsetek i podatku,
-- profit - niezrealizowany zysk transakcyjny - zysk wynikający z różnicy kursowej, bez uwzględnienia dywidend i odsetek
-- profit_incl_div - niezrealizowany zysk transakcyjny - zysk wynikający z różnicy kursowej, z uwzglęnieniem dywident, bez uwzględnienia odsetek
-*/
-
-present_instruments_plus_present_indicators AS (
-  SELECT
-    * EXCEPT (Ticker, `Date`, Close, Volume, Turnover, instrument_id, Name, Unit, Market, Distribution_policy, Instrument_type_id,
-      Instrument_headquarter, dividend_sum),
-    instruments.Name AS Name,
-    present_instruments_view.Ticker AS Ticker,
-    daily_data.`Date` AS current_price_date,
-    daily_data.Close * instruments.unit AS current_price,
-    ROUND((ticker_present_amount * Close * instruments.unit), 2) AS ticker_present_value,
-    ROUND(100 * (ticker_present_amount * Close * instruments.unit)/SUM(ticker_present_amount * Close * instruments.unit) OVER(), 2) 
-      AS share_of_portfolio,
-    ROUND(100 * ((ticker_present_amount * Close * instruments.unit)/ticker_buy_value) - 100, 2) AS rate_of_return,
-    ROUND((365 * (100 * ((ticker_present_amount * Close * instruments.unit)/ticker_buy_value) - 100))
-      /max_age_of_instrument, 2) AS yearly_rate_of_return,
-    IFNULL(ROUND((365 * (100 * ((ticker_present_amount * Close * instruments.unit + divident_sum.dividend_sum)/ticker_buy_value) - 100))
-      /max_age_of_instrument, 2), ROUND((365 * (100 * ((ticker_present_amount * Close * instruments.unit)/ticker_buy_value) - 100))
-      /max_age_of_instrument, 2))  AS yearly_rate_of_return_incl_div,
-    ROUND((Close * instruments.unit - ticker_average_close) * ticker_present_amount, 2) AS profit,
-    IFNULL(ROUND(divident_sum.dividend_sum + (Close * instruments.unit - ticker_average_close) * ticker_present_amount, 2),
-      ROUND((Close * instruments.unit - ticker_average_close) * ticker_present_amount, 2))  AS profit_incl_div
-  FROM
-    present_instruments_view
-  INNER JOIN Daily_data
-  ON present_instruments_view.Ticker = Daily_data.Ticker
-  INNER JOIN instruments
-  ON present_instruments_view.Ticker = instruments.Ticker
-  LEFT JOIN divident_sum
-  ON present_instruments_view.Ticker = divident_sum.Ticker
+    pre_final_aggregation
 )
 
-SELECT * FROM present_instruments_plus_present_indicators ORDER BY Ticker;
+SELECT * FROM final_aggregation ORDER BY Transaction_date DESC;
+
