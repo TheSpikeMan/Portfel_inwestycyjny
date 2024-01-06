@@ -17,7 +17,7 @@ calendar_dates AS (SELECT * FROM `projekt-inwestycyjny.Calendar.Dates`),
 
 -- DATES AGGREAGTION --
 /*
-Widok stworzon na potrzeby wyznaczania ostatniego dnia roboczego danej transakcji.
+Widok stworzony na potrzeby wyznaczania ostatniego dnia roboczego danej transakcji.
 Do daty transakcji przypisywany jest ostatni dzień wyznaczenia kursu walutowego wobec danej dany, za pomocą funkcji LAG.
 */
 
@@ -99,6 +99,10 @@ intermediate_aggregation AS (
 /*
 W tym kroku wyznaczona jest wartość instrumentu oraz jego wolumen, in total, na moment transakcji.
 Dodatkowo wyznaczona jest łączna wartość sprzedaży - wyświetlana wyłącznie dla typu 'Sell' oraz łączna wartość zakupów po typie 'Buy'.
+Oznaczenie kolumn:
+- transaction_date_buy_ticker_amount - suma wolumenu zakupowego lub sprzedażowego na moment transakcji - wartość jest sumowana po typie transakcji (buy/sell)
+- transaction_date_ticker_amount - suma wolumenu uwzględniająca rodzaj transakcji - jest to aktualna ilość wolumenu danego instrumentu na moment transakcji
+- cumulative_sell_amoutn_per_ticker - jest to łączna, niezależna od daty transakcji wartość wolumenu sprzedanego danego instrumentu
 */
 
 pre_final_aggregation AS (
@@ -123,7 +127,7 @@ pre_final_aggregation AS (
 
 -- FINAL AGGREGATION --
 /*
-W kroku tym następuje przypianie do okna dla danego tickera, w zakresie kolumny cumulative_sell_amount_per_ticker wartości dla każdego typu danych (wcześniej była ona podpięta tylko do wartości sprzedaży).
+W kroku tym następuje przypianie do okna dla danego tickera, w zakresie kolumny cumulative_sell_amount_per_ticker wartości dla każdego typu danych (wcześniej była ona podpięta tylko do wartości sprzedaży) - tym samym cała kolumna dla danego tickera prezentuje skumulowaną wartość jego sprzedaży.
 Jeżeli nie ma żadnych sprzedaży wartość tego parametru przyjmie 0.
 */
 
