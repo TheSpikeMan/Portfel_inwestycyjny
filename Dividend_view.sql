@@ -5,30 +5,38 @@ Pobranie danych z widoku transakcyjnego.
 
 WITH
 Transactions_view AS (SELECT * FROM `projekt-inwestycyjny.Transactions.Transactions_view`),
+Daily_data AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Daily`),
 
 -- PRELIMINARY AGGREGATION --
 /*
 W kroku tym wyciągany jest rok, miesiąc i dzień wypłaty dywidendy.
 Dodatkowo wyznaczana jest łączna suma wartości dywidendy per ticker i jest średnia wartość ze wszystkich wypłat.
+Oprócz tego dołożone jest połączenie danych dywidend z danymi danych giełdowych - dzięki czemu dokładane są kolumny:
+- divident_price jako wartość dywidendy na jedną sztukę akcji w PLN,
+- MAX(Close) jako wartość akcji danego instrumentu na dzień wypłaty dywidendy - dzięki funkcji MAX nie trzeba tych danych agregować - i tak zawsze wychodzi jedna wartość, jako, że dane ściągane są jednokrotnie dla danego tickera w ciągu dnia
 */
 
 preliminary_aggregation AS (
 SELECT
-  Ticker AS Ticker,
+  Transactions_view.Ticker AS Ticker,
   EXTRACT(YEAR FROM `Transaction_date`) AS year,
   EXTRACT(MONTH FROM `Transaction_date`) AS month,
   EXTRACT(DAY FROM `Transaction_date`) AS day,
   Quarter AS quarter,
+  ROUND((Transaction_value_pln/Transaction_amount), 2) AS divident_price,
   Transaction_value_pln AS  Transaction_value_pln,
-  SUM(SUM(Transaction_value_pln)) OVER(PARTITION BY Ticker) AS divident_sum_total_per_ticker,
-  AVG(AVG(Transaction_value_pln)) OVER(PARTITION BY Ticker) AS divident_average_total_per_ticker,
-FROM `projekt-inwestycyjny.Transactions.Transactions_view`
+  MAX(Close) AS close,
+  SUM(SUM(Transaction_value_pln)) OVER(PARTITION BY Transactions_view.Ticker) AS divident_sum_total_per_ticker,
+  AVG(AVG(Transaction_value_pln)) OVER(PARTITION BY Transactions_view.Ticker) AS divident_average_total_per_ticker
+FROM Transactions_view
+LEFT JOIN Daily_data
+ON Daily_data.Date = Transactions_view.Transaction_date 
+AND Transactions_view.Ticker = Daily_data.Ticker
 WHERE
   Transaction_type = "Dywidenda"
 GROUP BY
-  1,2,3,4,5,6
+  1,2,3,4,5,6,7
 ),
-
 
 -- INITIAL AGGREGATION --
 /*
@@ -44,7 +52,8 @@ SELECT
   *,
   SUM(Transaction_value_pln) OVER(PARTITION BY Ticker, year) AS divident_sum_per_ticker_and_year,
   SUM(Transaction_value_pln) OVER(PARTITION BY year) AS divident_sum_per_year,
-  SUM(Transaction_value_pln) OVER(PARTITION BY year, quarter) AS divident_sum_per_year_and_quarter
+  SUM(Transaction_value_pln) OVER(PARTITION BY year, quarter) AS divident_sum_per_year_and_quarter,
+  ROUND(100 * SAFE_DIVIDE(divident_price, close), 2) AS dividend_ratio_pct
 FROM
 preliminary_aggregation 
 ),
@@ -54,6 +63,7 @@ preliminary_aggregation
 W tej cześci w głównej mierze dokonywane jest zaokrąglenie wszystkich wskaźników do drugiego miejsca po przecinku.
 Dodatkowo wyznaczana jest wartość dywidendy dla danego instrumentu w całym roku wobec wartości dywidendy w poprzednim roku.
 Wykorzystywane są wszystkie dane z poprzednich kroków.
+Wyznaczona jest również wartość średniego divident ratio dla danego tickera.
 */
 
 
@@ -70,11 +80,11 @@ SELECT
   ROUND(divident_average_total_per_ticker,2) AS divident_average_total_per_ticker,
   ROUND(divident_sum_per_year,2) AS divident_sum_per_year,
   ROUND(divident_sum_per_year_and_quarter,2) AS divident_sum_per_year_and_quarter,
-  IFNULL(LAG(ROUND(divident_sum_per_ticker_and_year,2)) OVER(PARTITION BY Ticker ORDER BY year ),0) AS dividend_value_ticker_last_year
+  IFNULL(LAG(ROUND(divident_sum_per_ticker_and_year,2)) OVER(PARTITION BY Ticker ORDER BY year ),0) AS dividend_value_ticker_last_year,
+  IFNULL(dividend_ratio_pct, 0) AS dividend_ratio_pct,
+  IFNULL(ROUND(AVG(dividend_ratio_pct) OVER(PARTITION BY Ticker),2) , 0) AS avg_dividend_ratio_per_ticker_pct
 FROM initital_aggregation
-
 ),
-
 
 -- FINAL AGGREGATION --
 /*
