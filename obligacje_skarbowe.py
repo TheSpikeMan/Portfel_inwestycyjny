@@ -7,42 +7,38 @@ Created on Tue Jan  2 20:52:18 2024
 
 import pandas as pd
 from google.cloud import bigquery
-
-# pobranie danych inflacyjnych
-
-client = bigquery.Client()
  
-project_id_1 = 'projekt-inwestycyjny'
+project_id = 'projekt-inwestycyjny'
 dataset_id_1 = 'Inflation'
 table_id_1 = 'Inflation'
-destination_table_1 = f"{project_id_1}.{dataset_id_1}.{table_id_1}"
+destination_table_1 = f"`{project_id}.{dataset_id_1}.{table_id_1}`"
 
-query_1 = """
-    SELECT *
-    FROM """ & {destination_table_1} & """
-    """
-    
-query_job_1 = client.query(query_1)
-
-# dane zakupowe i sprzedażowe - odczyt z pliku i połączenie
-# pobranie danych zakupowo - sprzedażowych
-
-project_id_2 = 'projekt-inwestycyjny'
 dataset_id_2 = 'Transactions'
-table_id_2 = 'Daily'
-destination_table_2 = f"{project_id_2}.{dataset_id_2}.{table_id_2}"
+table_id_2 = 'Transactions_view'
+destination_table_2 = f"`{project_id}.{dataset_id_2}.{table_id_2}`"
 
-query_2 = """
+query_1 = f"""
     SELECT *
-    FROM """ & {destination_table_2} & """
+    FROM {destination_table_1}
     """
     
+query_2 = f"""
+    SELECT
+        *
+    FROM  {destination_table_2}
+    WHERE
+        Instrument_type_id = 5
+    """
+
+client = bigquery.Client()
+query_job_1 = client.query(query_1)
 query_job_2 = client.query(query_2)
+dane_inflacyjne = query_job_1.to_dataframe()
+dane_transakcyjne = query_job_2.to_dataframe()
 
 
 
-path = "D:\\Inwestowanie,banki\\Inwestowanie\\Portfel inwestycyjny\Portfel inwestycyjny 1.16.xlsm"
-dane = pd.read_excel(io=path, sheet_name="Dane")
+# %%
 
 tabela_marz = pd.read_excel(io = path, sheet_name = "Marże obligacji skarbowych")
 
