@@ -6,6 +6,9 @@ Created on Tue Jan  2 20:52:18 2024
 """
 
 import pandas as pd
+from datetime import date
+from datetime import timedelta
+import math
 from google.cloud import bigquery
  
 project_id = 'projekt-inwestycyjny'
@@ -17,9 +20,16 @@ dataset_id_2 = 'Transactions'
 table_id_2 = 'Transactions_view'
 destination_table_2 = f"`{project_id}.{dataset_id_2}.{table_id_2}`"
 
+dataset_id_3 = 'Dane_instrumentow'
+table_id_3 = 'Treasury_Bonds'
+destination_table_3 = f"`{project_id}.{dataset_id_3}.{table_id_3}`"
+
 query_1 = f"""
-    SELECT *
+    SELECT
+        inflation,
+        date
     FROM {destination_table_1}
+    WHERE TRUE
     """
     
 query_2 = f"""
@@ -29,37 +39,39 @@ query_2 = f"""
     WHERE
         Instrument_type_id = 5
     """
+    
+query_3 = f"""
+    SELECT
+        *
+    FROM  {destination_table_3}
+    WHERE
+        TRUE
+    """
 
 client = bigquery.Client()
 query_job_1 = client.query(query_1)
 query_job_2 = client.query(query_2)
+query_job_3 = client.query(query_3)
 dane_inflacyjne = query_job_1.to_dataframe()
 dane_transakcyjne = query_job_2.to_dataframe()
+dane_marz = query_job_3.to_dataframe()
+
+dane_inflacyjne.columns = ['Inflacja', 'Początek miesiąca']
+dane_inflacyjne['Inflacja'] = dane_inflacyjne['Inflacja'].astype('string')
+dane_inflacyjne['Inflacja'] = dane_inflacyjne['Inflacja'].str.replace(".", ",")
 
 
+dane_obligacji = dane_transakcyjne.merge(right=dane_marz, 
+                                 how='inner', 
+                                 on = 'Ticker')
 
-# %%
-
-tabela_marz = pd.read_excel(io = path, sheet_name = "Marże obligacji skarbowych")
-
-dane_instrumentów = pd.read_excel(io=path, sheet_name = "Lista_instrumentów")
-
-dane_instrumentów = dane_instrumentów.query('Rodzaj == "Obligacje skarbowe"')
-ticker_list_available = list(dane_instrumentów['Ticker'])
-
-dane_obligacji = dane.merge(right=dane_instrumentów, how='inner', \
-                            left_on = 'Ticker ID', right_on = 'Ticker_ID').merge\
-    (right=tabela_marz, how='inner', left_on = 'Ticker_x', right_on = 'Ticker')
     
     
-dane_obligacji['Data'] = pd.to_datetime(dane_obligacji['Data'], format='%Y-%m-%d').dt.date
-
-
-ticker_list = (dane_obligacji['Ticker_x'])
-dates_list = (dane_obligacji['Data'])
-wolumen_list = (dane_obligacji['Wolumen'])
-marza_pierwszy_rok_list = (dane_obligacji['Marża pierwszy rok'])
-marza_kolejne_lata_list = (dane_obligacji['Marża kolejne lata'])
+ticker_list = (dane_obligacji['Ticker'])
+dates_list = (dane_obligacji['Transaction_date'])
+wolumen_list = (dane_obligacji['Transaction_amount'])
+marza_pierwszy_rok_list = (dane_obligacji['First_year_interest'])
+marza_kolejne_lata_list = (dane_obligacji['Regular_interest'])
 
 dane_do_analizy = pd.concat([ticker_list, 
                    dates_list, 
@@ -71,6 +83,7 @@ dane_do_analizy = pd.concat([ticker_list,
 
 # analityka - szukanie wartosci aktualnej
 result_df = pd.DataFrame(columns=['Ticker', 'Date', 'Current Value'])
+
 for dane in dane_do_analizy.iterrows():
     ticker = dane[1][0]
     data_zakupu = dane[1][1]
@@ -78,12 +91,6 @@ for dane in dane_do_analizy.iterrows():
     marza_pierwszy_rok = dane[1][3]
     marza_kolejne_lata = dane[1][4]
     
-# input data
-# data_zakupu = date(2023, 1, 1)
-# wolumen = 10
-# marza_pierwszy_rok = 6.75
-# marza_kolejne_lata = 1.75
-
 
     # calculating the start_value
     wolumen_jednostkowy = 100
@@ -110,8 +117,7 @@ for dane in dane_do_analizy.iterrows():
             data_badania_inflacji = date((data_zakupu + liczba_dni_przesuniecie).year, \
                                  (data_zakupu + liczba_dni_przesuniecie).month, \
                                  1)
-        
-            inflacja = df.loc[df['Początek miesiąca'] == data_badania_inflacji]\
+            inflacja = dane_inflacyjne.loc[dane_inflacyjne['Początek miesiąca'] == str(data_badania_inflacji)]\
                 .iloc[:,:1]
             inflacja['Inflacja'] = inflacja['Inflacja'].str.replace(',','.')
             inflacja = float(inflacja.iloc[0,0])
@@ -137,8 +143,9 @@ for dane in dane_do_analizy.iterrows():
     result_dfs = result_df.merge(right=dane_obligacji, 
                     how='inner',
                     left_on=['Ticker', 'Date'],
-                    right_on= ['Ticker', 'Data'])
+                    right_on= ['Ticker', 'Transaction_date'])
 
+# %%
 
     saving_path = "D:\Inwestowanie,banki\Inwestowanie\Obligacje- analityka\Wyniki obligacji skarbowych.xlsx"
     result_dfs.to_excel(excel_writer=saving_path, sheet_name='Obligacje skarbowe',
