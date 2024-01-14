@@ -1,13 +1,5 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Jan  2 20:52:18 2024
-
-@author: grzeg
-"""
-
 import pandas as pd
-from datetime import date
-from datetime import timedelta
+from datetime import date, timedelta
 import math
 from google.cloud import bigquery
 import numpy as np
@@ -16,6 +8,7 @@ import functions_framework
 import pandas_gbq
 from flask import Flask, request
 
+# 1. Zdefiniowanie charakterystyk baz danych, wykorzystywanych w programie.
 @functions_framework.cloud_event
 def Treasury_bonds_daily(cloud_event):
     project_id = 'projekt-inwestycyjny'
@@ -31,6 +24,7 @@ def Treasury_bonds_daily(cloud_event):
     table_id_3 = 'Treasury_Bonds'
     destination_table_3 = f"`{project_id}.{dataset_id_3}.{table_id_3}`"
     
+    # 2. Zdefiniowanie zapytań do baz danych, wykorzystywanych w programie.
     query_1 = f"""
         SELECT
             inflation,
@@ -55,6 +49,7 @@ def Treasury_bonds_daily(cloud_event):
             TRUE
         """
     
+    # 3. Utworzenie obiektów QueryJob, a następnie odczyt do obiektów DataFrame.
     client = bigquery.Client()
     query_job_1 = client.query(query_1)
     query_job_2 = client.query(query_2)
@@ -63,60 +58,82 @@ def Treasury_bonds_daily(cloud_event):
     dane_transakcyjne = query_job_2.to_dataframe()
     dane_marz = query_job_3.to_dataframe()
     
+    # 4. Zmiana nazewnictwa kolumn w danych inflacyjnych.
     dane_inflacyjne.columns = ['Inflacja', 'Początek miesiąca']
+    
+    # 5. Połączenie danych transakcyjnych z danymi marż.
     dane_obligacji = dane_transakcyjne.merge(right=dane_marz, 
                                      how='inner', 
                                      on = 'Ticker')
     
-        
-    ticker_list = (dane_obligacji['Ticker'])
-    dates_list = (dane_obligacji['Transaction_date'])
-    wolumen_list = (dane_obligacji['Transaction_amount'])
-    marza_pierwszy_rok_list = (dane_obligacji['First_year_interest'])
-    marza_kolejne_lata_list = (dane_obligacji['Regular_interest'])
-    
-    dane_do_analizy = pd.concat([ticker_list, 
-                       dates_list, 
-                       wolumen_list,
-                       marza_pierwszy_rok_list,
-                       marza_kolejne_lata_list], 
-                       axis=1)
+    # 6. Wyciągnięcie tylko okreslonych kolumn.
+    dane_do_analizy = dane_obligacji.loc[:['Ticker', 'Transaction_date'\
+                                            'Transaction_amount', \
+                                            'First_year_interest', \
+                                            'Regular_interest']]
     
     
-    # analityka - szukanie wartosci aktualnej
+    
+    # 7. Stworzenie DataFrame do przechowywania danych.
     result_df = pd.DataFrame(columns=['Ticker', 'Date', 'Current Value'])
     
+    # 8. Dla każdego wiersza z danych transakcyjnych wykonaj:
     for dane in dane_do_analizy.iterrows():
+        
+        # 9. Przypisz wartosc parametrów wg danych transakcyjnych.
         ticker = dane[1].iloc[0]
         data_zakupu = dane[1].iloc[1]
         wolumen = dane[1].iloc[2]
         marza_pierwszy_rok = dane[1].iloc[3]
         marza_kolejne_lata = dane[1].iloc[4]
         
-        # calculating the start_value
+        # 10. Wyznaczenie wartosci poczatkowej danej liczby obligacji.
+        # Wolumen_jednostkowy oznacza pojedyncza wartosc jednej obligacji.
         wolumen_jednostkowy = 100
+        
+        # 11. Wyznaczenie początkowej wartosci danego pakietu obligacji,
+        # o okreslonym tickerze.
         start_value = wolumen * wolumen_jednostkowy
         
-        # calculating current date, finding the end date, calculating the number of days and years
+        
+        # 12. Wyznaczenie aktualnej daty oraz daty transakcji (data_zakupu)
+        # Wyznaczenie wartosci bezwzględnej liczby lat posiadania danej obligacji.
+        # Wyznaczenie liczby dni posiadania danej obligacji.
         current_date = date.today()
         liczba_dni = (current_date - data_zakupu).days
         liczba_lat = int(math.modf(liczba_dni/365)[1])
     
-        # writing the code to find current value
+        # 13. Wyznaczenie danego parametru n.
         n = 1
+        
+        # 14. Jeżeli liczba dni jest mniejsza niż 365 zastosuj poniższą formułę
+        # do wyznaczenie aktualnej wartosci.
         if liczba_dni < 365:
             current_value = start_value + start_value * liczba_dni / 365 * (marza_pierwszy_rok/100)
         
+        # 15. Jeżeli liczba dni jest większa lub równa 365 dni dokonuj analizy wg
+        # poniższego kodu.
         else:
             current_value = start_value + start_value * (marza_pierwszy_rok/100)
+            
+            # 16. Pętla wykonywana jest tyle razy, aż liczba dni spadnie poniżej 365.
             for i in range(liczba_lat, 0, -1):
+                
+                # 17. Przesunięcie daty badania inflacji występuje o okres równy
+                # ilosci lat i dwoch miesiecy.
                 liczba_dni_przesuniecie = timedelta(days= 365 * n - 60)
+                
+                # 18. Data badania inflacji jest wynikiem różnicy pomiedzy datą
+                # transakcji (data_zakupu), a okresem czasowy wynikającym z powyższego
+                # obliczenia (liczba_dni_przesuniecie)
                 data_badania_inflacji = date((data_zakupu + liczba_dni_przesuniecie).year, \
                                      (data_zakupu + liczba_dni_przesuniecie).month, \
                                      1)
+                # 19. Wartosci inflacji jest wyznaczana dla daty_badania_inflacji
                 inflacja = dane_inflacyjne.loc[dane_inflacyjne['Początek miesiąca'] \
                                                == str(data_badania_inflacji)].iat[0,0]
-    
+                
+                # 20. Jeżeli liczba dni jest mnijesza niz 720 wpada do tej czesci pętli.
                 if liczba_dni < 730:
                     current_value = current_value + current_value * \
                         (liczba_dni - 365)/365 * (inflacja + marza_kolejne_lata)/ 100
@@ -125,19 +142,24 @@ def Treasury_bonds_daily(cloud_event):
                         (inflacja + marza_kolejne_lata) / 100
                     liczba_dni = liczba_dni - 365
                 n = n + 1 
-                
+        
+        # 21. Dołączanie danych dla danego tickera z pozostałymi danymi.
         result_df = pd.concat([result_df, \
                                pd.DataFrame(data=[[ticker, data_zakupu, \
                                                    round(current_value, 2)]], \
                                             columns=['Ticker', 'Date', 'Current Value'])])
-        result_dfs = result_df.merge(right=dane_obligacji, 
+        data_to_export = result_df.merge(right=dane_obligacji, 
                         how='inner',
                         left_on=['Ticker', 'Date'],
                         right_on= ['Ticker', 'Transaction_date'])
-        data_to_export = result_dfs
+        
+        # 22. Utworzenie kolumn, z wartosciami oczekiwanymi przez bazę danych.
         data_to_export['Date'] = current_date
         data_to_export['Close'] = (data_to_export['Current Value']/\
                                    data_to_export['Transaction_amount']).round(3)
+            
+        # 23. Grupowanie danych po tickerze i dacie i wyznaczenie sredniej ważonej,
+        # z argumentem sredniej w postaci wolumenu.
         data_to_export = data_to_export.groupby(['Ticker', 'Date']).\
             apply(lambda x: np.average(x['Close'], \
             weights=x['Transaction_amount']))\
@@ -147,6 +169,7 @@ def Treasury_bonds_daily(cloud_event):
         data_to_export['Turnover'] = 0
     
     
+    # 24. Przygotowanie schematu danych w BigQuery, wg którego importowane będą dane.
     schema = [bigquery.SchemaField(name = 'Ticker', field_type = "STRING", \
                                    mode = "REQUIRED"),
               bigquery.SchemaField(name = 'Date', field_type = "DATE",\
@@ -158,15 +181,17 @@ def Treasury_bonds_daily(cloud_event):
               bigquery.SchemaField(name = 'Turnover', field_type = "INTEGER",\
                                    mode = "NULLABLE")]
         
-        # 1.5. Zdefiniowanie parametrów tabeli, do której pisze CF.
+    # 25. Zdefiniowanie parametrów tabeli, do której pisze CF.
     project_id = 'projekt-inwestycyjny'
     dataset_id = 'Dane_instrumentow'
     table_id = 'Daily'
     destination_table = f"{project_id}.{dataset_id}.{table_id}"
       
-    # 18. Wyznaczenie konfiguracji dla joba i wykonanie joba.
+    # 26. Wyznaczenie konfiguracji dla joba i wykonanie joba.
     job_config = bigquery.LoadJobConfig(schema = schema,
                                         write_disposition = "WRITE_APPEND")
+    
+    # 27. Wykonanie operacji eksportu danych.
     try:
         job = client.load_table_from_dataframe(data_to_export, 
                                                destination_table,
