@@ -163,7 +163,8 @@ def Treasury_bonds_daily(cloud_event):
         data_to_export = data_to_export.groupby(['Ticker', 'Date']).\
             apply(lambda x: np.average(x['Close'], \
             weights=x['Transaction_amount']))\
-            .reset_index(name='Weighted_Average_Close')
+            .reset_index(name='Close').\
+            round(decimals = 3)
         data_to_export['Volume'] = 0
         data_to_export['Turnover'] = 0
     
@@ -221,6 +222,7 @@ obligacje_skarbowe
 Requirements:
 functions-framework==3.*
 datetime
+numpy
 pandas
 pandas_gbq
 google.cloud
