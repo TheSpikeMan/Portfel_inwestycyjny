@@ -10,6 +10,7 @@ from datetime import date
 from datetime import timedelta
 import math
 from google.cloud import bigquery
+import numpy as np
 import base64
 import functions_framework
 import pandas_gbq
@@ -17,7 +18,6 @@ from flask import Flask, request
 
 @functions_framework.cloud_event
 def Treasury_bonds_daily(cloud_event):
-     
     project_id = 'projekt-inwestycyjny'
     dataset_id_1 = 'Inflation'
     table_id_1 = 'Inflation'
@@ -92,11 +92,16 @@ def Treasury_bonds_daily(cloud_event):
     result_df = pd.DataFrame(columns=['Ticker', 'Date', 'Current Value'])
     
     for dane in dane_do_analizy.iterrows():
-        ticker = dane[1][0]
-        data_zakupu = dane[1][1]
-        wolumen = dane[1][2]
-        marza_pierwszy_rok = dane[1][3]
-        marza_kolejne_lata = dane[1][4]
+        #ticker = dane[1][0]
+        ticker = dane[1].iloc[0]
+        #data_zakupu = dane[1][1]
+        data_zakupu = dane[1].iloc[1]
+        #wolumen = dane[1][2]
+        wolumen = dane[1].iloc[2]
+        marza_pierwszy_rok = dane[1].iloc[3]
+        #marza_pierwszy_rok = dane[1][3]
+        marza_kolejne_lata = dane[1].iloc[4]
+        #marza_kolejne_lata = dane[1][4]
         
     
         # calculating the start_value
@@ -155,65 +160,68 @@ def Treasury_bonds_daily(cloud_event):
         data_to_export['Date'] = current_date
         data_to_export['Close'] = (data_to_export['Current Value']/\
                                    data_to_export['Transaction_amount']).round(3)
+        data_to_export = data_to_export.groupby(['Ticker', 'Date']).\
+            apply(lambda x: np.average(x['Close'], \
+            weights=x['Transaction_amount']))\
+            .reset_index(name='Weighted_Average_Close')
         data_to_export['Volume'] = 0
         data_to_export['Turnover'] = 0
-        data_to_export = data_to_export[['Ticker', 'Date', 'Close', \
-                                         'Volume', 'Turnover']]
-            
-        schema = [bigquery.SchemaField(name = 'Ticker', field_type = "STRING", \
-                                       mode = "REQUIRED"),
-                  bigquery.SchemaField(name = 'Date', field_type = "DATE",\
-                                       mode = "REQUIRED"),
-                  bigquery.SchemaField(name = 'Close', field_type = "FLOAT",\
-                                       mode = "REQUIRED"),
-                  bigquery.SchemaField(name = 'Volume', field_type = "INTEGER",\
-                                       mode = "REQUIRED"),
-                  bigquery.SchemaField(name = 'Turnover', field_type = "INTEGER",\
-                                       mode = "NULLABLE")]
-            
-            # 1.5. Zdefiniowanie parametrów tabeli, do której pisze CF.
-        project_id = 'projekt-inwestycyjny'
-        dataset_id = 'Dane_instrumentow'
-        table_id = 'Daily'
-        destination_table = f"{project_id}.{dataset_id}.{table_id}"
+    
+    
+    schema = [bigquery.SchemaField(name = 'Ticker', field_type = "STRING", \
+                                   mode = "REQUIRED"),
+              bigquery.SchemaField(name = 'Date', field_type = "DATE",\
+                                   mode = "REQUIRED"),
+              bigquery.SchemaField(name = 'Close', field_type = "FLOAT",\
+                                   mode = "REQUIRED"),
+              bigquery.SchemaField(name = 'Volume', field_type = "INTEGER",\
+                                   mode = "REQUIRED"),
+              bigquery.SchemaField(name = 'Turnover', field_type = "INTEGER",\
+                                   mode = "NULLABLE")]
+        
+        # 1.5. Zdefiniowanie parametrów tabeli, do której pisze CF.
+    project_id = 'projekt-inwestycyjny'
+    dataset_id = 'Dane_instrumentow'
+    table_id = 'Daily'
+    destination_table = f"{project_id}.{dataset_id}.{table_id}"
       
-        # 18. Wyznaczenie konfiguracji dla joba i wykonanie joba.
-        job_config = bigquery.LoadJobConfig(schema = schema,
-                                            write_disposition = "WRITE_APPEND")
-        try:
-            job = client.load_table_from_dataframe(data_to_export, 
-                                                   destination_table,
-                                                   job_config = job_config)
-            job.result()
-        except Exception as e:
-            print(f"Error uploading data to BigQuery: {str(e)}")
-            return "Błąd eksportu danych do BigQuery."
-        
-        print("Dane obligacji skarbowych zostały przekazane do tabeli BigQuery.")
-        return "Program zakończył się pomyślnie."
-        
-        
+    # 18. Wyznaczenie konfiguracji dla joba i wykonanie joba.
+    job_config = bigquery.LoadJobConfig(schema = schema,
+                                        write_disposition = "WRITE_APPEND")
+    try:
+        job = client.load_table_from_dataframe(data_to_export, 
+                                               destination_table,
+                                               job_config = job_config)
+        job.result()
+    except Exception as e:
+        print(f"Error uploading data to BigQuery: {str(e)}")
+        return "Błąd eksportu danych do BigQuery."
+    
+    print("Dane obligacji skarbowych zostały przekazane do tabeli BigQuery.")
+    return "Program zakończył się pomyślnie."
+
+    
 """
 Konfiguracja:
-    Region: europe-central2 
-    Typ aktywatora: Pub/Sub
-    Pamięć przydzielona: 256 MiB
-    CPU: 0.167
-    Przekroczony limit czasu: 60
-    Maksymalna liczba żądań na instancję: 1
-    Minimalna liczba instancji: 0
-    Maksymalna liczba instancji: 1
-    Konto usługi srodowiska wykonawczego:
-        Default Compute Service Account
-    
+Region: europe-central2 
+Typ aktywatora: Pub/Sub
+Pamięć przydzielona: 256 MiB
+CPU: 0.167
+Przekroczony limit czasu: 60
+Maksymalna liczba żądań na instancję: 1
+Minimalna liczba instancji: 0
+Maksymalna liczba instancji: 1
+Konto usługi srodowiska wykonawczego:
+    Default Compute Service Account
+
 Punkt wejscia:
-    obligacje_skarbowe
+obligacje_skarbowe
 
 
 Requirements:
-    functions-framework==3.*
-    datetime
-    pandas
-    pandas_gbq
-    google.cloud
+functions-framework==3.*
+datetime
+pandas
+pandas_gbq
+google.cloud
 """
