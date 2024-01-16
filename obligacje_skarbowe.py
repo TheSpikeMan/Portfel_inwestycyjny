@@ -67,7 +67,7 @@ def Treasury_bonds_daily(cloud_event):
                                      on = 'Ticker')
     
     # 6. Wyciągnięcie tylko okreslonych kolumn.
-    dane_do_analizy = dane_obligacji.loc[:['Ticker', 'Transaction_date'\
+    dane_do_analizy = dane_obligacji.loc[:,['Ticker', 'Transaction_date',\
                                             'Transaction_amount', \
                                             'First_year_interest', \
                                             'Regular_interest']]
@@ -202,7 +202,7 @@ def Treasury_bonds_daily(cloud_event):
         return "Błąd eksportu danych do BigQuery."
     
     print("Dane obligacji skarbowych zostały przekazane do tabeli BigQuery.")
-    return "Program zakończył się pomyślnie."
+    #return "Program zakończył się pomyślnie."
 
 
 """
