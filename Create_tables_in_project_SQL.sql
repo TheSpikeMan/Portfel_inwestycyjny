@@ -24,17 +24,19 @@ CREATE TABLE IF NOT EXISTS `projekt-inwestycyjny.Dane_instrumentow.Daily`(
 );
 
 -- Tabela przechowująca unikatowe instrumenty --
-CREATE TABLE IF NOT EXISTS `projekt-inwestycyjny.Dane_instrumentow.Instruments`(
-  Instrument_id INT64 NOT NULL,
-  Ticker STRING NOT NULL,
-  Name STRING NOT NULL,
-  Unit INT64 NOT NULL,
-  Market STRING NOT NULL,
-  Distribution_policy STRING NOT NULL,
-  Instrument_type_id INT64 NOT NULL,
-  Instrument_headquarter STRING NOT NULL,
-  Status INT64 NOT NULL
-);
+CREATE OR REPLACE TABLE `projekt-inwestycyjny.Dane_instrumentow.Instruments` (
+  Instrument_id INT64,
+  Ticker STRING,
+  Name STRING,
+  Unit INT64,
+  Country STRING,
+  Market STRING,
+  Currency STRING,
+  Distribution_policy STRING,
+  Instrument_typ_id INT64,
+  Instrument_headquarter STRING,
+  Status INT64
+)
 
 -- Tabela przechowująca typy instrumentów -- 
 CREATE TABLE IF NOT EXISTS `projekt-inwestycyjny.Dane_instrumentow.Instruments_types` (
