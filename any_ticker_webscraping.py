@@ -12,18 +12,21 @@ import re
 import datetime
 from google.cloud import bigquery
 
-# Założenie programu jest import danych giełdowych jakiegokolwiek instrumentu
-# finansowego z portalu Google Finance.
+# Założeniem programu jest import danych giełdowych jakiegokolwiek instrumentu
+# finansowego z portalu Google Finance. 
 
-def calculate_close_value(currency, close, df):
+def calculate_close_value(currency, close, present_currencies):
     
     """
+    
+    Funkcja wyznacza aktualnosc wartosc gieldowa danego instrumentu,
+    na podstawie wiedzy, jakiej waluty jest instrument oraz jaka ma wartosc.
 
     Parameters
     ----------
     currency : STRING - 'EUR' OR 'USD' - waluta
     close : STRING - Wartosc kursu danego instrumentu wraz z walutą
-    df : DATAFRAME - Aktualna wartosc kursu walutowego, dla walut 'EUR' & 'USD'
+    present_currencies : DATAFRAME - Aktualna wartosc kursu walutowego, dla walut 'EUR' & 'USD'
 
     Returns
     -------
@@ -44,7 +47,7 @@ def calculate_close_value(currency, close, df):
         'Close': [close]
         }
         )
-    df1 = df1.merge(df,
+    df1 = df1.merge(present_currencies,
                 how = 'inner',
                 left_on = 'Currency',
                 right_on = 'Currency'
@@ -57,7 +60,10 @@ def calculate_close_value(currency, close, df):
 def calculate_present_currencies(project, dataset, table):
     
     """
-
+    Funkcja wyznacza aktualną wartosc kursu walutowego dla dwóch
+    głównych walut: dolara oraz euro, na podstawie danych z tabeli GCP, 
+    zasilanej codziennie przez Cloud Function.
+    
     Parameters
     ----------
     project : STRING - project GCP
@@ -89,18 +95,21 @@ def calculate_present_currencies(project, dataset, table):
     """
     
     query_job = client.query(query = query)
-    df = query_job.to_dataframe()
-    return df
+    present_currencies = query_job.to_dataframe()
+    return present_currencies
 
-def webscraping_google_finance(stock_market, ticker, lang):
+def webscraping_google_finance(ticker, stock_market = 'WSE', lang = 'pl'):
     
     """
+    Funkcja zajmuje się scrapingiem ceny zamknięcia danego instrumentu finansowego
 
     Parameters
     ----------
-    stock_market : STRING - nazwa rynku w Google Finance
     ticker : STRING - nazwa tickera w Google Finance
-    lang : STRING - identyfikator języka
+    stock_market : STRING - nazwa rynku w Google Finance, DEFAULT: 'WSE' -
+        polska giełda GPW
+    lang : STRING - identyfikator języka, DEFAULT: 'pl' - język polski
+    
 
     Returns
     -------
@@ -140,7 +149,7 @@ df = calculate_present_currencies(project, dataset, table)
 
 # 3. Pobranie danych dla danego tickera:
     
-close = webscraping_google_finance(stock_market, ticker, lang)
+close = webscraping_google_finance(ticker, stock_market)
 
 # 4. W zależnosci od jednostki dane chcemy przedstawiać w PLN, stąd
 # koniecznosc zbadania jednostki i ewentualnej konwersji
