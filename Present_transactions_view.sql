@@ -13,6 +13,7 @@ WITH
 transaction_view AS (SELECT * FROM `projekt-inwestycyjny.Transactions.Transactions_view`),
 daily AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Daily`),
 instruments AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instruments`),
+instrument_types AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instrument_types`),
 dividend_view AS (SELECT * FROM `projekt-inwestycyjny.Transactions.Dividend_view`),
 
 -- INITIAL AGGREGATION --
@@ -161,6 +162,7 @@ W tym kroku połączone są dane portfelowe z danymi giełdowymi oraz danymi ins
 present_instruments_plus_present_indicators AS (
   SELECT
     instruments.Ticker,
+    Instrument_types.Instrument_type AS instrument_class,
     instruments.Name AS Name,
     present_instruments_view.ticker_present_amount AS ticker_present_amount,
     present_instruments_view.ticker_average_close AS ticker_average_close,
@@ -190,6 +192,8 @@ present_instruments_plus_present_indicators AS (
   ON present_instruments_view.Ticker = instruments.Ticker
   LEFT JOIN dividend_sum
   ON present_instruments_view.Ticker = dividend_sum.Ticker
+  LEFT JOIN instrument_types
+  ON instruments.Instrument_type_id = instrument_types.Instrument_type_id
 
 )
 
