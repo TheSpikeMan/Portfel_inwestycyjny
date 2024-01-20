@@ -91,7 +91,8 @@ Dodatkowo wyznaczane są następujące parametry:
 present_instruments_view AS (
   SELECT
     Ticker,
-    Name, 
+    Name,
+    Currency AS currency_exposure,
     MAX(transaction_date_ticker_amount) AS ticker_present_amount,
     MAX(age_of_instrument) AS max_age_of_instrument,
     ROUND(SUM(transaction_value_pln), 2) AS ticker_buy_value,
@@ -100,9 +101,9 @@ present_instruments_view AS (
   WHERE
     transaction_status = "Aktualny"
   GROUP BY
-    1,2
+    1,2,3
   ORDER BY
-    1,2
+    1,2,3
 ),
 
 -- DAILY DATA --
@@ -163,6 +164,7 @@ present_instruments_plus_present_indicators AS (
   SELECT
     instruments.Ticker,
     Instrument_types.Instrument_type AS instrument_class,
+    currency_exposure AS currency_exposure,
     instruments.Name AS Name,
     present_instruments_view.ticker_present_amount AS ticker_present_amount,
     present_instruments_view.ticker_average_close AS ticker_average_close,
