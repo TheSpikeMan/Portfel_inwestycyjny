@@ -36,8 +36,8 @@ from google.cloud import bigquery
 
 project = 'projekt-inwestycyjny'
 location = 'europe-central2'
-nazwa_dataSetu = 'Test2'
-nazwa_tabeli = "Test_tabeli"
+nazwa_datasetu = 'Dane_instrumentow'
+nazwa_tabeli = "Treasury_Bonds"
 
 # Utworzenie klienta
 client = bigquery.Client(
@@ -47,10 +47,10 @@ client = bigquery.Client(
 
 # Utworzenie Tabeli w danym Datasecie
 table = client.create_table(
-    bigquery.Table(table_ref = (project + "." + nazwa_dataSetu + "." + nazwa_tabeli),
+    bigquery.Table(table_ref = (project + "." + nazwa_datasetu + "." + nazwa_tabeli),
                    schema = (bigquery.SchemaField(name="Ticker", field_type="STRING", mode = "REQUIRED"),
-                       bigquery.SchemaField(name="Date", field_type="DATE", mode = "REQUIRED"),
-                       bigquery.SchemaField(name="Close", field_type="FLOAT", mode= "REQUIRED")
+                       bigquery.SchemaField(name="First_year_interest", field_type="FLOAT", mode = "REQUIRED"),
+                       bigquery.SchemaField(name="Regular_interest", field_type="FLOAT", mode= "REQUIRED")
                        )))
 
 # %%
