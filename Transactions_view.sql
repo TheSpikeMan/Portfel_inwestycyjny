@@ -37,8 +37,9 @@ W kroku tym pobierane są wszystkie dane transakcyjne, a następnie dołączane 
 
 initial_aggregation AS (
   SELECT 
-    * EXCEPT (Instrument_id),
-    tickers_data.Instrument_id
+    * EXCEPT (Instrument_id, Currency),
+    tickers_data.Instrument_id,
+    tickers_data.Currency
   FROM transactions_data
   LEFT JOIN tickers_data
   ON transactions_data.Instrument_id = tickers_data.Instrument_id
