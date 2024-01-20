@@ -33,7 +33,7 @@ CREATE OR REPLACE TABLE `projekt-inwestycyjny.Dane_instrumentow.Instruments` (
   Market STRING,
   Currency STRING,
   Distribution_policy STRING,
-  Instrument_typ_id INT64,
+  Instrument_type_id INT64,
   Instrument_headquarter STRING,
   Status INT64
 )
