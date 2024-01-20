@@ -39,7 +39,7 @@ initial_aggregation AS (
   SELECT 
     * EXCEPT (Instrument_id, Currency),
     tickers_data.Instrument_id,
-    tickers_data.Currency
+    transactions_data.Currency
   FROM transactions_data
   LEFT JOIN tickers_data
   ON transactions_data.Instrument_id = tickers_data.Instrument_id
