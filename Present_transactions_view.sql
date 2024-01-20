@@ -176,11 +176,19 @@ present_instruments_plus_present_indicators AS (
     ROUND(100 * (ticker_present_amount * Close * instruments.unit)/SUM(ticker_present_amount * Close * instruments.unit) OVER(), 2) 
       AS share_of_portfolio,
     ROUND(100 * ((ticker_present_amount * Close * instruments.unit)/ticker_buy_value) - 100, 2) AS rate_of_return,
+    CASE
+    WHEN present_instruments_view.max_age_of_instrument > 120 THEN
     ROUND((365 * (100 * ((ticker_present_amount * Close * instruments.unit)/ticker_buy_value) - 100))
-      /max_age_of_instrument, 2) AS yearly_rate_of_return,
+      /max_age_of_instrument, 2)
+    ELSE 0
+    END AS yearly_rate_of_return,
+    CASE
+    WHEN present_instruments_view.max_age_of_instrument > 120 THEN
     IFNULL(ROUND((365 * (100 * ((ticker_present_amount * Close * instruments.unit + dividend_sum.dividend_sum)/ticker_buy_value) - 100))
       /max_age_of_instrument, 2), ROUND((365 * (100 * ((ticker_present_amount * Close * instruments.unit)/ticker_buy_value) - 100))
-      /max_age_of_instrument, 2))  AS yearly_rate_of_return_incl_div,
+      /max_age_of_instrument, 2))
+    ELSE 0
+    END AS yearly_rate_of_return_incl_div,
     ROUND((Close * instruments.unit - ticker_average_close) * ticker_present_amount, 2) AS profit,
     IFNULL(ROUND(dividend_sum.dividend_sum + (Close * instruments.unit - ticker_average_close) * ticker_present_amount, 2),
       ROUND((Close * instruments.unit - ticker_average_close) * ticker_present_amount, 2))  AS profit_incl_div,
