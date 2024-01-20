@@ -17,6 +17,20 @@ from flask import Flask, request
 
 
 def pobierz_aktualne_kursy_walut(project, dataset, table):
+    """
+
+    Parameters
+    ----------
+    project : STRING - projekt, z którego pobierane są aktualne kursy walut
+    dataset : STRING - dataset, z którego pobierane są aktualne kursy walut
+    table : STRING - tabela, z której pobierane są aktualne kursy walut
+
+    Returns
+    -------
+    present_currencies : DataFrame - tabela zawierająca informacje o aktualnych
+        kursach walut dla walut EUR oraz USD
+
+    """
     
     # SQL pobiera aktualny kurs walut z Cloud Functions
     client = bigquery.Client()
@@ -41,6 +55,21 @@ def pobierz_aktualne_kursy_walut(project, dataset, table):
     return present_currencies
 
 def pobierz_aktualne_instrumenty_ETF(project, dataset, table_1, table_2):
+    """
+    
+    Parameters
+    ----------
+    project : STRING - projekt, z którego pobierane są dane aktualnych instrumentów
+    dataset : STRING - dataset, zawierający dane aktualnych instrumentów
+    table_1 : STRING - tabela, zawierająca dane instrumentów
+    table_2 : STRING - tabela, zawierająca dane typów instrumentów
+
+    Returns
+    -------
+    present_instruments : DataFrame - tabela zawierająca dane aktualnych instrumentów
+        ETF
+
+    """
     
     # SQL pobierający dane aktualnych instrumentow
     query_2 = f"""
@@ -61,6 +90,20 @@ def pobierz_aktualne_instrumenty_ETF(project, dataset, table_1, table_2):
     return present_instruments
 
 def webscraping_ETFs(present_instruments, present_currencies):
+    """
+
+    Parameters
+    ----------
+    present_instruments : DataFrame - tabela zawierająca dane aktualnych instrumentów
+        ETF. Tabela pobierana jako wynik pracy funkcji 'pobierz_aktualne_instrumenty_ETF'
+    present_currencies : DataFrame - tabela zawierająca informacje o aktualnych
+        kursach walut dla walut EUR oraz USD. Tabela pobierana jako wynik pracy funkcji
+        pobierz_aktualne_kursy_walut
+    Returns
+    -------
+    data_to_export : DataFrame - dane gotowe do eksportu do BigQuery
+
+    """
     
     result_df = pd.DataFrame()
     current_date = date.today()
@@ -104,6 +147,21 @@ def webscraping_ETFs(present_instruments, present_currencies):
     return data_to_export
 
 def eksport_danych_do_BigQuery(data_to_export, project, dataset, table):
+    """
+
+    Parameters
+    ----------
+    data_to_export : DataFrame - dane gotowe do eksportu do BigQuery. Pobrano z
+        funkcji webscraping_ETFs
+    project : STRING - projekt, do którego eksportowane są dane
+    dataset : STRING - dataset, do którego eksportowane są dane
+    table : STRING - tabela, do której eksportowane są dane
+
+    Returns
+    -------
+    None.
+
+    """
     
     client = bigquery.Client()
     destination_table = f"{project}.{dataset}.{table}"
@@ -136,6 +194,18 @@ def eksport_danych_do_BigQuery(data_to_export, project, dataset, table):
 
 @functions_framework.cloud_event
 def ETFs_daily(cloud_event):  
+    """
+
+    Parameters
+    ----------
+    cloud_event : PubSub Event - Wiadomosc generowana przez Cloud Schedulera,
+        wg harmonogramu.
+
+    Returns
+    -------
+    None.
+
+    """
     
     project = 'projekt-inwestycyjny'
     dataset = 'Waluty'
