@@ -13,6 +13,21 @@ CREATE TABLE IF NOT EXISTS `projekt-inwestycyjny.Calendar.Dates` (
   Quarter STRING
 );
 
+-- Uzupełnienie tabeli Dates --
+
+SELECT
+  *,
+  CASE
+    WHEN EXTRACT(MONTH FROM `Date`) IN (1, 2, 3) THEN 'I kwartał'
+    WHEN EXTRACT(MONTH FROM `Date`) IN (4, 5, 6) THEN 'II kwartał'
+    WHEN EXTRACT(MONTH FROM `Date`) IN (7, 8, 9) THEN 'III kwartał'
+    WHEN EXTRACT(MONTH FROM `Date`) IN (10, 11, 12) THEN 'IV kwartał'
+  END AS Quarter
+FROM
+UNNEST(
+  GENERATE_DATE_ARRAY("2020-01-01", "2030-01-01", INTERVAL 1 DAY)) as `Date`
+
+
 -- UTWORZENIE TABEL W ZBIORZE DANE_INSTRUMENTÓW -- 
 -- Tabela przechowująca dane giełdowe instrumentów -- 
 CREATE TABLE IF NOT EXISTS `projekt-inwestycyjny.Dane_instrumentow.Daily`(
@@ -43,6 +58,15 @@ CREATE TABLE IF NOT EXISTS `projekt-inwestycyjny.Dane_instrumentow.Instruments_t
   Instrument_type_id INT64 NOT NULL,
   Instrument_type STRING NOT NULL
 );
+
+-- Uzupełenie tabeli typami danych --
+INSERT INTO `Dane_instrumentow.Instrument_types` VALUES (1, "Akcje polskie");
+INSERT INTO `Dane_instrumentow.Instrument_types` VALUES (2, "Akcje zagraniczne");
+INSERT INTO `Dane_instrumentow.Instrument_types` VALUES (3, "ETF polskie");
+INSERT INTO `Dane_instrumentow.Instrument_types` VALUES (4, "ETF zagraniczne");
+INSERT INTO `Dane_instrumentow.Instrument_types` VALUES (5, "Obligacje skarbowe");
+INSERT INTO `Dane_instrumentow.Instrument_types` VALUES (6, "Obligacje zagraniczne");
+INSERT INTO `Dane_instrumentow.Instrument_types` VALUES (7, "Obligacje zagraniczne");
 
 -- W zbiorze znajduje się również widok 'Trends_analysis'
 
