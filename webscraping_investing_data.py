@@ -125,7 +125,7 @@ Konfiguracja:
     Przekroczony limit czasu: 60
     Maksymalna liczba żądań na instancję: 1
     Minimalna liczba instancji: 0
-    Maksymalna liczba instancji: 100
+    Maksymalna liczba instancji: 1
     Konto usługi srodowiska wykonawczego:
         App Engine Default Service Account
     
