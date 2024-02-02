@@ -1,65 +1,115 @@
 /*
 OPIS WIDOKU
 
-W widoku zawarte są transakcje wszystkich instrumentów, które zostały sprzedane i nie znajdują się obecnie w portfelu.
+W widoku zawarte są transakcje wszystkich instrumentów, które zostały sprzedane.
 */
 
 WITH 
-transaction_view AS (SELECT * FROM `projekt-inwestycyjny.Transactions.Transactions_view`),
+transactions_view AS (SELECT * FROM `projekt-inwestycyjny.Transactions.Transactions_view`),
 
 -- INITIAL VIEW --
 /*
-W pierwszym kroku pobrane są wszystkie transakcje (sprzedaże lub zakupy), a następnie zostaje dokonane działanie:
-- dla wszystkich sprzedaży zamień wolumen wartości sprzedanej na wartość ze znakiem ujemnym,
-- dla wszystkich zakupów nie rób nic.
+W pierwszym kroku pobrane są wszystkie transakcje (sprzedaże lub zakupy).
+Wykluczenie Tickera w klauzuli SELECT wynika, z konieczności późniejszego łączenia z danymi dywinend i dostosowania kolejności kolumn.
+Wyciągane są wszystkie transakcje, dla które całkowita zakupiona ilość jest mniejsza bądź równa całkowitej ilości sprzedaży. Dzięki temu udaje się wyciągnąć sprzedane instrumenty.
 
-Dzięki temu możliwe jest wyznaczenie instrumentów sprzedanych.
 */
 
 initial_view AS (
   SELECT
-    * EXCEPT(Transaction_amount),
-    CASE
-      WHEN Transaction_type = 'Buy' THEN Transaction_amount
-      WHEN Transaction_type = 'Sell' THEN (-1) * Transaction_amount
-      ELSE Transaction_amount
-      END AS Transaction_amount
-  FROM
-    transaction_view
-  WHERE
-    Transaction_type IN ('Buy', 'Sell')
+    * EXCEPT (Ticker),
+    Ticker
+  FROM transactions_view
+  WHERE TRUE
+    AND transaction_date_buy_ticker_amount <= cumulative_sell_amount_per_ticker
+    AND Transaction_type IN ('Buy', 'Sell')
 ),
 
--- TICKERS SOLD VIEW --
+-- MAX TRANSACTION DATES PER TICKER --
 /*
-W tym kroku wyznaczone są tickery sprzedane na podstawie warunku: jeżeli instrument ma sumę wolumenu = 0 to znaczy, że jest sprzedany.
+W widoku tym wyciągane są maksymalne daty transakcji z poprzedniego widoku (INITIAL VIEW), w celu późniejszego dobrania takich dywidend, które były realizowane w czasie posiadania danego instrumentu w porfelu.
 */
 
-tickers_sold_view AS(
+max_transaction_dates_per_ticker AS (
   SELECT
     Ticker,
-    SUM(Transaction_amount) AS suma_wolumenu
-  FROM initial_view
+    MAX(Transaction_date) AS max_transaction_date
+  FROM 
+    initial_view
   GROUP BY
     Ticker
-  HAVING
-    suma_wolumenu = 0
 ),
 
 
--- MID VIEW --
+-- ALL DIVIDEND TRANSACTIONS WITHIN MAXIMUM DATES --
 /*
-W tym kroku wyznaczane są wszystkie dane transakcyjne, dla instrumentów, które zostały sprzedane.
+W widoku tym wyciągane są wszystkie dywidendy, które zrealizowane były w ramach sprzedanych już instrumentów.
 */
 
-mid_view AS (
+all_dividend_transactions_within_maximum_dates AS (
   SELECT
-    * EXCEPT (suma_wolumenu, Ticker),
-    tickers_sold_view.Ticker AS Ticker
-  FROM transaction_view
-  INNER JOIN tickers_sold_view
-  ON transaction_view.Ticker = tickers_sold_view.Ticker
+    * EXCEPT (Ticker, max_transaction_date),
+    transactions_view.Ticker
+  FROM
+    transactions_view
+  LEFT JOIN max_transaction_dates_per_ticker
+  ON transactions_view.Ticker = max_transaction_dates_per_ticker.Ticker
+  WHERE
+    Transaction_type = 'Dywidenda'
+    AND max_transaction_date > Transaction_date
+),
+
+-- TRANSACTIONS PLUS DIVIDENDS --
+/*
+W widoku tym łączone są transakcje zakończone/zrealizowane wraz z wypłaconymi w tym czasie dywidendami.
+*/
+transactions_plus_dividends AS (
+  SELECT *
+  FROM initial_view
+
+  UNION ALL
+
+  SELECT *
+  FROM all_dividend_transactions_within_maximum_dates
+),
+
+-- INTERMEDIATE VIEW --
+/*
+W tym kroku pivotowana jest kolumna Transaction_Type
+*/
+
+intermediate_view AS (
+  SELECT *
+  FROM transactions_plus_dividends
+    PIVOT(SUM(Transaction_value_pln) FOR Transaction_type IN ('Buy', 'Sell', 'Dywidenda'))
 )
 
-SELECT *
-FROM mid_view
+
+-- FINAL AGGREGATON --
+/* 
+W tym kroku wyciągane są:
+- Data ostatniej transakcji,
+- Skumulowana wartość zakupów,
+- Skumulowana wartość sprzedaży,
+- Skumulowany zysk z uwzględnieniem dywidend,
+- Skumulowany zysk procentowy na danym instrumencie.
+\
+Wartość sprzedaży i inne wyciągane są z użyciem funkcji COALESCE - funkcja ta wybiera pierwszą nienulową wartość, więć jeśli kolumny Buy lub Sell przyjmuję NULL zastępuje je wartośćią 0.
+*/
+
+SELECT
+  Ticker,
+  MAX(Transaction_date) AS Last_transaction_date,
+  ROUND(SUM(COALESCE(Buy, 0)), 2) AS Cumulative_buy_value,
+  ROUND(SUM(COALESCE(Sell, 0)), 2) AS Cumulative_sell_value,
+  ROUND(SUM(COALESCE(Dywidenda, 0)), 2) AS Cumulative_dividend_value,
+  ROUND(SUM(COALESCE(Sell, 0)) - SUM(COALESCE(Buy, 0)) + SUM(COALESCE(Dywidenda, 0)), 2) AS profit_inlcuding_dividend,
+  ROUND(100 * (SUM(COALESCE(Sell, 0)) - SUM(COALESCE(Buy, 0)) + SUM(COALESCE(Dywidenda, 0)))/(SUM(COALESCE(Buy, 0))), 2) AS profit_percentage
+FROM
+  intermediate_view
+GROUP BY
+  Ticker
+ORDER BY
+  Ticker ASC
+
+
