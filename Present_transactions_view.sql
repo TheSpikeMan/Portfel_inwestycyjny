@@ -53,6 +53,7 @@ med_aggregation AS (
     transaction_date_ticker_amount <> 0
 ),
 
+
 -- INTERMEDIATE AGGREGATION --
 /*
 W kroku tym zestawiana jest kumulowana ilość zakupów dane instrumentów, z łączną ilością sprzedaży.
@@ -78,6 +79,18 @@ intermediate_aggregation AS (
 ),
 
 
+minimum_buy_dates_for_tickers AS (
+  SELECT
+    Ticker,
+    MIN(Transaction_date) AS minimum_buy_date
+  FROM intermediate_aggregation
+  WHERE TRUE
+    AND transaction_status = "Aktualny"
+    AND transaction_type = 'Buy'
+  GROUP BY
+    Ticker
+),
+
 -- PRESENT INSTRUMENTS VIEW --
 /*
 W tym kroku odfiltrowane są wszystkie sprzedane instrumenty.
@@ -101,10 +114,11 @@ present_instruments_view AS (
   WHERE
     transaction_status = "Aktualny"
   GROUP BY
-    1,2,3
+    1,2,3 
   ORDER BY
     1,2,3
 ),
+
 
 -- DAILY DATA --
 /*
@@ -126,22 +140,48 @@ daily_data AS (
     row_num = 1
 ),
 
+
+dividend_selection AS (
+  SELECT
+    * EXCEPT (Ticker),
+    transaction_view.Ticker
+  FROM 
+  transaction_view
+  LEFT JOIN minimum_buy_dates_for_tickers
+  ON transaction_view.Ticker = minimum_buy_dates_for_tickers.Ticker
+  LEFT JOIN daily
+  ON transaction_view.Ticker = daily.Ticker
+  AND transaction_view.Transaction_date = daily.`Date`
+  WHERE
+    TRUE
+    AND Transaction_type = 'Dywidenda'
+    AND minimum_buy_date < Transaction_date
+),
+
+dividend_with_ratio AS (
+  SELECT
+    * EXCEPT (Close),
+    COALESCE(Close, 0) AS Close,
+    COALESCE(ROUND(100 * SAFE_DIVIDE(Transaction_price, Close), 2), 0) AS dividend_ratio_pct
+  FROM dividend_selection
+),
+
 -- DIVIDEND SUM --
 /*
 Wyciągnięcie sumy wartości dywidend dla danego tickera oraz średniego dividend ratio.
 */
+
 dividend_sum AS (
   SELECT
     Ticker AS Ticker,
-    --ROUND(SUM(Transaction_value_pln), 2) AS dividend_sum
-    MAX(divident_sum_total_per_ticker) AS dividend_sum,
-    MAX(avg_dividend_ratio_per_ticker_pct) AS avg_dividend_ratio_per_ticker_pct
+    ROUND(SUM(Transaction_value_pln), 2) AS dividend_sum,
+    ROUND(AVG(dividend_ratio_pct), 2) AS avg_dividend_ratio_per_ticker_pct
   FROM
-    dividend_view
+    dividend_with_ratio
   GROUP BY
     Ticker
-),
-
+  ),
+  
 -- PRESENT INSTRUMENTS PLUS PRESENT INDICATORS --
 /*
 W tym kroku połączone są dane portfelowe z danymi giełdowymi oraz danymi instrumentów i danymi dywidentowymi i liczone są wskaźniki:
@@ -176,17 +216,18 @@ present_instruments_plus_present_indicators AS (
     ROUND(100 * (ticker_present_amount * Close * instruments.unit)/SUM(ticker_present_amount * Close * instruments.unit) OVER(), 2) 
       AS share_of_portfolio,
     ROUND(100 * ((ticker_present_amount * Close * instruments.unit)/ticker_buy_value) - 100, 2) AS rate_of_return,
+    
     CASE
     WHEN present_instruments_view.max_age_of_instrument > 120 THEN
     ROUND((365 * (100 * ((ticker_present_amount * Close * instruments.unit)/ticker_buy_value) - 100))
       /max_age_of_instrument, 2)
     ELSE 0
-    END AS yearly_rate_of_return,
+    END AS  yearly_rate_of_return,
     CASE
     WHEN present_instruments_view.max_age_of_instrument > 120 THEN
     IFNULL(ROUND((365 * (100 * ((ticker_present_amount * Close * instruments.unit + dividend_sum.dividend_sum)/ticker_buy_value) - 100))
       /max_age_of_instrument, 2), ROUND((365 * (100 * ((ticker_present_amount * Close * instruments.unit)/ticker_buy_value) - 100))
-      /max_age_of_instrument, 2))
+      /max_age_of_instrument, 2))  
     ELSE 0
     END AS yearly_rate_of_return_incl_div,
     ROUND((Close * instruments.unit - ticker_average_close) * ticker_present_amount, 2) AS profit,
