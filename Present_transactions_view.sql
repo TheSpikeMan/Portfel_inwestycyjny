@@ -158,7 +158,7 @@ dividend_selection AS (
     * EXCEPT (Ticker, Close),
     transaction_view.Ticker,
     COALESCE(Close, 0) AS Close,
-    COALESCE(ROUND(100 * SAFE_DIVIDE(Transaction_price, Close), 2), 0) AS dividend_ratio_pct
+    COALESCE(ROUND(100 * SAFE_DIVIDE(Transaction_price * Currency_close, Close), 2), 0) AS dividend_ratio_pct
   FROM 
   transaction_view
   LEFT JOIN minimum_buy_dates_for_tickers
