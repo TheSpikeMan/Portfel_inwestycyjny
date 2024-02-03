@@ -79,6 +79,12 @@ intermediate_aggregation AS (
 ),
 
 
+
+-- MINIMUM BUY DATES FOR TICKERS --
+/*
+Widok stworzony jest po to, aby znaleźć minimalną datę zakupu dla danego tickera, w celu późniejszego odfiltrowania wszystkich dywidend, które zostały zrealizowane wcześniej (np. w przypadku całkowitego sprzedania instrumentu i potem ponownego zakupu dywidendy mogłyby się naliczać niepoprawnie). Bazą dla wyszukiwanych transakcji, są wszystkie transakcje, dla których obecna wartość jest różna od zera. Bada się wówczas wszystkie transakcje zakupowe, które nie zostały jeszcze sprzedane (przy wykorzystaniu mechanizmu badania sum cząstkowych - jeżeli dana transakcja została zrealizowana, to skumulowana wartość zakupowa w danym dniu była mniejsza niż skumulowana wartość sprzedaży)
+*/
+
 minimum_buy_dates_for_tickers AS (
   SELECT
     Ticker,
@@ -141,10 +147,18 @@ daily_data AS (
 ),
 
 
+
+-- DIVIDEND SELECTION -- 
+/*
+W bieżącym kroku dokonywana jest analiza wszystkich transakcji dywidendowych, dla których data wypłaty dywidendy jest większa od daty zakupu danego tickera, do którego przynależy dywidenda. Dodatkowo liczony jest wskaźnik stopy dywidendy (na podstawie zestawienia ceny zamknięcia instrumentu, na moment wypłaty dywidendy)
+*/
+
 dividend_selection AS (
   SELECT
-    * EXCEPT (Ticker),
-    transaction_view.Ticker
+    * EXCEPT (Ticker, Close),
+    transaction_view.Ticker,
+    COALESCE(Close, 0) AS Close,
+    COALESCE(ROUND(100 * SAFE_DIVIDE(Transaction_price, Close), 2), 0) AS dividend_ratio_pct
   FROM 
   transaction_view
   LEFT JOIN minimum_buy_dates_for_tickers
@@ -156,15 +170,7 @@ dividend_selection AS (
     TRUE
     AND Transaction_type = 'Dywidenda'
     AND minimum_buy_date < Transaction_date
-),
-
-dividend_with_ratio AS (
-  SELECT
-    * EXCEPT (Close),
-    COALESCE(Close, 0) AS Close,
-    COALESCE(ROUND(100 * SAFE_DIVIDE(Transaction_price, Close), 2), 0) AS dividend_ratio_pct
-  FROM dividend_selection
-),
+  ),
 
 -- DIVIDEND SUM --
 /*
@@ -177,7 +183,7 @@ dividend_sum AS (
     ROUND(SUM(Transaction_value_pln), 2) AS dividend_sum,
     ROUND(AVG(dividend_ratio_pct), 2) AS avg_dividend_ratio_per_ticker_pct
   FROM
-    dividend_with_ratio
+    dividend_selection
   GROUP BY
     Ticker
   ),
