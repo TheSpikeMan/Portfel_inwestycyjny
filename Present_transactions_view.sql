@@ -16,6 +16,7 @@ instruments AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instrument
 instrument_types AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instrument_types`),
 dividend_view AS (SELECT * FROM `projekt-inwestycyjny.Transactions.Dividend_view`),
 
+
 -- INITIAL AGGREGATION --
 /*
 W kroku tym każdej transakcji przyporządkowany jest numer, którego zasada przydzielania jest następująca:
@@ -77,8 +78,6 @@ intermediate_aggregation AS (
   WHERE
     transaction_view.Transaction_Type IN ("Buy", "Sell")
 ),
-
-
 
 -- MINIMUM BUY DATES FOR TICKERS --
 /*
@@ -147,7 +146,6 @@ daily_data AS (
 ),
 
 
-
 -- DIVIDEND SELECTION -- 
 /*
 W bieżącym kroku dokonywana jest analiza wszystkich transakcji dywidendowych, dla których data wypłaty dywidendy jest większa od daty zakupu danego tickera, do którego przynależy dywidenda. Dodatkowo liczony jest wskaźnik stopy dywidendy (na podstawie zestawienia ceny zamknięcia instrumentu, na moment wypłaty dywidendy)
@@ -158,7 +156,7 @@ dividend_selection AS (
     * EXCEPT (Ticker, Close),
     transaction_view.Ticker,
     COALESCE(Close, 0) AS Close,
-    COALESCE(ROUND(100 * SAFE_DIVIDE(Transaction_price * Currency_close, Close), 2), 0) AS dividend_ratio_pct
+    COALESCE(ROUND(100 * SAFE_DIVIDE(Transaction_price * Currency_close , Close), 2), 0) AS dividend_ratio_pct
   FROM 
   transaction_view
   LEFT JOIN minimum_buy_dates_for_tickers
@@ -170,24 +168,59 @@ dividend_selection AS (
     TRUE
     AND Transaction_type = 'Dywidenda'
     AND minimum_buy_date < Transaction_date
-  ),
+),
+
+-- DIVIDEND FREQUENCY --
+/*
+W bieżącym widoku dokonywane jest wyznaczenie częstotliwośći wypłaty dywidend, aby potem wykorzystać je do wyznaczenia średniej stopy redystrybucji.
+*/
+
+dividend_frequency AS (
+  SELECT
+    Ticker AS Ticker,
+    EXTRACT(YEAR FROM Transaction_date) AS dividend_year,
+    COUNT(Transaction_id) AS  number_od_dividends_in_year
+  FROM dividend_selection
+  WHERE EXTRACT(YEAR FROM Transaction_date) IN (EXTRACT(YEAR FROM CURRENT_DATE()) - 1, EXTRACT(YEAR FROM CURRENT_DATE()) - 2)
+  GROUP BY
+    Ticker,
+    dividend_year
+),
+
+
+-- DIVIDEND AVERGAGE FREQUENCY --
+/*
+W widoku wyliczana jest średnia wartość liczby wypłacaonych dywidend w ostatnich dwóch latach
+*/
+dividend_average_frequency AS (
+  SELECT
+    Ticker,
+    AVG(number_od_dividends_in_year) AS number_of_dividends_in_year
+  FROM dividend_frequency
+  GROUP BY
+    Ticker
+),
 
 -- DIVIDEND SUM --
 /*
 Wyciągnięcie sumy wartości dywidend dla danego tickera oraz średniego dividend ratio.
+W widoku wzięta jest pod uwagę częstotliwość wypłaty dywidendy - wskaźnik średniej dywidendy mnożony jest przez częstotliwość wypłaty.
 */
 
 dividend_sum AS (
   SELECT
-    Ticker AS Ticker,
+    dividend_selection.Ticker AS Ticker,
     ROUND(SUM(Transaction_value_pln), 2) AS dividend_sum,
-    ROUND(AVG(dividend_ratio_pct), 2) AS avg_dividend_ratio_per_ticker_pct
+    ROUND(AVG(dividend_ratio_pct * dividend_average_frequency.number_of_dividends_in_year), 2) AS avg_dividend_ratio_per_ticker_pct
   FROM
     dividend_selection
+  LEFT JOIN dividend_average_frequency
+  ON dividend_selection.Ticker = dividend_average_frequency.Ticker
   GROUP BY
     Ticker
   ),
-  
+
+
 -- PRESENT INSTRUMENTS PLUS PRESENT INDICATORS --
 /*
 W tym kroku połączone są dane portfelowe z danymi giełdowymi oraz danymi instrumentów i danymi dywidentowymi i liczone są wskaźniki:
@@ -203,7 +236,7 @@ W tym kroku połączone są dane portfelowe z danymi giełdowymi oraz danymi ins
 - rate_of_return - stopa zwrotu instrumentu, bez uwzględnienia dywidend, odsetek i podatku,
 - profit - niezrealizowany zysk transakcyjny - zysk wynikający z różnicy kursowej, bez uwzględnienia dywidend i odsetek
 - profit_incl_div - niezrealizowany zysk transakcyjny - zysk wynikający z różnicy kursowej, z uwzglęnieniem dywident, bez uwzględnienia odsetek
-- avg_dividend_ratio_per_ticker_pct - średnia stopa dywidendy instrumentu
+- avg_dividend_ratio_per_ticker_pct - średnia stopa dywidendy instrumentu (roczna)
 */
 
 present_instruments_plus_present_indicators AS (
@@ -222,7 +255,6 @@ present_instruments_plus_present_indicators AS (
     ROUND(100 * (ticker_present_amount * Close * instruments.unit)/SUM(ticker_present_amount * Close * instruments.unit) OVER(), 2) 
       AS share_of_portfolio,
     ROUND(100 * ((ticker_present_amount * Close * instruments.unit)/ticker_buy_value) - 100, 2) AS rate_of_return,
-    
     CASE
     WHEN present_instruments_view.max_age_of_instrument > 120 THEN
     ROUND((365 * (100 * ((ticker_present_amount * Close * instruments.unit)/ticker_buy_value) - 100))
