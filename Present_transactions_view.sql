@@ -17,6 +17,8 @@ instrument_types AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instr
 dividend_view AS (SELECT * FROM `projekt-inwestycyjny.Transactions.Dividend_view`),
 
 
+--- AGREGACJE POCZĄTKOWE - FILTR INSTRUMENTÓW OBECNYCH W PORTFELU ---
+
 -- INITIAL AGGREGATION --
 /*
 W kroku tym każdej transakcji przyporządkowany jest numer, którego zasada przydzielania jest następująca:
@@ -41,7 +43,7 @@ initial_aggregation AS (
 -- MED AGGREGATION --
 /*
 Wyciągnięcie tickerów instrumentów, które znajdują się w aktualnym porfelu.
-Uwzględniamy tylko takie, które posiadają niezerowe wolumeny.
+Uwzględniamy tylko takie, które posiadają niezerowe wolumeny (posiadamy je w portfelu).
 */
 
 med_aggregation AS (
@@ -145,6 +147,7 @@ daily_data AS (
     row_num = 1
 ),
 
+--- DYWIDENDY ---
 
 -- DIVIDEND SELECTION -- 
 /*
@@ -219,6 +222,8 @@ dividend_sum AS (
   GROUP BY
     Ticker
   ),
+
+--- FINALNA AGREGACJA I PREZENTACJA DANYCH ---
 
 
 -- PRESENT INSTRUMENTS PLUS PRESENT INDICATORS --
