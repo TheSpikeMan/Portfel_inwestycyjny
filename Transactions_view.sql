@@ -12,8 +12,10 @@ WITH
 transactions_data AS (SELECT * FROM `projekt-inwestycyjny.Transactions.Transactions`),
 currency_data AS (SELECT * FROM `projekt-inwestycyjny.Waluty.Currency`),
 tickers_data AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instruments`),
+instruments_types AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instrument_types`),
 unique_dates AS (SELECT DISTINCT Currency_date FROM currency_data),
 calendar_dates AS (SELECT * FROM `projekt-inwestycyjny.Calendar.Dates`),
+daily AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Daily`),
 
 -- DATES AGGREAGTION --
 /*
@@ -30,6 +32,16 @@ dates_list AS (
   ORDER BY Currency_date
 ),
 
+-- DAILY DATA --
+/*
+Widok stworzony w celu pobraniu danych kursów instrumentów na dany moment. 
+*/
+
+daily_data AS (
+  SELECT *
+  FROM daily
+),
+
 -- INITIAL AGGREGATION --
 /*
 W kroku tym pobierane są wszystkie dane transakcyjne, a następnie dołączane do nich dane tickerów oraz dane z kwerendy określającej ostatnią datę wyznaczenia kursu walutowego.
@@ -37,14 +49,21 @@ W kroku tym pobierane są wszystkie dane transakcyjne, a następnie dołączane 
 
 initial_aggregation AS (
   SELECT 
-    * EXCEPT (Instrument_id, Currency),
+    * EXCEPT (Instrument_id, Currency, Instrument_type_id, Ticker),
     tickers_data.Instrument_id,
-    transactions_data.Currency
+    tickers_data.Ticker,
+    transactions_data.Currency,
+    instruments_types.Instrument_type_id
   FROM transactions_data
   LEFT JOIN tickers_data
   ON transactions_data.Instrument_id = tickers_data.Instrument_id
+  LEFT JOIN instruments_types
+  ON tickers_data.Instrument_type_id = instruments_types.Instrument_type_id
   LEFT JOIN dates_list
   ON transactions_data.Transaction_date = dates_list.Currency_date
+  LEFT JOIN daily
+  ON tickers_data.Ticker = daily.Ticker
+  AND transactions_data.Transaction_date = daily.Date
 ),
 
 -- DATA MID AGGREGATION --
@@ -114,9 +133,6 @@ pre_final_aggregation AS (
     SUM(Transaction_amount) 
       OVER (PARTITION BY Ticker, Transaction_type ORDER BY Transaction_date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) 
       AS transaction_date_buy_ticker_amount,
-    ROUND (SUM(Transaction_amount_with_sign)
-      OVER (PARTITION BY Ticker ORDER BY Transaction_date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) * Transaction_price *
-      Currency_close, 2) AS transaction_date_ticker_value,
     CASE
       WHEN Transaction_type = 'Sell' THEN SUM(Transaction_amount) 
       OVER (PARTITION BY Ticker, Transaction_type ORDER BY Transaction_date ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
@@ -124,6 +140,18 @@ pre_final_aggregation AS (
     END AS cumulative_sell_amount_per_ticker
   FROM
     intermediate_aggregation
+),
+
+almost_final_aggregation AS (
+  SELECT
+    *,
+    CASE
+      WHEN Transaction_type <> "Dywidenda" THEN ROUND(SUM(transaction_date_ticker_amount) OVER(PARTITION BY Instrument_type_id ORDER BY Transaction_date ROWS BETWEEN CURRENT ROW AND CURRENT ROW) * Close, 2) 
+    ELSE 0
+    END AS instrument_type_cumulative_value,
+    ROUND(transaction_date_ticker_amount * Close, 2) AS transaction_date_ticker_value
+  FROM 
+    pre_final_aggregation
 ),
 
 -- FINAL AGGREGATION --
@@ -135,9 +163,9 @@ Jeżeli nie ma żadnych sprzedaży wartość tego parametru przyjmie 0.
 final_aggregation AS (
   SELECT
     * EXCEPT(cumulative_sell_amount_per_ticker),
-    IFNULL(MAX(cumulative_sell_amount_per_ticker) OVER (PARTITION BY Ticker), 0) AS cumulative_sell_amount_per_ticker
+    IFNULL(MAX(cumulative_sell_amount_per_ticker) OVER (PARTITION BY Ticker), 0) AS cumulative_sell_amount_per_ticker,
   FROM
-    pre_final_aggregation
+    almost_final_aggregation
 )
 
 SELECT * FROM final_aggregation ORDER BY Transaction_date DESC;
