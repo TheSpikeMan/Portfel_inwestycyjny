@@ -1,10 +1,10 @@
 WITH
 transaction_view AS (SELECT * FROM `projekt-inwestycyjny.Transactions.Transactions_view` WHERE Transaction_type <> "Dywidenda"),
+instrument_types AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instrument_types`),
 present_instruments AS (SELECT DISTINCT Ticker FROM `projekt-inwestycyjny.Transactions.Present_transactions_view`),
 daily AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Daily`),
 calendar AS (SELECT dates FROM UNNEST(GENERATE_DATE_ARRAY('2020-01-01', CURRENT_DATE(), INTERVAL 1 DAY)) AS dates),
 calendar_present_instruments AS (SELECT * FROM calendar CROSS JOIN present_instruments),
-
 
 -- TICKER DATE AMOUNT VALUE --
 /*
@@ -22,8 +22,8 @@ ticker_date_amount_value AS (
 SELECT
   dates AS `Date`,
   calendar_present_instruments.Ticker,
-  COALESCE(transaction_view.Instrument_type_id, 
-    LAST_VALUE(Instrument_type_id IGNORE NULLS) OVER window_transactions_by_ticker) AS Instrument_type_id,
+  COALESCE(instrument_types.Instrument_type, 
+    LAST_VALUE(instrument_types.Instrument_type IGNORE NULLS) OVER window_transactions_by_ticker) AS Instrument_type,
   COALESCE(transaction_date_ticker_amount,
     LAST_VALUE(transaction_date_ticker_amount IGNORE NULLS) OVER window_transactions_by_ticker) AS transaction_date_ticker_amount,
   ROUND(COALESCE(Close, 
@@ -38,6 +38,8 @@ LEFT JOIN transaction_view
 LEFT JOIN daily
   ON calendar_present_instruments.dates = daily.`Date`
   AND calendar_present_instruments.Ticker = daily.Ticker
+LEFT JOIN instrument_types
+  ON transaction_view.Instrument_type_id = instrument_types.Instrument_type_id
 QUALIFY TRUE
 WINDOW
   window_transactions_by_ticker AS (PARTITION BY calendar_present_instruments.Ticker ORDER BY dates ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
@@ -45,5 +47,4 @@ ORDER BY
   dates DESC
 )
 
-SELECT *
-FROM ticker_date_amount_value
+SELECT * FROM ticker_date_amount_value;
