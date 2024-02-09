@@ -5,14 +5,32 @@ daily AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Daily`),
 calendar AS (SELECT dates FROM UNNEST(GENERATE_DATE_ARRAY('2020-01-01', CURRENT_DATE(), INTERVAL 1 DAY)) AS dates),
 calendar_present_instruments AS (SELECT * FROM calendar CROSS JOIN present_instruments),
 
+
+-- TICKER DATE AMOUNT VALUE --
+/*
+W zapytaniu realizowane są następujące obliczenia:
+- wyznaczenie wszystkich dat od '2020-01-01' do daty biężacej,
+- przypisanie wszystkich danych transakcyjnych do dat z kalendarza z powyższego okresu,
+- dla wszystkich transakcji przypisanie aktualnej ilości posiadanych instrumentów wg obecnego schematu:
+  - dla wszystkich dat, dla których realizowana była sprzedaż, przypisanie ilości wg transakcji,
+  - dla wszystkich dat, dla których nie była realizowana sprzedaż, przypisanie ilości dla ostatniej dostępnej transakcji (użycie funkcji LAST_VALUE oraz okna), dzięki czemu udaje się zapełnić wszystkie NULLE,
+Podobny mechanizm zastosowany jest do wyciągnięcia ceny zamknięcia.
+- jako podsumowanie wyznaczana jest wartość instrumentu na każdy kolejny dzień
+*/
+
 ticker_date_amount_value AS (
 SELECT
-  dates,
+  dates AS `Date`,
   calendar_present_instruments.Ticker,
-  COALESCE(transaction_view.Instrument_type_id, LAST_VALUE(Instrument_type_id IGNORE NULLS) OVER(PARTITION BY calendar_present_instruments.Ticker ORDER BY dates ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)) AS instrument_type_id,
-  COALESCE(transaction_date_ticker_amount,LAST_VALUE(transaction_date_ticker_amount IGNORE NULLS) OVER(PARTITION BY calendar_present_instruments.Ticker ORDER BY dates ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)) AS transaction_date_ticker_amount,
-  COALESCE(Close, LAST_VALUE(Close IGNORE NULLS) OVER(PARTITION BY calendar_present_instruments.Ticker ORDER BY dates ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)) AS Close,
-  ROUND(COALESCE(transaction_date_ticker_amount,LAST_VALUE(transaction_date_ticker_amount IGNORE NULLS) OVER(PARTITION BY calendar_present_instruments.Ticker ORDER BY dates ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)) * COALESCE(Close, LAST_VALUE(Close IGNORE NULLS) OVER(PARTITION BY calendar_present_instruments.Ticker ORDER BY dates ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)), 2) as ticker_date_value
+  COALESCE(transaction_view.Instrument_type_id, 
+    LAST_VALUE(Instrument_type_id IGNORE NULLS) OVER window_transactions_by_ticker) AS Instrument_type_id,
+  COALESCE(transaction_date_ticker_amount,
+    LAST_VALUE(transaction_date_ticker_amount IGNORE NULLS) OVER window_transactions_by_ticker) AS transaction_date_ticker_amount,
+  ROUND(COALESCE(Close, 
+    LAST_VALUE(Close IGNORE NULLS) OVER window_transactions_by_ticker), 2) AS Close,
+  ROUND(COALESCE(transaction_date_ticker_amount,
+    LAST_VALUE(transaction_date_ticker_amount IGNORE NULLS) OVER window_transactions_by_ticker) * 
+    COALESCE(Close, LAST_VALUE(Close IGNORE NULLS) OVER window_transactions_by_ticker), 2) AS ticker_date_value
 FROM calendar_present_instruments
 LEFT JOIN transaction_view
   ON calendar_present_instruments.dates = transaction_view.Transaction_date
@@ -20,19 +38,12 @@ LEFT JOIN transaction_view
 LEFT JOIN daily
   ON calendar_present_instruments.dates = daily.`Date`
   AND calendar_present_instruments.Ticker = daily.Ticker
+QUALIFY TRUE
+WINDOW
+  window_transactions_by_ticker AS (PARTITION BY calendar_present_instruments.Ticker ORDER BY dates ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
 ORDER BY
   dates DESC
-),
-
-final_view AS (
-  SELECT 
-    dates AS `Date`,
-    Ticker AS Ticker,
-    instrument_type_id AS Instrument_type_id,
-    ticker_date_value AS ticker_date_value
-  FROM 
-    ticker_date_amount_value
 )
 
 SELECT *
-FROM final_view;
+FROM ticker_date_amount_value
