@@ -1,26 +1,16 @@
-# -*- coding: utf-8 -*-
-
-
 import pandas as pd
 from datetime import date, datetime, timedelta
 import math
 from google.cloud import bigquery
 import numpy as np
-import pandas_gbq
-
-"""
-Created on Sun Feb 11 12:26:16 2024
-
-@author: grzeg
-"""
 
 """
 Kod służy do dogrania danych obligacji skarbowych do okresu, który można
 zdefiniować w zmiennej data_maksymalna.
 
 Dobiera on na podstawie innych tabel w BigQuery wszystkie niezbędne dane
-i uzupełnia dane obligacji skarbowych od dany zakupu danego instrumentu do
-daty okrelonej w zmiennej data_maksymalna.
+i uzupełnia dane obligacji skarbowych od daty zakupu danego instrumentu do
+daty okrelosnej w zmiennej data_maksymalna.
 """
 
 data_maksymalna = '2024-01-15'
@@ -99,6 +89,7 @@ result_df = pd.DataFrame(columns=['Ticker', 'Date', 'Current Value'])
 
 # 8. Dla każdego wiersza z danych transakcyjnych wykonaj:
 for dane in dane_do_analizy.iterrows():
+    
     # 9. Przypisz wartosc parametrów wg danych transakcyjnych.
     ticker = dane[1].iloc[0]
     data_zakupu = dane[1].iloc[1]
@@ -113,52 +104,59 @@ for dane in dane_do_analizy.iterrows():
     # 11. Wyznaczenie początkowej wartosci danego pakietu obligacji,
     # o okreslonym tickerze.
     start_value = wolumen * wolumen_jednostkowy
-
+    
+    # 12. Zdefiniowanie zmiennej 'step' przechowującej wartosc kroku
+    # o który zmieniana będzie data w poniższej pętli while.
     step = timedelta(days=1)
-
+    
+    # 13. Przypisanie do zmiennej 'current_date' pierwszej daty, dla której
+    # analizowana jest wartosc. Zwykle jest to jeden dzień plus od
+    # daty zakupu.
     current_date = data_zakupu + step
 
-
-    # 12. Wyznaczenie aktualnej daty oraz daty transakcji (data_zakupu)
-    # Wyznaczenie wartosci bezwzględnej liczby lat posiadania danej obligacji.
-    # Wyznaczenie liczby dni posiadania danej obligacji.
-
+    
+    # 14. Realizacja pętli while w zakresie od daty - dzień po zakupie
+    # do daty maksymalnej okreslonej przez użytkownika
+    
     while current_date <= data_maksymalna:
+        # 15. Wyznaczenie liczby dni posiadania danej obligacji.
         liczba_dni = (current_date - data_zakupu).days
         print("Liczba dni wynosi ", liczba_dni)
+        
+        # 16. Wyznaczenie wartosci bezwzględnej liczby lat posiadania danej obligacji.
         liczba_lat = int(math.modf(liczba_dni/365)[1])
 
-        # 13. Wyznaczenie danego parametru n.
+        # 17. Wyznaczenie danego parametru n.
         n = 1
 
-        # 14. Jeżeli liczba dni jest mniejsza niż 365 zastosuj poniższą formułę
+        # 18. Jeżeli liczba dni jest mniejsza niż 365 zastosuj poniższą formułę
         # do wyznaczenie aktualnej wartosci.
         if liczba_dni < 365:
             current_value = start_value + start_value * liczba_dni / 365 * (marza_pierwszy_rok/100)
 
-        # 15. Jeżeli liczba dni jest większa lub równa 365 dni dokonuj analizy wg
+        # 19. Jeżeli liczba dni jest większa lub równa 365 dni dokonuj analizy wg
         # poniższego kodu.
         else:
             current_value = start_value + start_value * (marza_pierwszy_rok/100)
 
-            # 16. Pętla wykonywana jest tyle razy, aż liczba dni spadnie poniżej 365.
+            # 20. Pętla wykonywana jest tyle razy, aż liczba dni spadnie poniżej 365.
             for i in range(liczba_lat, 0, -1):
 
-                # 17. Przesunięcie daty badania inflacji występuje o okres równy
+                # 21. Przesunięcie daty badania inflacji występuje o okres równy
                 # ilosci lat i dwoch miesiecy.
                 liczba_dni_przesuniecie = timedelta(days= 365 * n - 60)
 
-                # 18. Data badania inflacji jest wynikiem różnicy pomiedzy datą
+                # 22. Data badania inflacji jest wynikiem różnicy pomiedzy datą
                 # transakcji (data_zakupu), a okresem czasowy wynikającym z powyższego
                 # obliczenia (liczba_dni_przesuniecie)
                 data_badania_inflacji = date((data_zakupu + liczba_dni_przesuniecie).year, \
                                      (data_zakupu + liczba_dni_przesuniecie).month, \
                                      1)
-                # 19. Wartosci inflacji jest wyznaczana dla daty_badania_inflacji
+                # 23. Wartosci inflacji jest wyznaczana dla daty_badania_inflacji
                 inflacja = dane_inflacyjne.loc[dane_inflacyjne['Początek miesiąca'] \
                                               == str(data_badania_inflacji)].iat[0,0]
 
-                # 20. Jeżeli liczba dni jest mnijesza niz 720 wpada do tej czesci pętli.
+                # 24. Jeżeli liczba dni jest mniejesza niz 720 wpada do tej czesci pętli.
                 if liczba_dni < 730:
                     current_value = current_value + current_value * \
                         (liczba_dni - 365)/365 * (inflacja + marza_kolejne_lata)/ 100
@@ -168,45 +166,43 @@ for dane in dane_do_analizy.iterrows():
                     liczba_dni = liczba_dni - 365
                 n = n + 1 
 
-        print("Ticker wynosi ", ticker)
-        print("Data wynosi ", current_date)
-        print("Current value wynosi ", current_value)
-        # 21. Dołączanie danych dla danego tickera z pozostałymi danymi.
+        # 25. Dołączanie danych dla danego tickera z pozostałymi danymi.
         result_df = pd.concat([result_df, \
                                pd.DataFrame(data=[[ticker, data_zakupu, current_date, \
                                                    round(current_value, 2)]], \
                                             columns=['Ticker', 'Date', 'Current date', 'Current Value'])])
+        
+        # 26. Dołączenie do danych wyliczonych, danych transakcji - dzięki czemu
+        # w kolejnym kroku możliwe jest wyznaczenie sredniej ceny
+        # w zależnosci od wolumenu
         data_to_export = result_df.merge(right=dane_obligacji, 
                         how='inner',
                         left_on=['Ticker', 'Date'],
                         right_on= ['Ticker', 'Transaction_date'])
 
-        # 22. Utworzenie kolumn, z wartosciami oczekiwanymi przez bazę danych.
+        # 27. Utworzenie kolumny sredniej wartosci 1 sztuki obligacji skarbowej
+        # na dany dzień.
         data_to_export['Close'] = (data_to_export['Current Value']/\
                                    data_to_export['Transaction_amount']).round(3) 
         
-        # 23. Grupowanie danych po tickerze i dacie i wyznaczenie sredniej ważonej,
-        # z argumentem sredniej w postaci wolumenu.
-        
+        # 28. Dodanie jednego dnia do bieżącej daty, aż do daty maksymalnej.
         current_date = current_date + step 
 
-data_to_export = data_to_export.groupby(['Ticker', 'Date', 'Current date']).\
+# 29. Grupowanie danych - wyznaczanie sredniej ceny zamknięcia instrumentu na 
+# podstawie wagi wolumenowej, w przypadku, gdy instrument został
+# zakupiony wiecej niż raz.
+
+data_to_export = data_to_export.groupby(['Ticker', 'Current date']).\
     apply(lambda x: np.average(x['Close'], \
     weights=x['Transaction_amount']))\
     .reset_index(name='Close').\
     round(decimals = 3)
-data_to_export.drop(columns = ['Date'], axis=1, inplace=True)
 data_to_export.rename(columns = {'Current date': 'Date'}, inplace=True)
 
-data_to_export = data_to_export.groupby(['Ticker', 'Date',]).\
-    apply(lambda x: np.average(x['Close']))\
-    .reset_index(name='Close').\
-    round(decimals = 3)
 data_to_export['Volume'] = 0
 data_to_export['Turnover'] = 0
 
-
-# 24. Przygotowanie schematu danych w BQ, wg którego importowane będą dane.
+# 30. Przygotowanie schematu danych w BQ, wg którego importowane będą dane.
 schema = [bigquery.SchemaField(name='Ticker', field_type="STRING",
                                mode="REQUIRED"),
           bigquery.SchemaField(name='Date', field_type="DATE",
@@ -218,17 +214,17 @@ schema = [bigquery.SchemaField(name='Ticker', field_type="STRING",
           bigquery.SchemaField(name='Turnover', field_type="INTEGER",
                                mode="NULLABLE")]
 
-# 25. Zdefiniowanie parametrów tabeli, do której pisze CF.
+# 31. Zdefiniowanie parametrów tabeli, do której pisze CF.
 project_id = 'projekt-inwestycyjny'
 dataset_id = 'Dane_instrumentow'
 table_id = 'Daily'
 destination_table = f"{project_id}.{dataset_id}.{table_id}"
 
-# 26. Wyznaczenie konfiguracji dla joba i wykonanie joba.
+# 32. Wyznaczenie konfiguracji dla joba i wykonanie joba.
 job_config = bigquery.LoadJobConfig(schema=schema,
                                     write_disposition="WRITE_APPEND")
 
-# 27. Wykonanie operacji eksportu danych.
+# 33. Wykonanie operacji eksportu danych.
 try:
     job = client.load_table_from_dataframe(data_to_export,
                                            destination_table,
