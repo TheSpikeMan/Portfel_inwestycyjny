@@ -66,8 +66,6 @@ for index, transaction in enumerate(transactions_df.iterrows()):
             while not((transactions_df.loc[k, 'Transaction_type'] == "Buy") and \
                          (transactions_df.loc[k, 'amount_location'] != 0) and \
                          (transactions_df.loc[k, 'Ticker'] == ticker_search)):
-                print("Współczynnik k wynosi: ", k)
-                print("Ticker aktualny wynosi ", transactions_df.loc[k, 'Ticker'])
                 k = k + 1
 
             # 11. Do zmiennych przypisz odpowiednie wartości na podstawie konkretnej transakcji zakupowej.
@@ -107,7 +105,6 @@ for index, transaction in enumerate(transactions_df.iterrows()):
             # 16. Dodaj do biężącej DataFrame dane z tablicy.
             result_df = pd.concat([result_df, pd.DataFrame([data_to_add])], 
                                      axis = 0)
-            print("Przeszedłem całosc")
     else:
         # 17. Jeżeli nie znajdziesz transakcji sprzedaży, szukaj dalej, aż znajdziesz.
 
@@ -120,3 +117,4 @@ columns = ['Data_sprzedaży', 'Data_zakupu',	'Czas_inwestycji',	'Wolumen',
            'Kurs_zakupu', 'Waluta', 'Ticker', 'Ticker_ID',
            'Koszt_uzyskania_przychodu',	'Przychód',	'Dochód']
 result_df.columns = columns
+print("Program zakończył się poprawnie.")
