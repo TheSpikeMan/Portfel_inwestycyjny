@@ -112,9 +112,62 @@ for index, transaction in enumerate(transactions_df.iterrows()):
   
 # 18. Zmień nazwy kolumn na odpowiednie, zdefiniowane poniżej.
     
-columns = ['Data_sprzedaży', 'Data_zakupu',	'Czas_inwestycji',	'Wolumen',
-           'Cena_sprzedaży', 'Cena_zakupu', 'Kurs_sprzedaży',
-           'Kurs_zakupu', 'Waluta', 'Ticker', 'Ticker_ID',
-           'Koszt_uzyskania_przychodu',	'Przychód',	'Dochód']
+columns = ['Date_buy', 'Date_sell',	'Investment_period',	'Quantity',
+           'Buy_Price', 'Sell_Price', 'Buy_currency',
+           'Sell_currency', 'Currency', 'Ticker', 'Ticker_id',
+           'Tax_deductible_expenses',	'Income',	'Profit']
 result_df.columns = columns
-print("Program zakończył się poprawnie.")
+
+# 19. Zdefiniownie miejsca eksportu danych.
+
+project_id = 'projekt-inwestycyjny'
+dataset_id = 'Transactions'
+table_id = 'Tax_calculations'
+destination_table = f"{project_id}.{dataset_id}.{table_id}"
+
+# 20. Przygotowanie schematu danych.
+schema = [bigquery.SchemaField(name = 'Date_buy', field_type = "DATE", \
+                                mode = "REQUIRED"),
+          bigquery.SchemaField(name = 'Date_sell', field_type = "DATE",\
+                                mode = "REQUIRED"),
+          bigquery.SchemaField(name = 'Investment_period', field_type = "INTEGER",\
+                                mode = "REQUIRED"),
+          bigquery.SchemaField(name = 'Quantity', field_type = "INTEGER",\
+                                mode = "REQUIRED"),
+          bigquery.SchemaField(name = 'Buy_Price', field_type = "FLOAT",\
+                                mode = "NULLABLE"),
+          bigquery.SchemaField(name = 'Sell_Price', field_type = "FLOAT",\
+                                mode = "REQUIRED"),
+          bigquery.SchemaField(name = 'Buy_currency', field_type = "FLOAT",\
+                                mode = "REQUIRED"),
+          bigquery.SchemaField(name = 'Sell_currency', field_type = "FLOAT",\
+                                mode = "REQUIRED"),
+          bigquery.SchemaField(name = 'Currency', field_type = "STRING",\
+                                mode = "NULLABLE"),
+          bigquery.SchemaField(name = 'Ticker', field_type = "STRING",\
+                                mode = "REQUIRED"),
+          bigquery.SchemaField(name = 'Ticker_id', field_type = "INTEGER",\
+                                mode = "REQUIRED"),
+          bigquery.SchemaField(name = 'Tax_deductible_expenses', field_type = "FLOAT",\
+                                mode = "NULLABLE"),
+          bigquery.SchemaField(name = 'Income', field_type = "FLOAT",\
+                                mode = "NULLABLE"),
+          bigquery.SchemaField(name = 'Profit', field_type = "FLOAT",\
+                                mode = "NULLABLE")
+                                ]
+
+# 21. Zdefiniowanie joba, który wykona operację eksportu.
+job_config = bigquery.LoadJobConfig(schema = schema,
+                                    write_disposition = "WRITE_TRUNCATE")
+
+# 22. Wykonanie eksportu danych metodą load_table_from_dataframe na obiekcie client klasy Client.
+
+try:
+    job = client.load_table_from_dataframe(dataframe=result_df, 
+                                            destination=destination_table,
+                                            num_retries=1,
+                                            job_config=job_config)
+    job.result()
+    print("Success exporting the data to BigQuery.")
+except Exception as e:
+    print(f"Error uploading data to BigQuery: {str(e)}")
