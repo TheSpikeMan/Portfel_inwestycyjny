@@ -38,7 +38,7 @@ data_with_instrument_types AS (
     Do zweryfikowania w jakich przypadkach mamy do czynienia z zapłaconym podatkiem
     w obligacjach korporacyjnych, a w jakim nie.
     */
-    WHERE Instrument_type_id <> 7
+    -- WHERE Instrument_type_id <> 7
 ),
 
 

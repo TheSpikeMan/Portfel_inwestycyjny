@@ -144,3 +144,33 @@ query = f"""
 client = bigquery.Client()
 query_job = client.query(query)
 df = query_job.to_dataframe()
+
+# ----------------------------------------------------------
+# 5. Aktualizacja widoku w BigQuery.
+# ----------------------------------------------------------
+
+
+from google.cloud import bigquery
+
+# Zainicjuj klienta BigQuery
+client = bigquery.Client()
+
+# Ustaw nazwę projektu, datasetu i widoku
+project_id = ''
+dataset_id = ''
+view_id = ''
+
+# Pobierz aktualną definicję widoku
+view = client.get_table(table = f'{project_id}.{dataset_id}.{view_id}')
+
+# Zmodyfikuj kod SQL w widoku
+nowy_kod_sql = """
+NEW SQL CODE
+""".format(project_id, dataset_id)
+
+view.view_query = nowy_kod_sql
+
+# Zaktualizuj widok
+client.update_table(view, ['view_query'])
+
+print(f'Zaktualizowano kod SQL w widoku {project_id}.{dataset_id}.{view_id}.')
