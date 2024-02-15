@@ -1,11 +1,12 @@
-# -*- coding: utf-8 -*-
 """
-Created on Sun Jan  7 19:10:35 2024
+W kodzie zawarte są instrukcje do wykonywania operacji na zbiorach
+danych w BigQuery, min. tworzenie tabel i widoków, odczyt danych z BQ.
 
-@author: grzeg
 """
 
+# ----------------------------------------------------------
 # 1. Utworzenie datasetu w danym projekcie.
+# ----------------------------------------------------------
 
 from google.cloud import bigquery
 
@@ -26,9 +27,10 @@ client = bigquery.Client(
 dataset = client.create_dataset(
     bigquery.Dataset(project + "." + nazwa_dataSetu)
     )
-# %%
 
+# ----------------------------------------------------------
 # 2. Utworzenie tabeli w danym projekcie i zbiorze.
+# ----------------------------------------------------------
 
 from google.cloud import bigquery
 
@@ -53,8 +55,11 @@ table = client.create_table(
                        bigquery.SchemaField(name="Regular_interest", field_type="FLOAT", mode= "REQUIRED")
                        )))
 
-# %%
+# ----------------------------------------------------------
 # 3. Weryfikacja tabel w ramach danego projektu i zbioru
+# ----------------------------------------------------------
+
+from google.cloud import bigquery
 
 project = 'projekt-inwestycyjny'
 location = 'europe-central2'
@@ -74,13 +79,15 @@ for table in tables:
     print("Rodzaj tabeli: " +  table.table_type + "\n")
 
 
-# %%
+# ----------------------------------------------------------
 # 4. Utworzenie widoku w ramach danego projektu i zbioru
+# ----------------------------------------------------------
+    
+from google.cloud import bigquery
 
 project = 'projekt-inwestycyjny'
 location = 'europe-central2'
 nazwa_datasetu = 'Dane_instrumentow'
-nazwa_tabeli = 'Daily'
 nazwa_widoku = 'widok'
 
 # Utworzenie klienta
@@ -91,7 +98,7 @@ client = bigquery.Client(
 
 query = f"""
     WITH 
-    daily AS (SELECT * FROM `{project}.{nazwa_datasetu}.{nazwa_tabeli}`),
+    daily AS (SELECT * FROM `{project}.{nazwa_datasetu}.{nazwa_widoku}`),
     added_averages AS (
       SELECT
         *,
@@ -117,11 +124,12 @@ view.view_query = query
 
 client.create_table(view)
 
-# %%
+
+# ----------------------------------------------------------
+# 5. Odczyt danych z tabeli i przypisanie do DataFrame
+# ----------------------------------------------------------
 
 from google.cloud import bigquery
-
-# 5. Odczyt danych z tabeli i przypisanie do DataFrame
 
 project_id = 'projekt-inwestycyjny'
 dataset_id = 'Inflation'
