@@ -112,7 +112,7 @@ for index, transaction in enumerate(transactions_df.iterrows()):
   
 # 18. Zmień nazwy kolumn na odpowiednie, zdefiniowane poniżej.
     
-columns = ['Date_buy', 'Date_sell',	'Investment_period',	'Quantity',
+columns = ['Date_sell', 'Date_buy',	'Investment_period',	'Quantity',
            'Buy_Price', 'Sell_Price', 'Buy_currency',
            'Sell_currency', 'Currency', 'Ticker', 'Ticker_id',
            'Tax_deductible_expenses',	'Income',	'Profit']
@@ -126,9 +126,9 @@ table_id = 'Tax_calculations'
 destination_table = f"{project_id}.{dataset_id}.{table_id}"
 
 # 20. Przygotowanie schematu danych.
-schema = [bigquery.SchemaField(name = 'Date_buy', field_type = "DATE", \
+schema = [bigquery.SchemaField(name = 'Date_sell', field_type = "DATE", \
                                 mode = "REQUIRED"),
-          bigquery.SchemaField(name = 'Date_sell', field_type = "DATE",\
+          bigquery.SchemaField(name = 'Date_buy', field_type = "DATE",\
                                 mode = "REQUIRED"),
           bigquery.SchemaField(name = 'Investment_period', field_type = "INTEGER",\
                                 mode = "REQUIRED"),
