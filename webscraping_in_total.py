@@ -430,7 +430,7 @@ Konfiguracja:
     CPU: 0.333
     Przekroczony limit czasu: 60
     Maksymalna liczba żądań na instancję: 1
-    Minimalna liczba instancji: 1
+    Minimalna liczba instancji: 0
     Maksymalna liczba instancji: 1
     Konto usługi srodowiska wykonawczego:
         compute@developer.gserviceaccount.com 
