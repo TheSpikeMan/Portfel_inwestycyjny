@@ -95,12 +95,21 @@ for index, transaction in enumerate(transactions_df.iterrows()):
             
             # 15. Zbierz wszystkie dane do tablicy.
 
-            data_to_add = [date_sold, date_bought, (date_sold-date_bought).days,
-                               Amount, price_sold, price_bought, currency_sold,
-                               currency_bought, currency_type, ticker,
-                               ticker_id, Amount * price_bought * currency_bought,
-                               Amount * price_sold * currency_sold,
-                               Amount * (price_sold * currency_sold - price_bought * currency_bought)]
+            data_to_add = [date_sold, 
+                           date_bought, 
+                           (date_sold-date_bought).days,
+                           Amount,
+                           price_sold, 
+                           price_bought, 
+                           currency_sold,
+                           currency_bought, 
+                           currency_type, 
+                           ticker,
+                           ticker_id, 
+                           (Amount * price_bought * currency_bought).round(2),
+                           (Amount * price_sold * currency_sold).round(2),
+                           (Amount * (price_sold * currency_sold - price_bought * currency_bought)).round(2)
+                           ]
             
             # 16. Dodaj do biężącej DataFrame dane z tablicy.
             result_df = pd.concat([result_df, pd.DataFrame([data_to_add])], 
