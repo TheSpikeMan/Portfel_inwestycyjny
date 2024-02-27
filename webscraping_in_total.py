@@ -6,13 +6,13 @@ from datetime import datetime, date, timedelta
 import requests
 import math
 import base64
+import pandas_gbq
 import functions_framework
 from flask import Flask, request
 
 @functions_framework.cloud_event
-def daily_webscraping(cloud_event):
-    class Scraper():
-        
+def daily_webscraping_plus_currencies(cloud_event):
+    class Scraper(): 
         def __init__(self,
                     project_id,
                     dataset_instruments,
@@ -27,6 +27,12 @@ def daily_webscraping(cloud_event):
                     table_inflation,
                     table_treasury_bonds,
                     view_transactions):
+            
+            """
+
+            Inicjalizacja obiektu klasy Scraper i przypisanie do niego wartości zmiennych określonych przez użytkownika.
+
+            """
         
             self.project_id = project_id
             self.dataset_instruments = dataset_instruments
@@ -43,6 +49,13 @@ def daily_webscraping(cloud_event):
             self.view_transactions = view_transactions
 
         def pobierz_aktualne_instrumenty(self):
+
+            """
+
+            Pobranie listy aktualnych instrumentów ETF - query_job_1.to_dataframe()
+            Pobranie listy aktualnych instrumentów akcji polskich i ETF polskich - query_job_2.to_dataframe()
+            
+            """
 
             print("Pobieram aktualne instrumenty w ramach ETF oraz polskich akcji.")
             query_1 = f"""
@@ -77,34 +90,56 @@ def daily_webscraping(cloud_event):
                 return query_job_1.to_dataframe(), query_job_2.to_dataframe()
             except:
                 print("Podczas pobierania danych instrumentów nastąpił błąd.")
+        
+        def znajdz_kursy_walut(self):
 
-        def pobierz_aktualne_kursy_walut(self):
-
-            print("Pobieram aktualne kursy walut.")
-            client = bigquery.Client()
-            query_3 = f"""
-            WITH
-            all_currencies_data_ordered AS (
-            SELECT
-                *,
-                ROW_NUMBER() OVER(PARTITION BY Currency ORDER BY Currency_date DESC) as row_number
-            FROM `{self.project_id}.{self.dataset_currencies}.{self.table_currencies}`
-            WHERE TRUE
-            )
-            
-            SELECT *
-            FROM all_currencies_data_ordered
-            WHERE row_number = 1
-                    
             """
-            try:
-                query_job_3 = client.query(query=query_3)
-                print("Pobieranie aktualnych kursów walut zakończone powodzeniem.")
-                return query_job_3.to_dataframe()
-            except:
-                print("Podczas pobierania danych walutowych nastąpił błąd.")
+            
+            Znajdź aktualne kursy walut.
+            Wykorzystywane są one do wyznaczenia wartość danego instrumentu w PLN.
+            Eksportowane są w późniejszych krokach również do tabeli `Waluty.Currency`.
+            
+            """
+
+            print("Szukam aktualnych kursów walut.")
+
+            path1 = "http://api.nbp.pl/api/exchangerates/rates/A/USD/"
+            path2 = "http://api.nbp.pl/api/exchangerates/rates/A/EUR/"
+
+            list_of_paths = [path1, path2]
+            aktualne_kursy_walut = pd.DataFrame()
+            
+            for path in list_of_paths:
+                response = requests.get(path)
+            
+                data = response.json()
+                currency_date = date.today()
+                currency_code = data['code']
+                currency_close = data['rates'][0]['mid']
+                
+                currency_df = pd.DataFrame({
+                    'Currency_date': [currency_date],
+                    'Currency': [currency_code],
+                    'Currency_close': [currency_close]
+                    })
+                
+                aktualne_kursy_walut = pd.concat([aktualne_kursy_walut, currency_df], ignore_index=True)
+
+            print("Poszukiwanie aktualnych kursów walut zakończone powodzeniem.")
+            return aktualne_kursy_walut
+
 
         def zbadaj_dane_inflacyjne(self):
+
+            """
+
+            Funkcja zwraca trzy rezultaty swojego działania:
+            - query_job_1.to_dataframe() - DataFrame z danymi inflacyjnymi.
+            - query_job_2.to_dataframe() - DataFrame z danymi wszystkich tranakcji na obligacjach skarbowych.
+            - query_job_3.to_dataframe() - DataFrame z danymi marży zarobku dla obligacji skarbowych, na których
+                następowały transakcje.
+            
+            """
 
             destination_table_1 = f"`{project_id}.{dataset_inflation}.{table_inflation}`"
             destination_table_2 = f"`{project_id}.{dataset_transactions}.{view_transactions}`"
@@ -148,6 +183,13 @@ def daily_webscraping(cloud_event):
                             dane_inflacyjne, 
                             dane_transakcyjne, 
                             dane_marz):
+            
+            """
+            
+            Funkcja wyznacza aktualną wartość obligacji skarbowych znajdujących się w portfelu na podstawie danych transakcyjnych,
+                danych inflacji oraz danych marży.
+            
+            """
             
             dane_inflacyjne.columns = ['Inflacja', 'Początek miesiąca']
             dane_obligacji = dane_transakcyjne.merge(right=dane_marz, 
@@ -221,10 +263,16 @@ def daily_webscraping(cloud_event):
                 data_to_export_obligacje['Turnover'] = 0
                 
             return data_to_export_obligacje
-    
+
         def webscraping_markets_ft_webscraping(self,
                                             present_instruments_ETF,
                                             present_currencies):
+            
+            """
+            
+            Funkcja wyznacza wartość giełdową zagranicznych ETF.
+            
+            """
             
             print("Dokonuję webscrapingu dla wybranych instrumentów ETF.")
             result_df = pd.DataFrame()
@@ -272,8 +320,14 @@ def daily_webscraping(cloud_event):
             return data_to_export_ETFs
         
         def webscraping_biznesradar(self,
-                                    present_instruments_akcje,
-                                    present_currencies):
+                                    present_instruments_akcje
+                                    ):
+            
+            """
+            
+            Funkcja wyznacza aktualną wartość polskich akcji oraz polskich ETF obecnych w portfelu.
+            
+            """
             
             website_notowania ='https://www.biznesradar.pl/gielda/akcje_gpw'
             with requests.get(website_notowania) as r1:
@@ -327,45 +381,80 @@ def daily_webscraping(cloud_event):
                     print("Nie udało się podłączyć do strony biznesradar.pl.")
             
         def run_scraper(self):
+
+
+            """
+            
+            Funkcja uruchamiająca sekwencyjne wszystkie poszczególne części składowe:
+            - W pierwszym kroku pobierane są do zmiennych aktualne zagraniczne ETF oraz akcji polskich i polskie ETF.
+            - W drugim kroku pobierane są do zmiennych dane inflacyjnej, transakcyjne oraz marż związane z transakcjami na obligacjach skarbowych.
+            - W trzecim kroku dokonywany jest webscraping dla zagranicznych ETF.
+            - W czwartym kroku dokonywany jest webscraping dla akcji polskich oraz ETF.
+            - W piątym kroku dokonywane jest obliczenie aktualnej wartości obligacji skarbowych.
+            - W szóstym kroku następuje eksport danych akcji polskich, ETF polskich, ETF zagranicznych oraz obligacji skarbowych do tabeli w BigQuery danymi giełdowymi.
+            - W siódmym kroku dokonywany jest eksport danych walutowych do tabeli w BigQuery.
+            
+            """
+
             present_instruments_ETF, present_instruments_akcje = self.pobierz_aktualne_instrumenty()
             dane_inflacyjne, dane_transakcyjne, dane_marz = self.zbadaj_dane_inflacyjne()
-            present_currencies = self.pobierz_aktualne_kursy_walut()
+            present_currencies = self.znajdz_kursy_walut()
             data_to_export_ETFs = self.webscraping_markets_ft_webscraping(present_instruments_ETF,
                                                                         present_currencies)
-            data_to_export_akcje = self.webscraping_biznesradar(present_instruments_akcje,
-                                                                present_currencies)
+            data_to_export_akcje = self.webscraping_biznesradar(present_instruments_akcje)
             data_to_export_obligacje = self.obligacje_skarbowe(dane_inflacyjne,
                                                             dane_transakcyjne,
                                                             dane_marz)
 
-
-
             data_to_export = pd.concat([data_to_export_ETFs, data_to_export_akcje, data_to_export_obligacje],
-                                    ignore_index = True)
-            exporterObject = BigQueryExporter(project_id,
-                                            dataset_instruments,
-                                            table_daily
-            )
-            exporterObject.exportDataToBigQuery(data_to_export)
+                                        ignore_index = True)
+            
+            exporterObject = BigQueryExporter(project_to_export=project_id,
+                                                dataset_to_export_daily=dataset_instruments,
+                                                dataset_to_export_currencies= dataset_currencies,
+                                                table_to_export_daily=table_daily,
+                                                table_to_export_currencies=table_currencies
+                                                )
+            
+            exporterObject.exportDataToBigQueryDailyTable(data_to_export = data_to_export)
+
+            exporterObject.exportDatatoBigQueryCurrencyTable(currencies_to_export = present_currencies)
 
 
     class BigQueryExporter():
 
         def __init__(self,
-                    project_to_export,
-                    dataset_to_export,
-                    table_to_export):
+                        project_to_export,
+                        dataset_to_export_daily,
+                        dataset_to_export_currencies,
+                        table_to_export_daily,
+                        table_to_export_currencies):
+            
+            """
+            
+            Utworzenie obiektu, który umożliwi późniejszy eksport danych do tabel w BigQuery.
+            
+            """
             
             self.project_to_export = project_to_export
-            self.dataset_to_export = dataset_to_export
-            self.table_to_export = table_to_export
+            self.dataset_to_export_daily = dataset_to_export_daily
+            self.dataset_to_export_currencies = dataset_to_export_currencies
+            self.table_to_export_daily = table_to_export_daily
+            self.table_to_export_currencies = table_to_export_currencies
         
-        def exportDataToBigQuery(self,
+        def exportDataToBigQueryDailyTable(self,
                                 data_to_export):
             
-            print("Eksportuję dane do BigQuery..")
+
+            """
+            
+            Eksport danych do tabeli `Daily`.
+            
+            """
+            
+            print("Eksportuję dane giełdowe do BigQuery..")
             client = bigquery.Client()
-            destination_table = f"{self.project_to_export}.{self.dataset_to_export}.{self.table_to_export}"
+            destination_table = f"{self.project_to_export}.{self.dataset_to_export_daily}.{self.table_to_export_daily}"
             
             schema = [bigquery.SchemaField(name = 'Ticker', field_type = "STRING", \
                                         mode = "REQUIRED"),
@@ -386,10 +475,44 @@ def daily_webscraping(cloud_event):
                                                     destination_table,
                                                     job_config = job_config)
                 job.result()
-                print("Dane zostały wyeksportowane do tabeli BigQuery.")
+                print("Dane giełdowe zostały wyeksportowane do tabeli BigQuery.")
             except Exception as e:
                 print(f"Error uploading data to BigQuery: {str(e)}")
 
+        def exportDatatoBigQueryCurrencyTable(self,
+                                                currencies_to_export):
+            
+
+            """
+            
+            Eksport danych do tabeli Currency.
+            
+            """
+            
+            print("Eksportuję dane walutowe do BigQuery..")
+            client = bigquery.Client()
+            destination_table = f"{self.project_to_export}.{self.dataset_to_export_currencies}.{self.table_to_export_currencies}"
+            
+            schema = [bigquery.SchemaField(name = 'Currency_date', field_type = "DATE", \
+                                        mode = "NULLABLE"),
+                    bigquery.SchemaField(name = 'Currency', field_type = "STRING",\
+                                        mode = "NULLABLE"),
+                    bigquery.SchemaField(name = 'Currency_close', field_type = "FLOAT",\
+                                        mode = "NULLABLE"),
+                                        ]
+            
+            job_config = bigquery.LoadJobConfig(schema = schema,
+                                                write_disposition = "WRITE_APPEND")
+
+            try:
+                job = client.load_table_from_dataframe(currencies_to_export,
+                                                        destination_table,
+                                                        job_config = job_config)
+                job.result()
+                print("Dane walutowe zostały wyeksportowane do tabeli BigQuery.")
+            except Exception as e:
+                print(f"Error uploading data to BigQuery: {str(e)}")
+        
 
     project_id = 'projekt-inwestycyjny'
     dataset_instruments = 'Dane_instrumentow'
@@ -417,7 +540,8 @@ def daily_webscraping(cloud_event):
                     table_daily,
                     table_inflation,
                     table_treasury_bonds,
-                    view_transactions)
+                    view_transactions
+                    )
 
     result = scraper.run_scraper()
 
@@ -436,7 +560,7 @@ Konfiguracja:
         compute@developer.gserviceaccount.com 
     
 Punkt wejscia:
-    daily_webscraping
+    daily_webscraping_plus_currencies
 
 Requirements:
     functions-framework==3.*
