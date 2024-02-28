@@ -14,8 +14,6 @@ transaction_view AS (SELECT * FROM `projekt-inwestycyjny.Transactions.Transactio
 daily AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Daily`),
 instruments AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instruments`),
 instrument_types AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instrument_types`),
-dividend_view AS (SELECT * FROM `projekt-inwestycyjny.Transactions.Dividend_view`),
-
 
 --- AGREGACJE POCZĄTKOWE - FILTR INSTRUMENTÓW OBECNYCH W PORTFELU ---
 
@@ -26,71 +24,53 @@ W kroku tym każdej transakcji przyporządkowany jest numer, którego zasada prz
 - Wszystkie wiersze ułóż malejąco wg daty transakcji,
 - Wszystkim transakcjom przypisz numerację, od najnowszej transakcji do najstarszej
 
-W kroku tym wyciągana jest ostatnia operacja (zakup, sprzedaż instrumentu) dla danego Tickera.
-*/
+W kroku tym wyciągana jest również ostatnia operacja (zakup, sprzedaż instrumentu) dla danego Tickera.
 
-initial_aggregation AS (
-  SELECT
-    *,
-    ROW_NUMBER() OVER(PARTITION BY Ticker ORDER BY Transaction_date DESC) AS last_transaction_id
-  FROM
-    transaction_view
-  WHERE
-    Transaction_type IN ('Buy', 'Sell')
-),
-
-
--- MED AGGREGATION --
-/*
-Wyciągnięcie tickerów instrumentów, które znajdują się w aktualnym porfelu.
+Następie następuje wyciągnięcie tickerów instrumentów, które znajdują się w aktualnym porfelu.
 Uwzględniamy tylko takie, które posiadają niezerowe wolumeny (posiadamy je w portfelu).
-*/
 
-med_aggregation AS (
-  SELECT
-    Ticker AS Ticker,
-  FROM
-    initial_aggregation
-  WHERE
-    last_transaction_id = 1 AND
-    transaction_date_ticker_amount <> 0
-),
-
-
--- INTERMEDIATE AGGREGATION --
-/*
-W kroku tym zestawiana jest kumulowana ilość zakupów dane instrumentów, z łączną ilością sprzedaży.
+W kolejnym kroku zestawiana jest kumulowana ilość zakupów dane instrumentów, z łączną ilością sprzedaży.
 Na tej podstawie wyznaczany jest wskaźnik, który przyjmuje dwie wartości:
 - "Sprzedany", jeśli instrument z danej tranakcji został sprzedany,
 - "Aktualny", jeśli instrument z danej transakcji wciąż znajduje się w portfelu.
 */
 
-intermediate_aggregation AS (
+initial_aggregation AS (
   SELECT
-    * EXCEPT(Ticker),
-    med_aggregation.Ticker,
+    *,
+    ROW_NUMBER() OVER(ticker_window) AS last_transaction_id,
     CASE
-      WHEN (transaction_date_buy_ticker_amount - cumulative_sell_amount_per_ticker <= 0) THEN "Sprzedany"
+      WHEN (transaction_date_buy_ticker_amount - cumulative_sell_amount_per_ticker <= 0) 
+      THEN "Sprzedany"
     ELSE "Aktualny"
     END AS transaction_status
   FROM
     transaction_view
-  INNER JOIN med_aggregation
-  ON transaction_view.Ticker = med_aggregation.Ticker
   WHERE
-    transaction_view.Transaction_Type IN ("Buy", "Sell")
+    Transaction_type_group IN ('Buy_amount', 'Sell_amount')
+  AND transaction_date_ticker_amount <> 0
+  QUALIFY ROW_NUMBER() OVER(ticker_window) = 1
+  WINDOW
+    ticker_window AS (PARTITION BY Ticker ORDER BY Transaction_date DESC)
 ),
 
 -- MINIMUM BUY DATES FOR TICKERS --
 /*
-Widok stworzony jest po to, aby znaleźć minimalną datę zakupu dla danego tickera, w celu późniejszego odfiltrowania wszystkich dywidend, które zostały zrealizowane wcześniej (np. w przypadku całkowitego sprzedania instrumentu i potem ponownego zakupu dywidendy mogłyby się naliczać niepoprawnie). Bazą dla wyszukiwanych transakcji, są wszystkie transakcje, dla których obecna wartość jest różna od zera. Bada się wówczas wszystkie transakcje zakupowe, które nie zostały jeszcze sprzedane (przy wykorzystaniu mechanizmu badania sum cząstkowych - jeżeli dana transakcja została zrealizowana, to skumulowana wartość zakupowa w danym dniu była mniejsza niż skumulowana wartość sprzedaży)
+Widok stworzony jest po to, aby znaleźć minimalną datę zakupu dla danego tickera, 
+w celu późniejszego odfiltrowania wszystkich dywidend, które zostały zrealizowane wcześniej 
+(np. w przypadku całkowitego sprzedania instrumentu i potem ponownego zakupu dywidendy 
+mogłyby się naliczać niepoprawnie). Bazą dla wyszukiwanych transakcji, są wszystkie transakcje, 
+dla których obecna wartość jest różna od zera. Bada się wówczas wszystkie transakcje zakupowe, 
+które nie zostały jeszcze sprzedane (przy wykorzystaniu mechanizmu badania sum cząstkowych - 
+jeżeli dana transakcja została zrealizowana, to skumulowana wartość zakupowa w danym dniu była 
+mniejsza niż skumulowana wartość sprzedaży).
 */
 
 minimum_buy_dates_for_tickers AS (
   SELECT
     Ticker,
     MIN(Transaction_date) AS minimum_buy_date
-  FROM intermediate_aggregation
+  FROM initial_aggregation
   WHERE TRUE
     AND transaction_status = "Aktualny"
     AND transaction_type = 'Buy'
@@ -117,7 +97,7 @@ present_instruments_view AS (
     MAX(age_of_instrument) AS max_age_of_instrument,
     ROUND(SUM(transaction_value_pln), 2) AS ticker_buy_value,
     ROUND(SUM(transaction_value_pln)/MAX(transaction_date_ticker_amount), 2) AS ticker_average_close
-  FROM intermediate_aggregation
+  FROM initial_aggregation
   WHERE
     transaction_status = "Aktualny"
   GROUP BY
@@ -125,7 +105,6 @@ present_instruments_view AS (
   ORDER BY
     1,2,3
 ),
-
 
 -- DAILY DATA --
 /*
@@ -151,17 +130,24 @@ daily_data AS (
 
 -- DIVIDEND SELECTION -- 
 /*
-W bieżącym kroku dokonywana jest analiza wszystkich transakcji dywidendowych, dla których data wypłaty dywidendy jest większa od daty zakupu danego tickera, do którego przynależy dywidenda. Dodatkowo liczony jest wskaźnik stopy dywidendy (na podstawie zestawienia ceny zamknięcia instrumentu, na moment wypłaty dywidendy)
+W bieżącym kroku dokonywana jest analiza wszystkich transakcji dywidendowych, dla których data 
+wypłaty dywidendy jest większa od daty zakupu danego tickera, do którego przynależy dywidenda. 
+Dodatkowo liczony jest wskaźnik stopy dywidendy (na podstawie zestawienia ceny zamknięcia 
+instrumentu, na moment wypłaty dywidendy).
 */
 
 dividend_selection AS (
   SELECT
     * EXCEPT (Ticker, Close),
     transaction_view.Ticker,
-    COALESCE(Close, 0) AS Close,
-    COALESCE(ROUND(100 * SAFE_DIVIDE(Transaction_price * Currency_close , Close), 2), 0) AS dividend_ratio_pct
-  FROM 
-  transaction_view
+    COALESCE(transaction_view.Close, 0) AS Close,
+    COALESCE(
+        ROUND(100 * 
+          SAFE_DIVIDE(Transaction_price * Currency_close , 
+                      transaction_view.Close * Unit), 
+            2),
+            0) AS dividend_ratio_pct
+  FROM transaction_view
   LEFT JOIN minimum_buy_dates_for_tickers
   ON transaction_view.Ticker = minimum_buy_dates_for_tickers.Ticker
   LEFT JOIN daily
@@ -169,13 +155,14 @@ dividend_selection AS (
   AND transaction_view.Transaction_date = daily.`Date`
   WHERE
     TRUE
-    AND Transaction_type = 'Dywidenda'
+    AND Transaction_type_group = 'Div_related_amount'
     AND minimum_buy_date < Transaction_date
 ),
 
 -- DIVIDEND FREQUENCY --
 /*
-W bieżącym widoku dokonywane jest wyznaczenie częstotliwośći wypłaty dywidend, aby potem wykorzystać je do wyznaczenia średniej stopy redystrybucji.
+W bieżącym widoku dokonywane jest wyznaczenie częstotliwośći wypłaty dywidend i odsetek, 
+aby potem wykorzystać je do wyznaczenia średniej stopy redystrybucji.
 */
 
 dividend_frequency AS (
@@ -193,8 +180,9 @@ dividend_frequency AS (
 
 -- DIVIDEND AVERGAGE FREQUENCY --
 /*
-W widoku wyliczana jest średnia wartość liczby wypłacaonych dywidend w ostatnich dwóch latach
+W widoku wyliczana jest średnia wartość liczby wypłacaonych dywidend w ostatnich dwóch latach.
 */
+
 dividend_average_frequency AS (
   SELECT
     Ticker,
