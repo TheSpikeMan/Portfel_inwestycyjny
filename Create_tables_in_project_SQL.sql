@@ -90,7 +90,7 @@ CREATE TABLE IF NOT EXISTS `projekt-inwestycyjny.Transactions.Transactions`(
   Instrument_id INT64 NOT NULL,
   Commision FLOAT64,
   Dirty_bond_price FLOAT64,
-  Tax_paid STRING NOT NULL,
+  Tax_paid BOOL NOT NULL,
   Tax_value FLOAT64
 );
 
