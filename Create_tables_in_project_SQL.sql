@@ -89,7 +89,9 @@ CREATE TABLE IF NOT EXISTS `projekt-inwestycyjny.Transactions.Transactions`(
   Transaction_amount FLOAT64 NOT NULL,
   Instrument_id INT64 NOT NULL,
   Commision FLOAT64,
-  Dirty_bond_price FLOAT64
+  Dirty_bond_price FLOAT64,
+  Tax_paid STRING NOT NULL,
+  Tax_value FLOAT64
 );
 
 /*
@@ -107,5 +109,3 @@ CREATE TABLE IF NOT EXISTS `projekt-inwestycyjny.Waluty.Currency`(
   Currency STRING NOT NULL,
   Currency_close FLOAT NOT NULL,
 );
-
-
