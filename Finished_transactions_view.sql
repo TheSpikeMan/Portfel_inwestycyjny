@@ -22,7 +22,7 @@ initial_view AS (
   FROM transactions_view
   WHERE TRUE
     AND transaction_date_buy_ticker_amount <= cumulative_sell_amount_per_ticker
-    AND Transaction_type IN ('Buy', 'Sell')
+    AND Transaction_type IN ('Buy', 'Sell', 'Wykup')
 ),
 
 -- MAX TRANSACTION DATES PER TICKER --
@@ -55,7 +55,7 @@ all_dividend_transactions_within_maximum_dates AS (
   LEFT JOIN max_transaction_dates_per_ticker
   ON transactions_view.Ticker = max_transaction_dates_per_ticker.Ticker
   WHERE
-    Transaction_type = 'Dywidenda'
+    Transaction_type_group = 'Div_related_amount'
     AND max_transaction_date > Transaction_date
 ),
 
@@ -81,7 +81,7 @@ W tym kroku pivotowana jest kolumna Transaction_Type
 intermediate_view AS (
   SELECT *
   FROM transactions_plus_dividends
-    PIVOT(SUM(Transaction_value_pln) FOR Transaction_type IN ('Buy', 'Sell', 'Dywidenda'))
+    PIVOT(SUM(Transaction_value_pln) FOR Transaction_type_group IN ('Buy_amount', 'Sell_amount', 'Div_related_amount'))
 )
 
 
@@ -100,11 +100,11 @@ Wartość sprzedaży i inne wyciągane są z użyciem funkcji COALESCE - funkcja
 SELECT
   Ticker,
   MAX(Transaction_date) AS Last_transaction_date,
-  ROUND(SUM(COALESCE(Buy, 0)), 2) AS Cumulative_buy_value,
-  ROUND(SUM(COALESCE(Sell, 0)), 2) AS Cumulative_sell_value,
-  ROUND(SUM(COALESCE(Dywidenda, 0)), 2) AS Cumulative_dividend_value,
-  ROUND(SUM(COALESCE(Sell, 0)) - SUM(COALESCE(Buy, 0)) + SUM(COALESCE(Dywidenda, 0)), 2) AS profit_inlcuding_dividend,
-  ROUND(100 * (SUM(COALESCE(Sell, 0)) - SUM(COALESCE(Buy, 0)) + SUM(COALESCE(Dywidenda, 0)))/(SUM(COALESCE(Buy, 0))), 2) AS profit_percentage
+  ROUND(SUM(COALESCE(Buy_amount, 0)), 2) AS Cumulative_buy_value,
+  ROUND(SUM(COALESCE(Sell_amount, 0)), 2) AS Cumulative_sell_value,
+  ROUND(SUM(COALESCE(Div_related_amount, 0)), 2) AS Cumulative_dividend_value,
+  ROUND(SUM(COALESCE(Sell_amount, 0)) - SUM(COALESCE(Buy_amount, 0)) + SUM(COALESCE(Div_related_amount, 0)), 2) AS profit_inlcuding_dividend,
+  ROUND(100 * (SUM(COALESCE(Sell_amount, 0)) - SUM(COALESCE(Buy_amount, 0)) + SUM(COALESCE(Div_related_amount, 0)))/(SUM(COALESCE(Buy_amount, 0))), 2) AS profit_percentage
 FROM
   intermediate_view
 GROUP BY
