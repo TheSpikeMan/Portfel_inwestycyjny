@@ -26,11 +26,11 @@ SELECT
     LAST_VALUE(instrument_types.Instrument_type IGNORE NULLS) OVER window_transactions_by_ticker) AS Instrument_type,
   COALESCE(transaction_date_ticker_amount,
     LAST_VALUE(transaction_date_ticker_amount IGNORE NULLS) OVER window_transactions_by_ticker) AS transaction_date_ticker_amount,
-  ROUND(COALESCE(Close, 
-    LAST_VALUE(Close IGNORE NULLS) OVER window_transactions_by_ticker), 2) AS Close,
+  ROUND(COALESCE(daily.Close, 
+    LAST_VALUE(daily.Close IGNORE NULLS) OVER window_transactions_by_ticker), 2) AS Close,
   ROUND(COALESCE(transaction_date_ticker_amount,
     LAST_VALUE(transaction_date_ticker_amount IGNORE NULLS) OVER window_transactions_by_ticker) * 
-    COALESCE(Close, LAST_VALUE(Close IGNORE NULLS) OVER window_transactions_by_ticker), 2) AS ticker_date_value
+    COALESCE(daily.Close, LAST_VALUE(daily.Close IGNORE NULLS) OVER window_transactions_by_ticker), 2) AS ticker_date_value
 FROM calendar_present_instruments
 LEFT JOIN transaction_view
   ON calendar_present_instruments.dates = transaction_view.Transaction_date
