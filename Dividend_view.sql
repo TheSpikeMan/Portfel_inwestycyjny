@@ -25,6 +25,7 @@ SELECT
   Quarter AS quarter,
   ROUND((Transaction_value_pln/Transaction_amount), 2) AS divident_price,
   Transaction_value_pln AS  Transaction_value_pln,
+  MAX(Unit) AS unit,
   MAX(Daily_data.Close) AS close,
   SUM(SUM(Transaction_value_pln)) OVER(PARTITION BY Transactions_view.Ticker) AS divident_sum_total_per_ticker,
   AVG(AVG(Transaction_value_pln)) OVER(PARTITION BY Transactions_view.Ticker) AS divident_average_total_per_ticker
@@ -33,7 +34,7 @@ LEFT JOIN Daily_data
 ON Daily_data.Date = Transactions_view.Transaction_date 
 AND Transactions_view.Ticker = Daily_data.Ticker
 WHERE
-  Transaction_type = "Dywidenda"
+  Transaction_type_group = "Div_related_amount"
 GROUP BY
   1,2,3,4,5,6,7
 ),
@@ -53,7 +54,7 @@ SELECT
   SUM(Transaction_value_pln) OVER(PARTITION BY Ticker, year) AS divident_sum_per_ticker_and_year,
   SUM(Transaction_value_pln) OVER(PARTITION BY year) AS divident_sum_per_year,
   SUM(Transaction_value_pln) OVER(PARTITION BY year, quarter) AS divident_sum_per_year_and_quarter,
-  ROUND(100 * SAFE_DIVIDE(divident_price, close), 2) AS dividend_ratio_pct
+  ROUND(100 * SAFE_DIVIDE(divident_price, close * unit), 2) AS dividend_ratio_pct
 FROM
 preliminary_aggregation 
 ),
