@@ -19,40 +19,67 @@ instrument_types AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instr
 
 -- INITIAL AGGREGATION --
 /*
-W kroku tym każdej transakcji przyporządkowany jest numer, którego zasada przydzielania jest następująca:
-- Stwórz okno dla każdego Tickera,
+W kroku tym każdej transakcji przyporządkowany jest numer, którego zasada prz
 - Wszystkie wiersze ułóż malejąco wg daty transakcji,
 - Wszystkim transakcjom przypisz numerację, od najnowszej transakcji do najstarszej
 
-W kroku tym wyciągana jest również ostatnia operacja (zakup, sprzedaż instrumentu) dla danego Tickera.
+W kroku tym wyciągana jest ostatnia operacja (zakup, sprzedaż instrumentu) dla danego Tickera.
+*/
 
+initial_aggregation AS (
+  SELECT
+    *,
+    ROW_NUMBER() OVER(PARTITION BY Ticker ORDER BY Transaction_date DESC) AS last_transaction_id
+  FROM
+    transaction_view
+  WHERE
+    Transaction_type_group IN ('Buy_amount', 'Sell_amount')
+),
+
+
+ -- MED AGGREGATION --
+/*
+Wyciągnięcie tickerów instrumentów, które znajdują się w aktualnym porfelu.
 Następie następuje wyciągnięcie tickerów instrumentów, które znajdują się w aktualnym porfelu.
 Uwzględniamy tylko takie, które posiadają niezerowe wolumeny (posiadamy je w portfelu).
+*/
 
+med_aggregation AS (
+  SELECT
+    Ticker AS Ticker,
+  FROM
+    initial_aggregation
+  WHERE
+    last_transaction_id = 1 AND
+    transaction_date_ticker_amount <> 0
+),
+
+
+-- INTERMEDIATE AGGREGATION --
+/*
+W kroku tym zestawiana jest kumulowana ilość zakupów dane instrumentów, z łączną ilością sprzedaży.
 W kolejnym kroku zestawiana jest kumulowana ilość zakupów dane instrumentów, z łączną ilością sprzedaży.
 Na tej podstawie wyznaczany jest wskaźnik, który przyjmuje dwie wartości:
 - "Sprzedany", jeśli instrument z danej tranakcji został sprzedany,
 - "Aktualny", jeśli instrument z danej transakcji wciąż znajduje się w portfelu.
 */
 
-initial_aggregation AS (
+intermediate_aggregation AS (
   SELECT
-    *,
-    ROW_NUMBER() OVER(ticker_window) AS last_transaction_id,
+    * EXCEPT(Ticker),
+    med_aggregation.Ticker,
     CASE
-      WHEN (transaction_date_buy_ticker_amount - cumulative_sell_amount_per_ticker <= 0) 
-      THEN "Sprzedany"
+      WHEN (transaction_date_buy_ticker_amount - cumulative_sell_amount_per_ticker <= 0) THEN "Sprzedany"
     ELSE "Aktualny"
     END AS transaction_status
   FROM
     transaction_view
+  INNER JOIN med_aggregation
+  ON transaction_view.Ticker = med_aggregation.Ticker
   WHERE
     Transaction_type_group IN ('Buy_amount', 'Sell_amount')
   AND transaction_date_ticker_amount <> 0
-  QUALIFY ROW_NUMBER() OVER(ticker_window) = 1
-  WINDOW
-    ticker_window AS (PARTITION BY Ticker ORDER BY Transaction_date DESC)
-),
+  ),
 
 -- MINIMUM BUY DATES FOR TICKERS --
 /*
@@ -70,7 +97,7 @@ minimum_buy_dates_for_tickers AS (
   SELECT
     Ticker,
     MIN(Transaction_date) AS minimum_buy_date
-  FROM initial_aggregation
+  FROM intermediate_aggregation
   WHERE TRUE
     AND transaction_status = "Aktualny"
     AND transaction_type = 'Buy'
@@ -97,7 +124,7 @@ present_instruments_view AS (
     MAX(age_of_instrument) AS max_age_of_instrument,
     ROUND(SUM(transaction_value_pln), 2) AS ticker_buy_value,
     ROUND(SUM(transaction_value_pln)/MAX(transaction_date_ticker_amount), 2) AS ticker_average_close
-  FROM initial_aggregation
+  FROM intermediate_aggregation
   WHERE
     transaction_status = "Aktualny"
   GROUP BY
