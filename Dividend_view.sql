@@ -25,7 +25,7 @@ SELECT
   Quarter AS quarter,
   ROUND((Transaction_value_pln/Transaction_amount), 2) AS divident_price,
   Transaction_value_pln AS  Transaction_value_pln,
-  MAX(Close) AS close,
+  MAX(Daily_data.Close) AS close,
   SUM(SUM(Transaction_value_pln)) OVER(PARTITION BY Transactions_view.Ticker) AS divident_sum_total_per_ticker,
   AVG(AVG(Transaction_value_pln)) OVER(PARTITION BY Transactions_view.Ticker) AS divident_average_total_per_ticker
 FROM Transactions_view
