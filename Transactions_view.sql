@@ -83,7 +83,15 @@ data_mid_aggregation AS (
     CASE
       WHEN initial_aggregation.Currency = 'PLN' THEN ROUND(Transaction_amount * Transaction_price, 2)
     ELSE ROUND (Transaction_amount * Transaction_price * Currency_close, 2)
-    END AS Transaction_value_pln
+    END AS Transaction_value_pln,
+    CASE
+      WHEN Transaction_type = 'Sell' THEN 'Sell_amount'
+      WHEN Transaction_type = 'Wykup' THEN 'Sell_amount'
+      WHEN Transaction_type = 'Buy' THEN 'Buy_amount'
+      WHEN Transaction_type = 'Dywidenda' THEN 'Div_related_amount'
+      WHEN Transaction_type = 'Odsetki' THEN 'Div_related_amount'
+    ELSE NULL
+    END AS Transaction_type_group
   FROM initial_aggregation
   LEFT JOIN currency_data
   ON currency_data.Currency_date = initial_aggregation.last_working_day
@@ -97,7 +105,7 @@ data_mid_aggregation AS (
 /*
 W kroku tym dokonywana jest przypisanie do wolumentu oraz sprzedaży wartości znaku:
 - Dla wolumenu i wartości zakupowych przyjęty jest znak "+"
-- Dla wolumenu i wartośći sprzedażowych przyjęty jest znak "-"
+- Dla wolumenu i wartośći sprzedażowych (oraz wykupu) przyjęty jest znak "-"
 
 Dodatkowo obliczany jest wiek instrumentu w postaci zmiennej age_of_instrument
 */
@@ -106,9 +114,10 @@ intermediate_aggregation AS (
   SELECT
     *,
     CASE
-      WHEN Transaction_type = 'Buy' THEN Transaction_amount
-      WHEN Transaction_type = 'Sell' THEN (-1) * Transaction_amount
-      ELSE 0
+      WHEN Transaction_type_group = 'Buy_amount' THEN Transaction_amount
+      WHEN Transaction_type_group = 'Sell_amount' THEN (-1) * Transaction_amount
+      WHEN Transaction_type_group = 'Div_related_amount' THEN 0
+    ELSE 0
     END AS Transaction_amount_with_sign,
     DATE_DIFF(CURRENT_DATE(), Transaction_date, DAY) AS age_of_instrument
   FROM data_mid_aggregation
@@ -131,22 +140,22 @@ pre_final_aggregation AS (
     SUM(Transaction_amount_with_sign) 
       OVER (PARTITION BY Ticker ORDER BY Transaction_date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS transaction_date_ticker_amount,
     SUM(Transaction_amount) 
-      OVER (PARTITION BY Ticker, Transaction_type ORDER BY Transaction_date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) 
+      OVER (PARTITION BY Ticker, Transaction_type_group ORDER BY Transaction_date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) 
       AS transaction_date_buy_ticker_amount,
     CASE
-      WHEN Transaction_type = 'Sell' THEN SUM(Transaction_amount) 
-      OVER (PARTITION BY Ticker, Transaction_type ORDER BY Transaction_date ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
+      WHEN Transaction_type_group = 'Sell_amount' THEN SUM(Transaction_amount) 
+      OVER (PARTITION BY Ticker, Transaction_type_group ORDER BY Transaction_date ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
     ELSE NULL
     END AS cumulative_sell_amount_per_ticker
   FROM
     intermediate_aggregation
 ),
-
+ 
 almost_final_aggregation AS (
   SELECT
     *,
     CASE
-      WHEN Transaction_type <> "Dywidenda" THEN ROUND(SUM(transaction_date_ticker_amount) OVER(PARTITION BY Instrument_type_id ORDER BY Transaction_date ROWS BETWEEN CURRENT ROW AND CURRENT ROW) * Close, 2) 
+      WHEN Transaction_type_group <> "Div_related_amount" THEN ROUND(SUM(transaction_date_ticker_amount) OVER(PARTITION BY Instrument_type_id ORDER BY Transaction_date ROWS BETWEEN CURRENT ROW AND CURRENT ROW) * Close, 2) 
     ELSE 0
     END AS instrument_type_cumulative_value,
     ROUND(transaction_date_ticker_amount * Close, 2) AS transaction_date_ticker_value
