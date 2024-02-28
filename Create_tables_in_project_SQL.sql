@@ -82,7 +82,6 @@ CREATE TABLE IF NOT EXISTS `projekt-inwestycyjny.Inflation.Inflation`(
 -- Tabela Transactions zawiera dane transakcyjne --
 CREATE TABLE IF NOT EXISTS `projekt-inwestycyjny.Transactions.Transactions`(
   Transaction_id INT64 NOT NULL,
-  Ticker STRING NOT NULL,
   Transaction_date DATE NOT NULL,
   Transaction_type STRING NOT NULL,
   Currency STRING NOT NULL,
@@ -91,7 +90,7 @@ CREATE TABLE IF NOT EXISTS `projekt-inwestycyjny.Transactions.Transactions`(
   Instrument_id INT64 NOT NULL,
   Commision FLOAT64,
   Dirty_bond_price FLOAT64,
-  Tax_paid INT64 NOT NULL,
+  Tax_paid BOOL NOT NULL,
   Tax_value FLOAT64 NOT NULL
 );
 
