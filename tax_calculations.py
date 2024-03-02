@@ -14,7 +14,6 @@ Transactions_view AS (
   SELECT
     *,
   FROM `{project}.{dataset}.{table}`
-  WHERE Transaction_type <> 'Dywidenda'
   ORDER BY Transaction_id ASC
 )
 
@@ -45,17 +44,17 @@ for index, transaction in enumerate(transactions_df.iterrows()):
         while(transactions_df.loc[index, 'amount_location'] != 0):
             
             # 8. Przypisz do zmiennych warości z obiektu Series.
-            ticker = transaction[1]['Ticker']
-            ticker_id = transaction[1]['Instrument_id']
-            currency_type = transaction[1]['Currency']
-            date_sold = transaction[1]['Transaction_date']
+            ticker              = transaction[1]['Ticker']
+            ticker_id           = transaction[1]['Instrument_id']
+            currency_type       = transaction[1]['Currency']
+            date_sold           = transaction[1]['Transaction_date']
             
             # 9. W amount_sold pobieram nie dane ilosci sprzedane in total
             # ale ilosci aktualne pozostałe nierozliczone.
-            amount_sold = transactions_df.loc[index, 'amount_location']
-            ticker_search = ticker
-            price_sold = transaction[1]['Transaction_price']
-            currency_sold = transaction[1]['Currency_close']
+            amount_sold         = transactions_df.loc[index, 'amount_location']
+            ticker_search       = ticker
+            price_sold          = transaction[1]['Transaction_price']
+            currency_sold       = transaction[1]['Currency_close']
 
 
             # 10. Szukaj takiego rekordu, dla którego znajdziesz transakcję
@@ -69,10 +68,10 @@ for index, transaction in enumerate(transactions_df.iterrows()):
                 k = k + 1
 
             # 11. Do zmiennych przypisz odpowiednie wartości na podstawie konkretnej transakcji zakupowej.
-            amount_bought = transactions_df.loc[k, 'amount_location']
-            date_bought = transactions_df.loc[k, 'Transaction_date']
-            price_bought = transactions_df.loc[k, 'Transaction_price']
-            currency_bought = transactions_df.loc[k, 'Currency_close']
+            amount_bought       = transactions_df.loc[k, 'amount_location']
+            date_bought         = transactions_df.loc[k, 'Transaction_date']
+            price_bought        = transactions_df.loc[k, 'Transaction_price']
+            currency_bought     = transactions_df.loc[k, 'Currency_close']
 
               
             # 12. Zaktualizuj wartość transakcji zakupowej o dane ilściowe, zgodnie z algorytmem
@@ -95,7 +94,6 @@ for index, transaction in enumerate(transactions_df.iterrows()):
             
             # 15. Zbierz wszystkie dane do tablicy.
 
-
             data_to_add = [date_sold, 
                            date_bought, 
                            (date_sold-date_bought).days,
@@ -115,10 +113,47 @@ for index, transaction in enumerate(transactions_df.iterrows()):
             # 16. Dodaj do biężącej DataFrame dane z tablicy.
             result_df = pd.concat([result_df, pd.DataFrame([data_to_add])], 
                                      axis = 0)
-    else:
-        # 17. Jeżeli nie znajdziesz transakcji sprzedaży, szukaj dalej, aż znajdziesz.
+            
+    
+    # 17. Jeżeli nie znajdziesz transakcji sprzedaży lub wykupu szukaj dywidend i odsetek.
+    else: 
+        if (transaction[1]['Transaction_type']=="Dywidenda") or (transaction[1]['Transaction_type']=="Odsetki"):
+            dividend_interest_payment_date   = transaction[1]['Transaction_date']
+            dividend_interest_amount         = transaction[1]['Transaction_amount']
+            dividend_interest_value          = transaction[1]['Transaction_price']
+            dividend_interest_currency_value = transaction[1]['Currency_close']
+            dividend_interest_ticker         = transaction[1]['Ticker']
+            dividend_interest_ticker_id      = transaction[1]['Instrument_id']
+            dividend_interest_currency       = transaction[1]['Currency']
 
-        continue
+            # 18. Zbierz wszystkie dane dywidend do tablicy.
+
+            data_to_add = [dividend_interest_payment_date, 
+                        None, 
+                        None,
+                        dividend_interest_amount,
+                        None,
+                        dividend_interest_value, 
+                        None,
+                        dividend_interest_currency_value, 
+                        dividend_interest_currency, 
+                        dividend_interest_ticker,
+                        dividend_interest_ticker_id, 
+                        None,
+                        round((dividend_interest_amount * dividend_interest_value * dividend_interest_currency_value), 2),
+                        round((dividend_interest_amount * dividend_interest_value * dividend_interest_currency_value), 2)
+                        ]
+            
+            # 16. Dodaj do biężącej DataFrame dane z tablicy.
+
+            result_df = pd.concat([result_df, pd.DataFrame([data_to_add])], 
+                                        axis = 0)
+
+
+        else:
+        # 17. Jeżeli nie znajdziesz transakcji sprzedaży lub dywidend, szukaj dalej, aż znajdziesz.
+
+            continue
   
 # 18. Zmień nazwy kolumn na odpowiednie, zdefiniowane poniżej.
     
@@ -139,9 +174,9 @@ destination_table = f"{project_id}.{dataset_id}.{table_id}"
 schema = [bigquery.SchemaField(name = 'Date_sell', field_type = "DATE", \
                                 mode = "REQUIRED"),
           bigquery.SchemaField(name = 'Date_buy', field_type = "DATE",\
-                                mode = "REQUIRED"),
+                                mode = "NULLABLE"),
           bigquery.SchemaField(name = 'Investment_period', field_type = "INTEGER",\
-                                mode = "REQUIRED"),
+                                mode = "NULLABLE"),
           bigquery.SchemaField(name = 'Quantity', field_type = "INTEGER",\
                                 mode = "REQUIRED"),
           bigquery.SchemaField(name = 'Buy_Price', field_type = "FLOAT",\
@@ -149,7 +184,7 @@ schema = [bigquery.SchemaField(name = 'Date_sell', field_type = "DATE", \
           bigquery.SchemaField(name = 'Sell_Price', field_type = "FLOAT",\
                                 mode = "REQUIRED"),
           bigquery.SchemaField(name = 'Buy_currency', field_type = "FLOAT",\
-                                mode = "REQUIRED"),
+                                mode = "NULLABLE"),
           bigquery.SchemaField(name = 'Sell_currency', field_type = "FLOAT",\
                                 mode = "REQUIRED"),
           bigquery.SchemaField(name = 'Currency', field_type = "STRING",\
