@@ -95,6 +95,7 @@ for index, transaction in enumerate(transactions_df.iterrows()):
             
             # 15. Zbierz wszystkie dane do tablicy.
 
+
             data_to_add = [date_sold, 
                            date_bought, 
                            (date_sold-date_bought).days,
