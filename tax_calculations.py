@@ -34,6 +34,11 @@ result_df = pd.DataFrame()
 # wyszuwania transakcji kupna danego tickera.
 k = 0
 
+# 5. Zdefiniowanie parametru l, który przechowuje ilość transakcji zakupowych dla danego
+# instrumentu finansowego - zostanie on użyty do równomiernego rozdzielenia prowizji przy sprzedaży instrumentu
+# wobec transakcji zakupowych.
+l = 0 
+
 # 5. Pętla wykonywalna na każdym obiekcie typu series (transaction)
 for index, transaction in enumerate(transactions_df.iterrows()):
     
@@ -42,8 +47,8 @@ for index, transaction in enumerate(transactions_df.iterrows()):
         
         # 7. Wykonuj tę pętlę dopóki nie wyzerujesz łącznej ilości sprzedaży w danej transakcji.
         while(transactions_df.loc[index, 'amount_location'] != 0):
-            
-            # 8. Przypisz do zmiennych warości z obiektu Series.
+
+            # 8. Przypisz do zmiennych wartości z obiektu Series.
             ticker              = transaction[1]['Ticker']
             ticker_id           = transaction[1]['Instrument_id']
             currency_type       = transaction[1]['Currency']
@@ -51,11 +56,15 @@ for index, transaction in enumerate(transactions_df.iterrows()):
             
             # 9. W amount_sold pobieram nie dane ilosci sprzedane in total
             # ale ilosci aktualne pozostałe nierozliczone.
+            # amount_sold_total to całkowita ilość sprzedaży danego instrumentu w ramach danej transakcji.
+
             amount_sold         = transactions_df.loc[index, 'amount_location']
+            amount_sold_total   = transaction[1]['Transaction_amount']
             ticker_search       = ticker
             price_sold          = transaction[1]['Transaction_price']
             currency_sold       = transaction[1]['Currency_close']
-
+            commision_sold      = transaction[1]['Commision_id']
+            
 
             # 10. Szukaj takiego rekordu, dla którego znajdziesz transakcję
             # zakupu danego instrumentu, dla którego pozostała ilość
@@ -67,14 +76,28 @@ for index, transaction in enumerate(transactions_df.iterrows()):
                          (transactions_df.loc[k, 'Ticker'] == ticker_search)):
                 k = k + 1
 
+            l = l + 1
+
             # 11. Do zmiennych przypisz odpowiednie wartości na podstawie konkretnej transakcji zakupowej.
             amount_bought       = transactions_df.loc[k, 'amount_location']
             date_bought         = transactions_df.loc[k, 'Transaction_date']
-            price_bought        = transactions_df.loc[k, 'Transaction_price']
+
+            # 12. W zależności od rodzaju transakcji wykorzystywane są odpowiednie kolumny z ceną.
+            if transaction[1]['Instrument_type'] != "Obligacje korporacyjne":
+                price_bought    = transactions_df.loc[k, 'Transaction_price']   
+            elif transaction[1]['Instrument_type'] == "Obligacje korporacyjne":
+                price_bought    = transactions_df.loc[k, 'Dirty_bond_price']
+
             currency_bought     = transactions_df.loc[k, 'Currency_close']
 
+            # 13. Dodanie wartości zapłaconej prowizji przy transakcji zakupu.
+            commision_buy_paid  = transactions_df.loc[k, 'Commision_id']
+
+            # 14. Dodanie wartości prowizji sprzedaży (obliczana na podstawie udziału danego zakupu w sprzedaży)
+            commision_sell_paid = (commision_sold * amount_bought) / amount_sold_total
+
               
-            # 12. Zaktualizuj wartość transakcji zakupowej o dane ilściowe, zgodnie z algorytmem
+            # 15. Zaktualizuj wartość transakcji zakupowej o dane ilściowe, zgodnie z algorytmem
             if amount_sold > amount_bought:
                 Amount = amount_bought
                 transactions_df.loc[k, 'amount_location'] = 0
@@ -84,15 +107,15 @@ for index, transaction in enumerate(transactions_df.iterrows()):
                 transactions_df.loc[k, 'amount_location'] = amount_bought - \
                           amount_sold
             
-            # 13. Na końcu zmniejsz również ilość w transakcji sprzedaży, o to co udało się odnaleźć
+            # 16. Na końcu zmniejsz również ilość w transakcji sprzedaży, o to co udało się odnaleźć
             # w transakcji zakupu (Amount)
             transactions_df.loc[index, 'amount_location'] = \
                    transactions_df.loc[index, 'amount_location'] - Amount
             
-            # 14. Wyzeruj parametr k. Służy on do poruszania się po danych zakupowych w punkcie nr 10.
+            # 17. Wyzeruj parametr k. Służy on do poruszania się po danych zakupowych w punkcie nr 10.
             k = 0
             
-            # 15. Zbierz wszystkie dane do tablicy.
+            # 18. Zbierz wszystkie dane do tablicy.
 
             data_to_add = [date_sold, 
                            date_bought, 
@@ -105,16 +128,17 @@ for index, transaction in enumerate(transactions_df.iterrows()):
                            currency_type, 
                            ticker,
                            ticker_id, 
-                           (Amount * price_bought * currency_bought).round(2),
+                           (Amount * price_bought * currency_bought + commision_buy_paid  + commision_sell_paid).round(2),
                            (Amount * price_sold * currency_sold).round(2),
-                           (Amount * (price_sold * currency_sold - price_bought * currency_bought)).round(2)
+                           (Amount * price_sold * currency_sold).round(2) - 
+                                (Amount * price_bought * currency_bought + commision_buy_paid  + commision_sell_paid).round(2)
                            ]
             
-            # 16. Dodaj do biężącej DataFrame dane z tablicy.
+            # 19. Dodaj do biężącej DataFrame dane z tablicy.
             result_df = pd.concat([result_df, pd.DataFrame([data_to_add])], 
                                      axis = 0)
             
-    # 17. Jeżeli nie znajdziesz transakcji sprzedaży lub wykupu szukaj dywidend i odsetek.
+    # 20. Jeżeli nie znajdziesz transakcji sprzedaży lub wykupu szukaj dywidend i odsetek.
     else: 
         if (transaction[1]['Transaction_type']=="Dywidenda") or (transaction[1]['Transaction_type']=="Odsetki"):
             dividend_interest_payment_date   = transaction[1]['Transaction_date']
@@ -125,7 +149,7 @@ for index, transaction in enumerate(transactions_df.iterrows()):
             dividend_interest_ticker_id      = transaction[1]['Instrument_id']
             dividend_interest_currency       = transaction[1]['Currency']
 
-            # 18. Zbierz wszystkie dane dywidend do tablicy.
+            # 19. Zbierz wszystkie dane dywidend do tablicy.
 
             data_to_add = [dividend_interest_payment_date, 
                         None, 
@@ -143,18 +167,18 @@ for index, transaction in enumerate(transactions_df.iterrows()):
                         round((dividend_interest_amount * dividend_interest_value * dividend_interest_currency_value), 2)
                         ]
             
-            # 16. Dodaj do biężącej DataFrame dane z tablicy.
+            # 21. Dodaj do biężącej DataFrame dane z tablicy.
 
             result_df = pd.concat([result_df, pd.DataFrame([data_to_add])], 
                                         axis = 0)
 
 
         else:
-        # 17. Jeżeli nie znajdziesz transakcji sprzedaży lub dywidend, szukaj dalej, aż znajdziesz.
+        # 22. Jeżeli nie znajdziesz transakcji sprzedaży lub dywidend, szukaj dalej, aż znajdziesz.
 
             continue
   
-# 18. Zmień nazwy kolumn na odpowiednie, zdefiniowane poniżej.
+# 23. Zmień nazwy kolumn na odpowiednie, zdefiniowane poniżej.
     
 columns = ['Date_sell', 'Date_buy',	'Investment_period',	'Quantity',
            'Buy_Price', 'Sell_Price', 'Buy_currency',
@@ -162,14 +186,14 @@ columns = ['Date_sell', 'Date_buy',	'Investment_period',	'Quantity',
            'Tax_deductible_expenses',	'Income',	'Profit']
 result_df.columns = columns
 
-# 19. Zdefiniownie miejsca eksportu danych.
+# 24. Zdefiniownie miejsca eksportu danych.
 
 project_id = 'projekt-inwestycyjny'
 dataset_id = 'Transactions'
 table_id = 'Tax_calculations'
 destination_table = f"{project_id}.{dataset_id}.{table_id}"
 
-# 20. Przygotowanie schematu danych.
+# 25. Przygotowanie schematu danych.
 schema = [bigquery.SchemaField(name = 'Date_sell', field_type = "DATE", \
                                 mode = "REQUIRED"),
           bigquery.SchemaField(name = 'Date_buy', field_type = "DATE",\
@@ -200,11 +224,11 @@ schema = [bigquery.SchemaField(name = 'Date_sell', field_type = "DATE", \
                                 mode = "NULLABLE")
                                 ]
 
-# 21. Zdefiniowanie joba, który wykona operację eksportu.
+# 26. Zdefiniowanie joba, który wykona operację eksportu.
 job_config = bigquery.LoadJobConfig(schema = schema,
                                     write_disposition = "WRITE_TRUNCATE")
 
-# 22. Wykonanie eksportu danych metodą load_table_from_dataframe na obiekcie client klasy Client.
+# 27. Wykonanie eksportu danych metodą load_table_from_dataframe na obiekcie client klasy Client.
 
 try:
     job = client.load_table_from_dataframe(dataframe=result_df, 
