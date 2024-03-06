@@ -114,6 +114,7 @@ for index, transaction in enumerate(transactions_df.iterrows()):
             result_df = pd.concat([result_df, pd.DataFrame([data_to_add])], 
                                      axis = 0)
             
+            
     
     # 17. Jeżeli nie znajdziesz transakcji sprzedaży lub wykupu szukaj dywidend i odsetek.
     else: 
