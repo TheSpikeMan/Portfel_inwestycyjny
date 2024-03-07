@@ -110,7 +110,7 @@ CREATE OR REPLACE TABLE `projekt-inwestycyjny.Transactions.Tax_calculations` (
   Tax_deductible_expenses FLOAT64,
   Income FLOAT64,
   Profit FLOAT64,
-  Tax_paid STRING NOT NULL,
+  Tax_paid BOOL NOT NULL,
   Tax_value FLOAT64
 );
 
