@@ -25,7 +25,7 @@ SELECT
   END AS Quarter
 FROM
 UNNEST(
-  GENERATE_DATE_ARRAY("2020-01-01", "2030-01-01", INTERVAL 1 DAY)) as `Date`
+  GENERATE_DATE_ARRAY("2020-01-01", "2030-01-01", INTERVAL 1 DAY)) as `Date`;
 
 
 -- UTWORZENIE TABEL W ZBIORZE DANE_INSTRUMENTÓW -- 
@@ -51,7 +51,7 @@ CREATE OR REPLACE TABLE `projekt-inwestycyjny.Dane_instrumentow.Instruments` (
   Instrument_type_id INT64,
   Instrument_headquarter STRING,
   Status INT64
-)
+);
 
 -- Tabela przechowująca typy instrumentów -- 
 CREATE TABLE IF NOT EXISTS `projekt-inwestycyjny.Dane_instrumentow.Instruments_types` (
@@ -112,7 +112,7 @@ CREATE OR REPLACE TABLE `projekt-inwestycyjny.Transactions.Tax_calculations` (
   Profit FLOAT64,
   Tax_paid STRING NOT NULL,
   Tax_value FLOAT64
-)
+);
 
 
 /*
