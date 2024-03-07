@@ -160,6 +160,7 @@ for index, transaction in enumerate(transactions_df.iterrows()):
             dividend_interest_ticker         = transaction[1]['Ticker']
             dividend_interest_ticker_id      = transaction[1]['Instrument_id']
             dividend_interest_currency       = transaction[1]['Currency']
+            tax_paid                         = transaction[1]['Tax_paid']
             tax_value                        = transaction[1]['Tax_value']
             transaction_type                 = transaction[1]['Transaction_type']
             instrument_type                  = transaction[1]['Instrument_type']
