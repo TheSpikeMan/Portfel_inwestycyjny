@@ -94,6 +94,27 @@ CREATE TABLE IF NOT EXISTS `projekt-inwestycyjny.Transactions.Transactions`(
   Tax_value FLOAT64 NOT NULL
 );
 
+-- Tabela Transactions zawiera dane do rozliczeń podatkowy --
+CREATE OR REPLACE TABLE `projekt-inwestycyjny.Transactions.Tax_calculations` (
+  Date_sell DATE NOT NULL,
+  Date_buy DATE,
+  Investment_period INT64,
+  Quantity INT64 NOT NULL,
+  Buy_Price FLOAT64,
+  Sell_Price FLOAT64 NOT NULL,
+  Buy_currency FLOAT64,
+  Sell_currency FLOAT64 NOT NULL,
+  Currency STRING,
+  Ticker STRING NOT NULL,
+  Ticker_id INT64 NOT NULL,
+  Tax_deductible_expenses FLOAT64,
+  Income FLOAT64,
+  Profit FLOAT64,
+  Tax_paid STRING NOT NULL,
+  Tax_value FLOAT64
+)
+
+
 /*
 W zbiorze znajduję się jeszcze następujące widoki:
 - Dividend_view,
