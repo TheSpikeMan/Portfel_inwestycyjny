@@ -55,6 +55,7 @@ for index, transaction in enumerate(transactions_df.iterrows()):
             date_sold           = transaction[1]['Transaction_date']
             tax_paid            = transaction[1]['Tax_paid']
             tax_value           = transaction[1]['Tax_value']
+            transaction_type    = transaction[1]['Transaction_type']
             
             # 9. W amount_sold pobieram nie dane ilosci sprzedane in total
             # ale ilosci aktualne pozostałe nierozliczone.
@@ -66,6 +67,9 @@ for index, transaction in enumerate(transactions_df.iterrows()):
             price_sold          = transaction[1]['Transaction_price']
             currency_sold       = transaction[1]['Currency_close']
             commision_sold      = transaction[1]['Commision_id']
+            instrument_type     = transaction[1]['Instrument_type']
+            country             = transaction[1]['Country']
+            instrument_headquarter = transaction[1]['Instrument_headquarter']
             
 
             # 10. Szukaj takiego rekordu, dla którego znajdziesz transakcję
@@ -128,6 +132,10 @@ for index, transaction in enumerate(transactions_df.iterrows()):
                            currency_sold,
                            currency_bought, 
                            currency_type, 
+                           transaction_type,
+                           instrument_type,
+                           country,
+                           instrument_headquarter,
                            ticker,
                            ticker_id, 
                            (Amount * price_bought * currency_bought + commision_buy_paid  + commision_sell_paid).round(2),
@@ -152,6 +160,11 @@ for index, transaction in enumerate(transactions_df.iterrows()):
             dividend_interest_ticker         = transaction[1]['Ticker']
             dividend_interest_ticker_id      = transaction[1]['Instrument_id']
             dividend_interest_currency       = transaction[1]['Currency']
+            tax_value                        = transaction[1]['Tax_value']
+            transaction_type                 = transaction[1]['Transaction_type']
+            instrument_type                  = transaction[1]['Instrument_type']
+            country                          = transaction[1]['Country']
+            instrument_headquarter           = transaction[1]['Instrument_headquarter']
 
             # 19. Zbierz wszystkie dane dywidend do tablicy.
 
@@ -163,7 +176,11 @@ for index, transaction in enumerate(transactions_df.iterrows()):
                         dividend_interest_value, 
                         None,
                         dividend_interest_currency_value, 
-                        dividend_interest_currency, 
+                        dividend_interest_currency,
+                        transaction_type,
+                        instrument_type,
+                        country,
+                        instrument_headquarter,
                         dividend_interest_ticker,
                         dividend_interest_ticker_id, 
                         None,
@@ -188,7 +205,8 @@ for index, transaction in enumerate(transactions_df.iterrows()):
     
 columns = ['Date_sell', 'Date_buy',	'Investment_period',	'Quantity',
            'Buy_Price', 'Sell_Price', 'Buy_currency',
-           'Sell_currency', 'Currency', 'Ticker', 'Ticker_id',
+           'Sell_currency', 'Currency', 'Transaction_type', 'Instrument_type', 'Country', 
+           'Instrument_headquarter', 'Ticker', 'Ticker_id',
            'Tax_deductible_expenses',	'Income',	'Profit', 'Tax_paid', 'Tax_value']
 result_df.columns = columns
 
@@ -218,6 +236,14 @@ schema = [bigquery.SchemaField(name = 'Date_sell', field_type = "DATE", \
                                 mode = "REQUIRED"),
           bigquery.SchemaField(name = 'Currency', field_type = "STRING",\
                                 mode = "NULLABLE"),
+          bigquery.SchemaField(name = 'Transaction_type', field_type = "STRING",\
+                                mode = "REQUIRED"),
+          bigquery.SchemaField(name = 'Instrument_type', field_type = "STRING",\
+                                mode = "REQUIRED"),
+          bigquery.SchemaField(name = 'Country', field_type = "STRING",\
+                                mode = "REQUIRED"),
+          bigquery.SchemaField(name = 'Instrument_headquarter', field_type = "STRING",\
+                                mode = "REQUIRED"),
           bigquery.SchemaField(name = 'Ticker', field_type = "STRING",\
                                 mode = "REQUIRED"),
           bigquery.SchemaField(name = 'Ticker_id', field_type = "INTEGER",\
