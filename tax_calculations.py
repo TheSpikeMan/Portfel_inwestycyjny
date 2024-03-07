@@ -53,6 +53,8 @@ for index, transaction in enumerate(transactions_df.iterrows()):
             ticker_id           = transaction[1]['Instrument_id']
             currency_type       = transaction[1]['Currency']
             date_sold           = transaction[1]['Transaction_date']
+            tax_paid            = transaction[1]['Tax_paid']
+            tax_value           = transaction[1]['Tax_value']
             
             # 9. W amount_sold pobieram nie dane ilosci sprzedane in total
             # ale ilosci aktualne pozostałe nierozliczone.
@@ -132,6 +134,8 @@ for index, transaction in enumerate(transactions_df.iterrows()):
                            (Amount * price_sold * currency_sold).round(2),
                            (Amount * price_sold * currency_sold).round(2) - 
                                 (Amount * price_bought * currency_bought + commision_buy_paid  + commision_sell_paid).round(2)
+                           tax_paid,
+                           tax_value
                            ]
             
             # 19. Dodaj do biężącej DataFrame dane z tablicy.
@@ -164,7 +168,9 @@ for index, transaction in enumerate(transactions_df.iterrows()):
                         dividend_interest_ticker_id, 
                         None,
                         round((dividend_interest_amount * dividend_interest_value * dividend_interest_currency_value), 2),
-                        round((dividend_interest_amount * dividend_interest_value * dividend_interest_currency_value), 2)
+                        round((dividend_interest_amount * dividend_interest_value * dividend_interest_currency_value), 2),
+                        tax_paid,
+                        tax_value
                         ]
             
             # 21. Dodaj do biężącej DataFrame dane z tablicy.
@@ -183,7 +189,7 @@ for index, transaction in enumerate(transactions_df.iterrows()):
 columns = ['Date_sell', 'Date_buy',	'Investment_period',	'Quantity',
            'Buy_Price', 'Sell_Price', 'Buy_currency',
            'Sell_currency', 'Currency', 'Ticker', 'Ticker_id',
-           'Tax_deductible_expenses',	'Income',	'Profit']
+           'Tax_deductible_expenses',	'Income',	'Profit', 'Tax_paid', 'Tax_value']
 result_df.columns = columns
 
 # 24. Zdefiniownie miejsca eksportu danych.
@@ -221,6 +227,10 @@ schema = [bigquery.SchemaField(name = 'Date_sell', field_type = "DATE", \
           bigquery.SchemaField(name = 'Income', field_type = "FLOAT",\
                                 mode = "NULLABLE"),
           bigquery.SchemaField(name = 'Profit', field_type = "FLOAT",\
+                                mode = "NULLABLE")
+          bigquery.SchemaField(name = 'Tax_paid', field_type = "STRING",\
+                                mode = "REQUIRED"),
+          bigquery.SchemaField(name = 'Tax_value', field_type = "STRING",\
                                 mode = "NULLABLE")
                                 ]
 
