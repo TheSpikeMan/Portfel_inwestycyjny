@@ -133,7 +133,7 @@ for index, transaction in enumerate(transactions_df.iterrows()):
                            (Amount * price_bought * currency_bought + commision_buy_paid  + commision_sell_paid).round(2),
                            (Amount * price_sold * currency_sold).round(2),
                            (Amount * price_sold * currency_sold).round(2) - 
-                                (Amount * price_bought * currency_bought + commision_buy_paid  + commision_sell_paid).round(2)
+                                (Amount * price_bought * currency_bought + commision_buy_paid  + commision_sell_paid).round(2),
                            tax_paid,
                            tax_value
                            ]
@@ -227,10 +227,10 @@ schema = [bigquery.SchemaField(name = 'Date_sell', field_type = "DATE", \
           bigquery.SchemaField(name = 'Income', field_type = "FLOAT",\
                                 mode = "NULLABLE"),
           bigquery.SchemaField(name = 'Profit', field_type = "FLOAT",\
-                                mode = "NULLABLE")
-          bigquery.SchemaField(name = 'Tax_paid', field_type = "STRING",\
+                                mode = "NULLABLE"),
+          bigquery.SchemaField(name = 'Tax_paid', field_type = "BOOL",\
                                 mode = "REQUIRED"),
-          bigquery.SchemaField(name = 'Tax_value', field_type = "STRING",\
+          bigquery.SchemaField(name = 'Tax_value', field_type = "FLOAT",\
                                 mode = "NULLABLE")
                                 ]
 
