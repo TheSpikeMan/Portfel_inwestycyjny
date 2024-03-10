@@ -11,7 +11,7 @@ Akcje_polskie_transakcje_GPW AS (
   SELECT
     EXTRACT(YEAR FROM Date_sell)              AS Rok_podatkowy,
     'Transakcje polskich instrumentów na GPW' AS Rodzaj_transakcji,
-    'PIT8C'                                   AS Kategoria,
+    'Transakcje PIT8C'                        AS Kategoria,
     ROUND(SUM(Tax_deductible_expenses), 2)    AS Koszt_uzyskania_przychodu,
     ROUND(SUM(Income), 2)                     AS Przychod,
     ROUND(SUM(Profit), 2)                     AS Zysk
@@ -40,7 +40,7 @@ Obligacje_korporacyjne_transakcje AS (
   SELECT
     EXTRACT(YEAR FROM Date_sell)              AS Rok_podatkowy,
     'Transakcje polskich instrumentów na GPW' AS Rodzaj_transakcji,
-    'PIT8C'                                   AS Kategoria,
+    'Transakcje PIT8C'                        AS Kategoria,
     ROUND(SUM(Tax_deductible_expenses), 2)    AS Koszt_uzyskania_przychodu,
     ROUND(SUM(Income), 2)                     AS Przychod,
     ROUND(SUM(Profit), 2)                     AS Zysk
@@ -67,7 +67,7 @@ Akcje_zagraniczne_transakcje_GPW AS (
   SELECT
     EXTRACT(YEAR FROM Date_sell)              AS Rok_podatkowy,
     'Transakcje zagr. instrumentów na GPW'    AS Rodzaj_transakcji,
-    'POZA PIT 8C'                             AS Kategoria,
+    'Transakcje poza PIT 8C'                  AS Kategoria,
     ROUND(SUM(Tax_deductible_expenses), 2)    AS Koszt_uzyskania_przychodu,
     ROUND(SUM(Income), 2)                     AS Przychod,
     ROUND(SUM(Profit), 2)                     AS Zysk,
@@ -93,7 +93,7 @@ Akcje_zagraniczne_transakcje_poza_GPW AS (
   SELECT
     EXTRACT(YEAR FROM Date_sell)              AS Rok_podatkowy,
     'Transakcje zagr. instrumentów poza GPW'  AS Rodzaj_transakcji,
-    'POZA PIT 8C'                             AS Kategoria,
+    'Transakcje poza PIT 8C'                  AS Kategoria,
     ROUND(SUM(Tax_deductible_expenses), 2)    AS Koszt_uzyskania_przychodu,
     ROUND(SUM(Income), 2)                     AS Przychod,
     ROUND(SUM(Profit), 2)                     AS Zysk
@@ -120,7 +120,7 @@ Akcje_polskie_dywidendy_gpw AS (
   SELECT
     EXTRACT(YEAR FROM Date_sell)              AS Rok_podatkowy,
     'Nierozliczone dywidendy na GPW'          AS Rodzaj_transakcji,
-    'Dywidendy i odsetki'                     AS Kategoria,
+    'Dywidendy zagraniczne'                   AS Kategoria,
     0                                         AS Koszt_uzyskania_przychodu,
     ROUND(SUM(Income), 2)                     AS Przychod,
     ROUND(SUM(Profit), 2)                     AS Zysk
@@ -147,7 +147,7 @@ ETF_zagraniczne_dywidendy_poza_GPW AS (
   SELECT
     EXTRACT(YEAR FROM Date_sell)              AS Rok_podatkowy,
     'Dywidendy poza GPW'                      AS Rodzaj_transakcji,
-    'Dywidendy i odsetki'                     AS Kategoria,
+    'Dywidendy zagraniczne'                   AS Kategoria,
     0                                         AS Koszt_uzyskania_przychodu,
     ROUND(SUM(Income), 2)                     AS Przychod,
     ROUND(SUM(Profit), 2)                     AS Zysk
@@ -174,7 +174,7 @@ Obligacje_korporacyjne_odsetki AS (
   SELECT
     EXTRACT(YEAR FROM Date_sell)              AS Rok_podatkowy,
     'Odsetki na GPW - obligacje korporacyjne' AS Rodzaj_transakcji,
-    'Dywidendy i odsetki'                     AS Kategoria,            
+    'Odsetki polskie'                         AS Kategoria,            
     0                                         AS Koszt_uzyskania_przychodu,
     ROUND(SUM(Income), 2)                     AS Przychod,
     ROUND(SUM(Profit), 2)                     AS Zysk
