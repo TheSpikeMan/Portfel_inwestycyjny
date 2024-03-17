@@ -14,64 +14,28 @@ from PyQt6.QtGui import QFont
 from google.cloud import bigquery
 import pandas as pd
 
-
-class AbstractClass(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.project  = project
-        self.location = location
-        self.dataSetDaneIntrumentow = 'Dane_instrumentow'
-        self.dataSetCurrencies      = 'Waluty'
-        self.dataSetTransactions    = 'Transactions'
-        self.dataSetInflation       = 'Inflation'
-        self.tableDaily             = 'Daily'
-        self.tableInstrumentTypes   = 'Instrument_types'
-        self.tableInstruments       = 'Instruments'
-        self.tableTreasuryBonds     = 'Treasury_Bonds'
-        self.tableInflation         = 'Inflation'
-        self.tableTransactions      = 'Transactions'
-        self.viewTransactionsView   = 'Transactions_view'
-        self.tableCurrency          = 'Currency'
-
-        self.downloadDataFromBigQuery()
-
-    def downloadDataFromBigQuery(self):
-        client = bigquery.Client(project    = self.project,
-                                 location   = self.location)
-        
-        # Downloading Currencies Data from Big Query
-        queryCurrencies = f"""
-        SELECT
-            Currency_date     AS Currency_Date,
-            Currency          AS Currency,
-            Currency_close    AS Currency_close
-        FROM `{self.project}.{self.dataSetCurrencies}.{self.tableCurrency}`
-        """
-        query_job_currencies = client.query(query=queryCurrencies)
-        self.currenciesDataFrame = query_job_currencies.to_dataframe()
-
-        # Downloading Instrument Types Data from Big Query
-        queryInstrumentTypes = f"""
-        SELECT
-            Instrument_type_id   AS Instrument_type_id,
-            Instrument_type      AS Instrument_type
-        FROM `{self.project}.{self.dataSetDaneIntrumentow}.{self.tableInstrumentTypes}`
-        """
-        query_job_instrument_types = client.query(query=queryInstrumentTypes)
-        self.instrumentTypesDataFrame = query_job_instrument_types.to_dataframe()
-
-
-class DodajInstrumentDoSlownika(AbstractClass):
+class DodajInstrumentDoSlownika(QWidget):
 
     def __init__(self):
         super().__init__()
+
+        # Deklaracja obiektu klasy mainWindow, celem pobrania zmiennych do tej klasy
+        mainWindow = MainWindow()
+        # Pobranie parametrów z klasy MainWindow do zmiennych zadeklarowanych w metodzie DownloadBigQueryData
+        self.DownloadBigQueryData(mainWindow.currenciesDataFrame, mainWindow.instrumentTypesDataFrame)
         print("Dodaję instrument do słownika.")
 
         # Ustawienie parametrów okna oraz załadowanie widgetów
         self.setWindowTitle("Dodaj instrument")
         self.setFixedSize(QSize(800,500))
         self.addWidgets()
-    
+
+    # Metoda, wykorzystana do pobrania zmiennych z klasy MainWindow
+    def DownloadBigQueryData(self, currenciesDataFrame, instrumentTypesDataFrame):
+        self.currenciesDataFrame = currenciesDataFrame
+        self.instrumentTypesDataFrame = instrumentTypesDataFrame
+
+
     def addWidgets(self):
         layout = QGridLayout()
 
@@ -98,16 +62,28 @@ class DodajInstrumentDoSlownika(AbstractClass):
     def sendDataToBigQuery(self):
         print("Wysyłam dane do BigQuery.")  
 
-class DodajTransakcje(AbstractClass):
+# Klasa obsługująca dodanie nowej transakcji.
+class DodajTransakcje(QWidget):
 
     def __init__(self):
         super().__init__()
+
+        # Deklaracja obiektu klasy mainWindow, celem pobrania zmiennych do tej klasy
+        mainWindow = MainWindow()
+
+        # Pobranie parametrów z klasy MainWindow do zmiennych zadeklarowanych w metodzie DownloadBigQueryData
+        self.DownloadBigQueryData(mainWindow.currenciesDataFrame, mainWindow.instrumentTypesDataFrame)
         print("Dodaję transakcję")
 
         # Ustawienie okna oraz załadowanie widgetów
         self.setWindowTitle("Transakcje")
         self.setFixedSize(QSize(800,500))
         self.addWidgets()
+    
+    # Metoda, wykorzystana do pobrania zmiennych z klasy MainWindow
+    def DownloadBigQueryData(self, currenciesDataFrame, instrumentTypesDataFrame):
+        self.currenciesDataFrame = currenciesDataFrame
+        self.instrumentTypesDataFrame = instrumentTypesDataFrame
     
     def addWidgets(self):
         self.layout = QGridLayout()
@@ -304,12 +280,28 @@ class DodajTransakcje(AbstractClass):
         print("Wysyłam dane do BigQuery.")
 
 class MainWindow(QMainWindow):
-    def __init__(self, title, project, location):
+    def __init__(self):
         super().__init__()
+        self.title = "Portfel_inwestycyjny_Desktop_App"
+        self.project = 'projekt-inwestycyjny'
+        self.location = 'europe-central2'
+        self.dataSetDaneIntrumentow = 'Dane_instrumentow'
+        self.dataSetCurrencies      = 'Waluty'
+        self.dataSetTransactions    = 'Transactions'
+        self.dataSetInflation       = 'Inflation'
+        self.tableDaily             = 'Daily'
+        self.tableInstrumentTypes   = 'Instrument_types'
+        self.tableInstruments       = 'Instruments'
+        self.tableTreasuryBonds     = 'Treasury_Bonds'
+        self.tableInflation         = 'Inflation'
+        self.tableTransactions      = 'Transactions'
+        self.viewTransactionsView   = 'Transactions_view'
+        self.tableCurrency          = 'Currency'
         # Ustawienie parametrów okna i ustawienie widgetów
-        self.setWindowTitle(title)
+        self.setWindowTitle(self.title)
         self.setFixedSize(QSize(800,500))
         self.addWidgets()
+        self.downloadDataFromBigQuery()
     
     def addWidgets(self):
         layout = QGridLayout()
@@ -353,12 +345,39 @@ class MainWindow(QMainWindow):
         self.addInstrument = DodajInstrumentDoSlownika()
         self.addInstrument.show()
 
+    def downloadDataFromBigQuery(self):
+        client = bigquery.Client(project    = self.project,
+                                 location   = self.location)
+        
+        # Downloading Currencies Data from Big Query
+        queryCurrencies = f"""
+        SELECT
+            Currency_date     AS Currency_Date,
+            Currency          AS Currency,
+            Currency_close    AS Currency_close
+        FROM `{self.project}.{self.dataSetCurrencies}.{self.tableCurrency}`
+        """
+        query_job_currencies = client.query(query=queryCurrencies)
+        self.currenciesDataFrame = query_job_currencies.to_dataframe()
+
+        # Downloading Instrument Types Data from Big Query
+        queryInstrumentTypes = f"""
+        SELECT
+            Instrument_type_id   AS Instrument_type_id,
+            Instrument_type      AS Instrument_type
+        FROM `{self.project}.{self.dataSetDaneIntrumentow}.{self.tableInstrumentTypes}`
+        """
+        query_job_instrument_types = client.query(query=queryInstrumentTypes)
+        self.instrumentTypesDataFrame = query_job_instrument_types.to_dataframe()
+    
+    
+
 # Main part of the app
-app = QApplication([])
-title = "Portfel_inwestycyjny_Desktop_App"
-project = 'projekt-inwestycyjny'
-location = 'europe-central2'   
-window = MainWindow(title, project, location)
+app = QApplication([]) 
+window = MainWindow()
+#dodajInstrument = DodajInstrumentDoSlownika()
+#dodajInstrument.getTheVariablesFromMainWindow(window.currenciesDataFrame, window.instrumentTypesDataFrame)
+#print(dodajInstrument.currenciesDataFrame)
 window.show()
 
 app.exec()
