@@ -127,8 +127,8 @@ for index, transaction in enumerate(transactions_df.iterrows()):
                            date_bought, 
                            (date_sold-date_bought).days,
                            Amount,
-                           price_sold, 
-                           price_bought, 
+                           price_bought
+                           price_sold, , 
                            currency_sold,
                            currency_bought, 
                            currency_type, 
