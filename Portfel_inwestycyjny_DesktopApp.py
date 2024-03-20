@@ -31,21 +31,23 @@ class BigQueryReaderAndExporter():
         self.tableTreasuryBonds     = 'Treasury_Bonds'
         self.tableInflation         = 'Inflation'
         self.tableTransactions      = 'Transactions'
-        self.viewTransactionsView   = 'Transactions_view'
         self.tableCurrency          = 'Currency'
+        self.viewTransactionsView   = 'Transactions_view'
+        self.viewCurrencies         = 'Currency_view'
     
     def downloadDataFromBigQuery(self):
 
         client = bigquery.Client(project    = self.project,
                                  location   = self.location)
         
-        # Downloading Currencies Data from Big Query
+        # Downloading Currencies Data from Big Query view
         queryCurrencies = f"""
         SELECT
             Currency_date     AS Currency_Date,
             Currency          AS Currency,
-            Currency_close    AS Currency_close
-        FROM `{self.project}.{self.dataSetCurrencies}.{self.tableCurrency}`
+            Currency_close    AS Currency_close,
+            Last_day_currency AS Last_day_currency
+        FROM `{self.project}.{self.dataSetCurrencies}.{self.viewCurrencies}`
         """
         query_job_currencies = client.query(query=queryCurrencies)
         self.currenciesDataFrame = query_job_currencies.to_dataframe()
@@ -212,6 +214,8 @@ class DodajTransakcje(QWidget):
         # Dodanie ComboBoxa do wyboru waluty instrumentu finansowego
         self.currencyComboBox = QComboBox()
         self.currencyComboBox.addItems(["PLN", "USD", "EUR"])
+        self.currencyComboBox.setCurrentText("PLN")
+        self.currencyComboBox.currentTextChanged.connect(self.CurrencyChanged)
         self.layout.addWidget(self.currencyComboBox, 6, 2)
 
         # Dodanie QLabel do opisu kursu waluty instrumentu podlegającego transakcji
@@ -297,21 +301,32 @@ class DodajTransakcje(QWidget):
         else:
             self.taxValueLineEdit.setEnabled(True)
 
-    # Przekazuję wybraną datę do pola tekstowego
-    def DateChanged(self):
-        #selected_date = self.calendarWidget.selectedDate().toString("yyyy-MM-dd")
-        selected_date = self.calendarWidget.selectedDate()
-        self.dateDateEdit.setDate(selected_date)
-        self.currencyValueLineEdit.setText("Tutaj podpinam się pod DataFrame przechowujący kursy walut.")
-        self.calendarWidget.close()
-        self.layout.setContentsMargins(150,20,150,20)
-
     # Metoda OpenCalendar tworzy obiekt QCalendarWidget i uruchamia metodę DateChanged, która pobiera datę z kalendarza
     # i ustawia ją w polu bok. Na końcu obiekt jest zamykany.
     def OpenCalendar(self):
         self.calendarWidget = QCalendarWidget()
         self.calendarWidget.selectionChanged.connect(self.DateChanged)
         self.layout.addWidget(self.calendarWidget, 1, 2, 7, 10)
+
+    # Przekazuję wybraną datę do pola tekstowego
+    def DateChanged(self):
+        #selected_date = self.calendarWidget.selectedDate().toString("yyyy-MM-dd")
+        self.selected_date = self.calendarWidget.selectedDate()
+        self.dateDateEdit.setDate(self.selected_date)
+        #self.currencyValueLineEdit.setText("Tutaj podpinam się pod DataFrame przechowujący kursy walut.")
+        #self.currencyValueLineEdit.setText(self.currenciesDataFrame.loc[]
+        self.calendarWidget.close()
+        self.layout.setContentsMargins(150,20,150,20)
+
+    def CurrencyChanged(self, currentTextChanged):
+        self.currentCurrency  = currentTextChanged
+        print(self.currentCurrency)
+        # Do poprawki formatowanie daty w tym miejscu i poniżej
+        # print(self.selected_date.toString(Qt.TextDate))
+        if self.currentCurrency != 'PLN':
+            print(self.currenciesDataFrame.loc[(self.currenciesDataFrame['Currency']      == self.currentCurrency) & 
+                                               (self.currenciesDataFrame['Currency_Date'] == self.selected_date)])
+        
 
     # Metoda oblicza wartość na podstawie ilości oraz ceny
     def CalculateValue(self):
