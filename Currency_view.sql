@@ -54,7 +54,7 @@ Ostatni widok umożliwia wyciągnięcie ostatniej wartości wobec daty w danym w
 */
 
 SELECT
-    Currency_date                                   AS Currency_date,
+    SAFE_CAST(Currency_date AS STRING)              AS Currency_date,
     Currency                                        AS Currency,
     Currency_close                                  AS Currency_close,
     LAG(Currency_close) OVER last_currency_close    AS Last_day_currency
