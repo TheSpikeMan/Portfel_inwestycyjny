@@ -14,6 +14,7 @@ from PyQt6.QtGui import QFont
 from google.cloud import bigquery
 import pandas as pd
 import time
+import numpy as np
 
 
 class BigQueryReaderAndExporter():
@@ -43,7 +44,7 @@ class BigQueryReaderAndExporter():
         # Downloading Currencies Data from Big Query view
         queryCurrencies = f"""
         SELECT
-            SAFE_CAST(Currency_date AS STRING)              AS Currency_date,
+            Currency_date                                   AS Currency_date,
             Currency                                        AS Currency,
             Currency_close                                  AS Currency_close,
             Last_day_currency                               AS Last_day_currency
@@ -72,7 +73,12 @@ class BigQueryReaderAndExporter():
         self.instrumentsDataFrame = query_job_instruments.to_dataframe()
 
         return self.currenciesDataFrame, self.instrumentTypesDataFrame, self.instrumentsDataFrame
-
+    
+    # Metoda służy wysłaniu danych do BigQuery
+    def sendDataToBigQuery(self, data, destination):
+        self.data          = data
+        self.destination   = destination
+        print("Wysyłam dane do BigQuery, cel: ", self.destination, ", dane: ", self.data)
 
 class DodajInstrumentDoSlownika(QWidget):
 
@@ -111,7 +117,7 @@ class DodajInstrumentDoSlownika(QWidget):
     
     # Metoda odpowiedzialna za wysłanie danych do BigQuery
     def sendDataToBigQuery(self):
-        print("Wysyłam dane do BigQuery.")  
+        print("Wysyłam dane do BigQuer.")  
 
 # Klasa obsługująca dodanie nowej transakcji.
 class DodajTransakcje(QWidget):
@@ -347,23 +353,89 @@ class DodajTransakcje(QWidget):
         if self.priceLineEdit.text() != "" and self.quantityLineEdit.text() != "":
             value = str(
                         round(
-                            float(self.priceLineEdit.text()) * float(self.quantityLineEdit.text()), 
+                            float(self.priceLineEdit.text()) * \
+                                float(self.quantityLineEdit.text()) * \
+                                    float(self.currencyValueLineEdit.text()), 
                         2))
             self.valueLineEdit.setText(value)
         else:
             pass    
 
     def TransactionTypeBuyChosen(self, currentTextChanged):
-        if currentTextChanged == "Zakup":
+        self.transactionType    = currentTextChanged
+        if self.transactionType == "Zakup":
             self.taxComboBox.setEnabled(False)
             self.taxValueLineEdit.setEnabled(False)
         else:
             self.taxComboBox.setEnabled(True)
             self.taxValueLineEdit.setEnabled(True)
 
+    def PrepareDataForBigQueryExport(self):
+
+        print("Uruchamiam funkcję PrepareDataForBigQueryExport")
+
+        # Przypisanie wartości domyślnych do zmiennych
+        self.Transaction_id        = np.nan
+        self.Transaction_date      = np.nan
+        self.Transaction_type      = np.nan
+        self.Currency              = np.nan
+        self.Transaction_price     = np.nan
+        self.Transaction_amount    = np.nan
+        self.Instrument_id         = np.nan
+        self.Commision_id          = np.nan
+        self.Dirty_bond_price      = np.nan
+        self.Tax_paid              = np.nan
+        self.Tax_value             = np.nan
+
+        # Przypisanie wartości do zmiennych
+
+        # Do podpięcia transaction_id - SQL
+        #self.Transaction_id        = 
+        self.Transaction_date      = self.dateDateEdit.date().toString("yyyy-MM-dd")
+        self.Transaction_type      = self.transactionsTypeComboBox.currentText()
+
+        if self.Transaction_type   == "Sprzedaż":
+            self.Transaction_type  = "Sell"
+        elif self.Transaction_type == "Zakup":
+            self.Transaction_type  = "Buy"
+        else:
+            self.Transaction_Type  = np.nan
+        
+        self.Currency              = self.currencyComboBox.currentText()
+        self.Transaction_price     = self.priceLineEdit.text()
+        self.Transaction_amount    = self.quantityLineEdit.text()
+        
+        # Do podpięcia instrument ID - SQL
+        # self.Instrument_id
+        self.Commision_id          = self.commisionLineEdit.text()
+        # self.Dirty_bond_price
+        self.Tax_paid              = self.taxComboBox.currentText()
+        self.Tax_value             = self.taxValueLineEdit.text()
+
+        transaction_parameters = [self.Transaction_id,
+                                  self.Transaction_date,
+                                  self.Transaction_type,
+                                  self.Currency,
+                                  self.Transaction_price,
+                                  self.Transaction_amount,
+                                  self.Instrument_id,
+                                  self.Commision_id,
+                                  self.Dirty_bond_price,
+                                  self.Tax_paid,
+                                  self.Tax_value
+                                  ]
+        
+        transaction_parameters_dataFrame = pd.DataFrame(data=transaction_parameters)
+        return transaction_parameters_dataFrame
+        
     # Metoda odpowiedzialna za wysłanie danych do BigQuery
     def sendDataToBigQuery(self):
         print("Wysyłam dane do BigQuery.")
+        transaction_data_to_export = self.PrepareDataForBigQueryExport()
+
+        # Tworzę obiekt BigQueryReaderAndExporter do eksportu danych do BQ
+        bigQueryExporterObject = BigQueryReaderAndExporter()
+        bigQueryExporterObject.sendDataToBigQuery(transaction_data_to_export, "Testowa destynacja")
 
 # Klasa tymczsowo nieaktywna - do wprowadzenia w przyszłości
 class InitialWindow(QMainWindow):
