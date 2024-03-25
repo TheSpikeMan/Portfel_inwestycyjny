@@ -235,6 +235,7 @@ class DodajTransakcje(QWidget):
         # Dodanie pola do kursu waluty waloru
         self.currencyValueLineEdit           = QLineEdit()
         self.currencyValueLineEdit.setText("1")
+        self.currencyValueLineEdit.setEnabled(False)
         self.layout.addWidget(self.currencyValueLineEdit, 7, 1)
 
         # Dodanie QLabel do opisu prowizji instrumentu podlegającego transakcji
