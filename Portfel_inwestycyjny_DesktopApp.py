@@ -43,10 +43,10 @@ class BigQueryReaderAndExporter():
         # Downloading Currencies Data from Big Query view
         queryCurrencies = f"""
         SELECT
-            Currency_date     AS Currency_Date,
-            Currency          AS Currency,
-            Currency_close    AS Currency_close,
-            Last_day_currency AS Last_day_currency
+            SAFE_CAST(Currency_date AS STRING)              AS Currency_date,
+            Currency                                        AS Currency,
+            Currency_close                                  AS Currency_close,
+            Last_day_currency                               AS Last_day_currency
         FROM `{self.project}.{self.dataSetCurrencies}.{self.viewCurrencies}`
         """
         query_job_currencies = client.query(query=queryCurrencies)
@@ -152,6 +152,7 @@ class DodajTransakcje(QWidget):
         self.dateDateEdit = QDateEdit()
         self.dateDateEdit.setDisplayFormat("yyyy-MM-dd")
         self.dateDateEdit.setDate(QDate.currentDate())
+        self.dateDateEdit.setEnabled(False)
         self.layout.addWidget(self.dateDateEdit, 1, 1)
 
         # Dodanie przycisku otwierającego kalendarz. Po naciśnięciu przycisku uruchamiana jest metoda
@@ -215,6 +216,8 @@ class DodajTransakcje(QWidget):
         self.currencyComboBox = QComboBox()
         self.currencyComboBox.addItems(["PLN", "USD", "EUR"])
         self.currencyComboBox.setCurrentText("PLN")
+        # Ustawiam walutę na domyślną w razie braku zmian waluty przed datą. Dane wykorzystywane przez metodę DateChanged
+        self.currentCurrency = "PLN"
         self.currencyComboBox.currentTextChanged.connect(self.CurrencyChanged)
         self.layout.addWidget(self.currencyComboBox, 6, 2)
 
@@ -313,19 +316,30 @@ class DodajTransakcje(QWidget):
         #selected_date = self.calendarWidget.selectedDate().toString("yyyy-MM-dd")
         self.selected_date = self.calendarWidget.selectedDate()
         self.dateDateEdit.setDate(self.selected_date)
-        #self.currencyValueLineEdit.setText("Tutaj podpinam się pod DataFrame przechowujący kursy walut.")
-        #self.currencyValueLineEdit.setText(self.currenciesDataFrame.loc[]
+
+        # Jeżeli waluta była zmieniana jako argument podpinana jest z metody CurrencyChanged. Jeżeli nie, z domyślnego
+        # parametru określonego w definicji pola.
+        self.CurrencyChanged(self.currentCurrency)
         self.calendarWidget.close()
         self.layout.setContentsMargins(150,20,150,20)
 
     def CurrencyChanged(self, currentTextChanged):
+        # Pobranie aktualnej daty
+        self.dateEditField = self.dateDateEdit.date()
+        self.dateEditField = self.dateEditField.toString("yyyy-MM-dd")
+        # Pobranie waluty z Comboboxa
         self.currentCurrency  = currentTextChanged
-        print(self.currentCurrency)
-        # Do poprawki formatowanie daty w tym miejscu i poniżej
-        # print(self.selected_date.toString(Qt.TextDate))
+        print("Metoda CurrencChanged")
+
+        # Sprawdzenie waluty i podpięcie ostatniego kursu waluty dla danego dnia. Wykorzystanie widoku Currency_view.
         if self.currentCurrency != 'PLN':
-            print(self.currenciesDataFrame.loc[(self.currenciesDataFrame['Currency']      == self.currentCurrency) & 
-                                               (self.currenciesDataFrame['Currency_Date'] == self.selected_date)])
+            self.lastDayCurrency = self.currenciesDataFrame.query(f"Currency== '{self.currentCurrency}' \
+                                                                  & Currency_date== '{self.dateEditField}'") \
+                                                                    ['Last_day_currency'].\
+                                                                    iloc[0]
+            self.currencyValueLineEdit.setText(f"{self.lastDayCurrency}")
+        else:
+            self.currencyValueLineEdit.setText("1")
         
 
     # Metoda oblicza wartość na podstawie ilości oraz ceny
