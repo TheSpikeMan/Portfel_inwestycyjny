@@ -72,7 +72,18 @@ class BigQueryReaderAndExporter():
         query_job_instruments = client.query(query=queryInstruments)
         self.instrumentsDataFrame = query_job_instruments.to_dataframe()
 
-        return self.currenciesDataFrame, self.instrumentTypesDataFrame, self.instrumentsDataFrame
+        # Download last transaction id from BigQuery
+        queryMaxTransactionId = f"""
+        SELECT
+            MAX(Transaction_id)  AS Max_transaction_id
+        FROM `{self.project}.{self.dataSetTransactions}.{self.tableTransactions}`
+        """
+        query_job_max_transaction_id = client.query(query=queryMaxTransactionId)
+        self.maxTransactionId = query_job_max_transaction_id.to_dataframe()
+
+
+        return self.currenciesDataFrame, self.instrumentTypesDataFrame, self.instrumentsDataFrame, self.maxTransactionId
+    
     
     # Metoda służy wysłaniu danych do BigQuery
     def sendDataToBigQuery(self, data, destination):
@@ -125,13 +136,16 @@ class DodajTransakcje(QWidget):
     def __init__(self, 
                  currenciesDataFrame, 
                  instrumentTypesDataFrame,
-                 instrumentsDataFrame):
+                 instrumentsDataFrame,
+                 maxTransactionId):
         super().__init__()
 
         # Pobranie danych z klasy MainWindow (poprzez argumenty)
         self.currenciesDataFrame        = currenciesDataFrame
         self.instrumentTypesDataFrame   = instrumentTypesDataFrame
         self.instrumentsDataFrame       = instrumentsDataFrame
+        # Konwersja typu DataFrame na float
+        self.maxTransactionId           = maxTransactionId.iloc[0,0]
 
         # Ustawienie okna oraz załadowanie widgetów
         self.setWindowTitle("Transakcje")
@@ -388,10 +402,8 @@ class DodajTransakcje(QWidget):
         self.Tax_paid              = np.nan
         self.Tax_value             = np.nan
 
-        # Przypisanie wartości do zmiennych
-
-        # Do podpięcia transaction_id - SQL
-        #self.Transaction_id        = 
+        # Dodanie do obecnie ostatniego numeru transakcji wartości większej od 1
+        self.Transaction_id        = self.maxTransactionId + 1
         self.Transaction_date      = self.dateDateEdit.date().toString("yyyy-MM-dd")
         self.Transaction_type      = self.transactionsTypeComboBox.currentText()
 
@@ -405,9 +417,11 @@ class DodajTransakcje(QWidget):
         self.Currency              = self.currencyComboBox.currentText()
         self.Transaction_price     = self.priceLineEdit.text()
         self.Transaction_amount    = self.quantityLineEdit.text()
-        
-        # Do podpięcia instrument ID - SQL
-        # self.Instrument_id
+
+        # Na podstawie Tickera wyznaczam Instrument_id
+        self.Instrument_id         = self.instrumentsDataFrame.query(f"Ticker== '{self.instrumentComboBox.currentText()}'") \
+                                                                                 ['Instrument_id'] .\
+                                                                                 iloc[0]
         self.Commision_id          = self.commisionLineEdit.text()
         # self.Dirty_bond_price
         self.Tax_paid              = self.taxComboBox.currentText()
@@ -432,11 +446,14 @@ class DodajTransakcje(QWidget):
     # Metoda odpowiedzialna za wysłanie danych do BigQuery
     def sendDataToBigQuery(self):
         print("Wysyłam dane do BigQuery.")
+
+        # przypisuję do zmiennej wynik pracy metody przygotowującej dane do eksportu
         transaction_data_to_export = self.PrepareDataForBigQueryExport()
 
         # Tworzę obiekt BigQueryReaderAndExporter do eksportu danych do BQ
         bigQueryExporterObject = BigQueryReaderAndExporter()
         bigQueryExporterObject.sendDataToBigQuery(transaction_data_to_export, "Testowa destynacja")
+
 
 # Klasa tymczsowo nieaktywna - do wprowadzenia w przyszłości
 class InitialWindow(QMainWindow):
@@ -469,7 +486,7 @@ class MainWindow(QMainWindow):
         # danych z BigQuery, a następnie przypisanie wyniku pracy metody do zmiennych
         # Tą część będzie można ulepszyć - w tej chwili pobieranie danych powoduje zwiększenie czasu uruchamiania programu.
         # Warto będzie dodać okno wstępne z informacją o konieczności pobrania danych i oczekiwania.
-        self.currenciesDataFrame, self.instrumentTypesDataFrame, self.instrumentsDataFrame = \
+        self.currenciesDataFrame, self.instrumentTypesDataFrame, self.instrumentsDataFrame, self.maxTransactionId = \
             BigQueryReaderAndExporter().downloadDataFromBigQuery()
         self.addWidgets()
     
@@ -509,7 +526,8 @@ class MainWindow(QMainWindow):
     def addTransactions(self):
         self.dodajTransakcje = DodajTransakcje(self.currenciesDataFrame, 
                                                self.instrumentTypesDataFrame,
-                                               self.instrumentsDataFrame)
+                                               self.instrumentsDataFrame,
+                                               self.maxTransactionId)
         self.dodajTransakcje.show()
     
     # Zdefiniowane metody uruchamianej po naciśnięciu przycisku 'AddInstr'
