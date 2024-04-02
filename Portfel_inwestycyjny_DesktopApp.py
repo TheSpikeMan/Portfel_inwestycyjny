@@ -87,9 +87,49 @@ class BigQueryReaderAndExporter():
     
     # Metoda służy wysłaniu danych do BigQuery
     def sendDataToBigQuery(self, data, destination):
-        self.data          = data
-        self.destination   = destination
-        print("Wysyłam dane do BigQuery, cel: ", self.destination, ", dane: ", self.data)
+        self.data               = data
+        self.destination        = destination
+        print("Wysyłam dane do BigQuery, cel: ", self.destination)
+
+        client = bigquery.Client()
+
+        if self.destination     == "Dane transakcyjne":
+            self.destination    = f"{self.project}.{self.dataSetTransactions}.{self.tableTransactions}"
+            self.schema = [bigquery.SchemaField(name = 'Transaction_id', field_type = "INTEGER", \
+                                        mode = "REQUIRED"),
+                           bigquery.SchemaField(name = 'Transaction_date', field_type = "DATE",\
+                                        mode = "REQUIRED"),
+                           bigquery.SchemaField(name = 'Transaction_type', field_type = "STRING",\
+                                        mode = "REQUIRED"),
+                           bigquery.SchemaField(name = 'Currency', field_type = "STRING",\
+                                        mode = "REQUIRED"),
+                           bigquery.SchemaField(name = 'Transaction_price', field_type = "FLOAT",\
+                                        mode = "NULLABLE"),
+                           bigquery.SchemaField(name = 'Transaction_amount', field_type = "FLOAT",\
+                                        mode = "REQUIRED"),
+                           bigquery.SchemaField(name = 'Instrument_id', field_type = "INTEGER",\
+                                        mode = "REQUIRED"),
+                           bigquery.SchemaField(name = 'Commision_id', field_type = "FLOAT",\
+                                        mode = "NULLABLE"),
+                           bigquery.SchemaField(name = 'Tax_paid', field_type = "BOOLEAN",\
+                                        mode = "REQUIRED"),
+                           bigquery.SchemaField(name = 'Tax_value', field_type = "FLOAT",\
+                                        mode = "NULLABLE")
+                                        ]
+        else:
+            print("Brak zdefiniowanej schemy dla tego przypadku.")
+        
+        job_config = bigquery.LoadJobConfig(schema = self.schema,
+                                    write_disposition = "WRITE_APPEND")
+        
+        try:
+            job = client.load_table_from_dataframe(self.data, 
+                                                   self.destination,
+                                                   job_config = job_config)
+            job.result()
+            print("Dane zostały wyeksportowane do tabeli w BigQuery.")
+        except Exception as e:
+            print(f"Error uploading data to BigQuery: {str(e)}")
 
 class DodajInstrumentDoSlownika(QWidget):
 
@@ -300,6 +340,7 @@ class DodajTransakcje(QWidget):
         sendDataPushButton       = QPushButton()
         sendDataPushButton.setText("Wyślij dane do bazy")
         sendDataPushButton.pressed.connect(self.sendDataToBigQuery)
+        sendDataPushButton.clicked.connect(self.close)
         self.layout.addWidget(sendDataPushButton, 12, 1)
 
         # Wyjście do poprzedniego okna
@@ -405,6 +446,7 @@ class DodajTransakcje(QWidget):
         # Dodanie do obecnie ostatniego numeru transakcji wartości większej od 1
         self.Transaction_id        = self.maxTransactionId + 1
         self.Transaction_date      = self.dateDateEdit.date().toString("yyyy-MM-dd")
+        self.Transaction_date      = pd.to_datetime(self.Transaction_date, format = "%Y-%m-%d")
         self.Transaction_type      = self.transactionsTypeComboBox.currentText()
 
         if self.Transaction_type   == "Sprzedaż":
@@ -415,17 +457,17 @@ class DodajTransakcje(QWidget):
             self.Transaction_Type  = np.nan
         
         self.Currency              = self.currencyComboBox.currentText()
-        self.Transaction_price     = self.priceLineEdit.text()
-        self.Transaction_amount    = self.quantityLineEdit.text()
+        self.Transaction_price     = float(self.priceLineEdit.text())
+        self.Transaction_amount    = float(self.quantityLineEdit.text())
 
         # Na podstawie Tickera wyznaczam Instrument_id
         self.Instrument_id         = self.instrumentsDataFrame.query(f"Ticker== '{self.instrumentComboBox.currentText()}'") \
                                                                                  ['Instrument_id'] .\
                                                                                  iloc[0]
-        self.Commision_id          = self.commisionLineEdit.text()
+        self.Commision_id          = float(self.commisionLineEdit.text())
         # self.Dirty_bond_price
-        self.Tax_paid              = self.taxComboBox.currentText()
-        self.Tax_value             = self.taxValueLineEdit.text()
+        self.Tax_paid              = bool(self.taxComboBox.currentText())
+        self.Tax_value             = float(self.taxValueLineEdit.text())
 
         transaction_parameters = [self.Transaction_id,
                                   self.Transaction_date,
@@ -440,19 +482,37 @@ class DodajTransakcje(QWidget):
                                   self.Tax_value
                                   ]
         
-        transaction_parameters_dataFrame = pd.DataFrame(data=transaction_parameters)
+        columns                = ["Transaction_id",
+                                  "Transaction_date",
+                                  "Transaction_type",
+                                  "Currency",
+                                  "Transaction_price",
+                                  "Transaction_amount",
+                                  "Instrument_id",
+                                  "Commision_id",
+                                  "Dirty_bond_price",
+                                  "Tax_paid",
+                                  "Tax_value"
+                                  ]
+        
+        
+        transaction_parameters_dataFrame = pd.DataFrame(data=[transaction_parameters],
+                                                        columns = columns)
+        
         return transaction_parameters_dataFrame
         
     # Metoda odpowiedzialna za wysłanie danych do BigQuery
     def sendDataToBigQuery(self):
-        print("Wysyłam dane do BigQuery.")
 
         # przypisuję do zmiennej wynik pracy metody przygotowującej dane do eksportu
         transaction_data_to_export = self.PrepareDataForBigQueryExport()
+        self.destination           = "Dane transakcyjne"
 
         # Tworzę obiekt BigQueryReaderAndExporter do eksportu danych do BQ
         bigQueryExporterObject = BigQueryReaderAndExporter()
-        bigQueryExporterObject.sendDataToBigQuery(transaction_data_to_export, "Testowa destynacja")
+        bigQueryExporterObject.sendDataToBigQuery(transaction_data_to_export, self.destination)
+
+
 
 
 # Klasa tymczsowo nieaktywna - do wprowadzenia w przyszłości
