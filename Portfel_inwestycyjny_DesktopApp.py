@@ -36,6 +36,21 @@ class BigQueryReaderAndExporter():
         self.viewTransactionsView   = 'Transactions_view'
         self.viewCurrencies         = 'Currency_view'
     
+    def downloadLastTransactionId(self):
+        client = bigquery.Client(project      = self.project,
+                                location      = self.location)
+        
+        # Download last transaction id from BigQuery
+        queryMaxTransactionId = f"""
+        SELECT
+            MAX(Transaction_id)  AS Max_transaction_id
+        FROM `{self.project}.{self.dataSetTransactions}.{self.tableTransactions}`
+        """
+        query_job_max_transaction_id = client.query(query=queryMaxTransactionId)
+        self.maxTransactionId = query_job_max_transaction_id.to_dataframe()
+
+        return self.maxTransactionId
+    
     def downloadDataFromBigQuery(self):
 
         client = bigquery.Client(project    = self.project,
@@ -72,17 +87,7 @@ class BigQueryReaderAndExporter():
         query_job_instruments = client.query(query=queryInstruments)
         self.instrumentsDataFrame = query_job_instruments.to_dataframe()
 
-        # Download last transaction id from BigQuery
-        queryMaxTransactionId = f"""
-        SELECT
-            MAX(Transaction_id)  AS Max_transaction_id
-        FROM `{self.project}.{self.dataSetTransactions}.{self.tableTransactions}`
-        """
-        query_job_max_transaction_id = client.query(query=queryMaxTransactionId)
-        self.maxTransactionId = query_job_max_transaction_id.to_dataframe()
-
-
-        return self.currenciesDataFrame, self.instrumentTypesDataFrame, self.instrumentsDataFrame, self.maxTransactionId
+        return self.currenciesDataFrame, self.instrumentTypesDataFrame, self.instrumentsDataFrame
     
     
     # Metoda służy wysłaniu danych do BigQuery
@@ -184,6 +189,7 @@ class DodajTransakcje(QWidget):
         self.currenciesDataFrame        = currenciesDataFrame
         self.instrumentTypesDataFrame   = instrumentTypesDataFrame
         self.instrumentsDataFrame       = instrumentsDataFrame
+        
         # Konwersja typu DataFrame na float
         self.maxTransactionId           = maxTransactionId.iloc[0,0]
 
@@ -546,7 +552,7 @@ class MainWindow(QMainWindow):
         # danych z BigQuery, a następnie przypisanie wyniku pracy metody do zmiennych
         # Tą część będzie można ulepszyć - w tej chwili pobieranie danych powoduje zwiększenie czasu uruchamiania programu.
         # Warto będzie dodać okno wstępne z informacją o konieczności pobrania danych i oczekiwania.
-        self.currenciesDataFrame, self.instrumentTypesDataFrame, self.instrumentsDataFrame, self.maxTransactionId = \
+        self.currenciesDataFrame, self.instrumentTypesDataFrame, self.instrumentsDataFrame = \
             BigQueryReaderAndExporter().downloadDataFromBigQuery()
         self.addWidgets()
     
@@ -584,7 +590,9 @@ class MainWindow(QMainWindow):
     
     # Zdefiniowanie metody uruchamianej po naciśnięciu przycisku 'AddTransaction'
     def addTransactions(self):
-        self.dodajTransakcje = DodajTransakcje(self.currenciesDataFrame, 
+
+        self.maxTransactionId = BigQueryReaderAndExporter().downloadLastTransactionId()
+        self.dodajTransakcje  = DodajTransakcje(self.currenciesDataFrame, 
                                                self.instrumentTypesDataFrame,
                                                self.instrumentsDataFrame,
                                                self.maxTransactionId)
