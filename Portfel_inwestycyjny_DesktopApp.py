@@ -365,8 +365,10 @@ class DodajTransakcje(QWidget):
     # Metoda uruchamiająca się podczas zmiany typu instrumentu
     def instrumentTypeChanged(self):
         print("Zmieniono typ instrumentu")
-        self.instrumentComboBox.addItems(self.instrumentsDataFrame['Ticker'].to_list())
-    
+        print(self.instrumentsDataFrame.query(f"Instrument_type == '{self.instrumentTypeComboBox.currentText()}'")['Ticker'].to_list())
+        self.instrumentComboBox.clear()
+        self.instrumentComboBox.addItems(self.instrumentsDataFrame.query(f"Instrument_type == '{self.instrumentTypeComboBox.currentText()}'")['Ticker'].to_list())
+
     # Metoda sprawdza aktualny stan ComboBoxa i w zależności od niego definiuje widoczność lub nie pola 'self.taxValueLineEdit'
     def taxStateChosen(self, currentTextChanged):
         print("Zmieniono stan")
@@ -524,9 +526,7 @@ class DodajTransakcje(QWidget):
         bigQueryExporterObject.sendDataToBigQuery(transaction_data_to_export, self.destination)
 
 
-
-
-# Klasa tymczsowo nieaktywna - do wprowadzenia w przyszłości
+# Klasa tymczasowo nieaktywna - do wprowadzenia w przyszłości
 class InitialWindow(QMainWindow):
     def __init__(self):
         super().__init__()
