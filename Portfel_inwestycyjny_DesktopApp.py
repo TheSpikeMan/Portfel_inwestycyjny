@@ -76,6 +76,7 @@ class BigQueryReaderAndExporter():
         instrument_types              AS (SELECT * FROM `{self.project}.{self.dataSetDaneIntrumentow}.{self.tableInstrumentTypes}`)
 
         SELECT
+            instruments.Instrument_id         AS Instrument_id,
             instruments.Ticker                AS Ticker,
             instruments.Status                AS Status,
             instrument_types.Instrument_type  AS Instrument_type
@@ -365,7 +366,6 @@ class DodajTransakcje(QWidget):
     # Metoda uruchamiająca się podczas zmiany typu instrumentu
     def instrumentTypeChanged(self):
         print("Zmieniono typ instrumentu")
-        print(self.instrumentsDataFrame.query(f"Instrument_type == '{self.instrumentTypeComboBox.currentText()}'")['Ticker'].to_list())
         self.instrumentComboBox.clear()
         self.instrumentComboBox.addItems(self.instrumentsDataFrame.query(f"Instrument_type == '{self.instrumentTypeComboBox.currentText()}'")['Ticker'].to_list())
 
