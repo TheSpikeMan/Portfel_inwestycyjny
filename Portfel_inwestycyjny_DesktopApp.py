@@ -68,27 +68,28 @@ class BigQueryReaderAndExporter():
         query_job_currencies = client.query(query=queryCurrencies)
         self.currenciesDataFrame = query_job_currencies.to_dataframe()
 
-        # Downloading Instrument Types Data from Big Query
-        queryInstrumentTypes = f"""
-        SELECT
-            Instrument_type_id   AS Instrument_type_id,
-            Instrument_type      AS Instrument_type
-        FROM `{self.project}.{self.dataSetDaneIntrumentow}.{self.tableInstrumentTypes}`
-        """
-        query_job_instrument_types = client.query(query=queryInstrumentTypes)
-        self.instrumentTypesDataFrame = query_job_instrument_types.to_dataframe()
+        # Downloading Instruments and instrumen Types Data from Big Query
+   
+        query_Instrument_And_Instrument_Types = f"""
+        WITH
+        instruments                   AS (SELECT * FROM `{self.project}.{self.dataSetDaneIntrumentow}.{self.tableInstruments}`),
+        instrument_types              AS (SELECT * FROM `{self.project}.{self.dataSetDaneIntrumentow}.{self.tableInstrumentTypes}`)
 
-        # Download Instruments Data From Big Query
-        queryInstruments = f"""
-        SELECT *
-        FROM `{self.project}.{self.dataSetDaneIntrumentow}.{self.tableInstruments}`
+        SELECT
+            instruments.Ticker                AS Ticker,
+            instruments.Status                AS Status,
+            instrument_types.Instrument_type  AS Instrument_type
+        FROM instruments
+        LEFT JOIN instrument_types
+        ON instruments.Instrument_type_id   = instrument_types.Instrument_type_id
         ORDER BY Ticker ASC
         """
-        query_job_instruments = client.query(query=queryInstruments)
+
+        query_job_instruments = client.query(query=query_Instrument_And_Instrument_Types)
         self.instrumentsDataFrame = query_job_instruments.to_dataframe()
 
-        return self.currenciesDataFrame, self.instrumentTypesDataFrame, self.instrumentsDataFrame
-    
+        return self.currenciesDataFrame, self.instrumentsDataFrame
+
     
     # Metoda służy wysłaniu danych do BigQuery
     def sendDataToBigQuery(self, data, destination):
@@ -138,9 +139,8 @@ class BigQueryReaderAndExporter():
 
 class DodajInstrumentDoSlownika(QWidget):
 
-    def __init__(self, instrumentTypesDataFrame, instrumentsDataFrame):
+    def __init__(self, instrumentsDataFrame):
         super().__init__()
-        self.instrumentTypesDataFrame = instrumentTypesDataFrame
         self.instrumentsDataFrame     = instrumentsDataFrame
         print("Dodaję instrument do słownika.")
 
@@ -179,17 +179,15 @@ class DodajInstrumentDoSlownika(QWidget):
 class DodajTransakcje(QWidget):
 
     def __init__(self, 
-                 currenciesDataFrame, 
-                 instrumentTypesDataFrame,
+                 currenciesDataFrame,
                  instrumentsDataFrame,
                  maxTransactionId):
         super().__init__()
 
         # Pobranie danych z klasy MainWindow (poprzez argumenty)
         self.currenciesDataFrame        = currenciesDataFrame
-        self.instrumentTypesDataFrame   = instrumentTypesDataFrame
         self.instrumentsDataFrame       = instrumentsDataFrame
-        
+
         # Konwersja typu DataFrame na float
         self.maxTransactionId           = maxTransactionId.iloc[0,0]
 
@@ -247,7 +245,8 @@ class DodajTransakcje(QWidget):
 
         # Dodanie ComboBoxa do wyboru typu instrumentu finansowego
         self.instrumentTypeComboBox = QComboBox()
-        self.instrumentTypeComboBox.addItems(self.instrumentTypesDataFrame['Instrument_type'].to_list())
+        self.instrumentTypeComboBox.addItems(set(self.instrumentsDataFrame['Instrument_type'].to_list()))
+        self.instrumentTypeComboBox.currentTextChanged.connect(self.instrumentTypeChanged)
         self.layout.addWidget(self.instrumentTypeComboBox, 3, 1)
 
         # Dodanie QLabel do opisu typu instrumentu finansowego
@@ -362,6 +361,11 @@ class DodajTransakcje(QWidget):
         self.layout.setColumnStretch(1, 2)
         self.layout.setColumnStretch(2, 1)
         self.setLayout(self.layout)
+    
+    # Metoda uruchamiająca się podczas zmiany typu instrumentu
+    def instrumentTypeChanged(self):
+        print("Zmieniono typ instrumentu")
+        self.instrumentComboBox.addItems(self.instrumentsDataFrame['Ticker'].to_list())
     
     # Metoda sprawdza aktualny stan ComboBoxa i w zależności od niego definiuje widoczność lub nie pola 'self.taxValueLineEdit'
     def taxStateChosen(self, currentTextChanged):
@@ -514,6 +518,7 @@ class DodajTransakcje(QWidget):
         transaction_data_to_export = self.PrepareDataForBigQueryExport()
         self.destination           = "Dane transakcyjne"
 
+
         # Tworzę obiekt BigQueryReaderAndExporter do eksportu danych do BQ
         bigQueryExporterObject = BigQueryReaderAndExporter()
         bigQueryExporterObject.sendDataToBigQuery(transaction_data_to_export, self.destination)
@@ -552,7 +557,7 @@ class MainWindow(QMainWindow):
         # danych z BigQuery, a następnie przypisanie wyniku pracy metody do zmiennych
         # Tą część będzie można ulepszyć - w tej chwili pobieranie danych powoduje zwiększenie czasu uruchamiania programu.
         # Warto będzie dodać okno wstępne z informacją o konieczności pobrania danych i oczekiwania.
-        self.currenciesDataFrame, self.instrumentTypesDataFrame, self.instrumentsDataFrame = \
+        self.currenciesDataFrame, self.instrumentsDataFrame = \
             BigQueryReaderAndExporter().downloadDataFromBigQuery()
         self.addWidgets()
     
@@ -592,16 +597,14 @@ class MainWindow(QMainWindow):
     def addTransactions(self):
 
         self.maxTransactionId = BigQueryReaderAndExporter().downloadLastTransactionId()
-        self.dodajTransakcje  = DodajTransakcje(self.currenciesDataFrame, 
-                                               self.instrumentTypesDataFrame,
+        self.dodajTransakcje  = DodajTransakcje(self.currenciesDataFrame,
                                                self.instrumentsDataFrame,
                                                self.maxTransactionId)
         self.dodajTransakcje.show()
     
     # Zdefiniowane metody uruchamianej po naciśnięciu przycisku 'AddInstr'
     def addInstrument(self):
-        self.addInstrument = DodajInstrumentDoSlownika(self.instrumentTypesDataFrame,
-                                                       self.instrumentsDataFrame)
+        self.addInstrument = DodajInstrumentDoSlownika(self.instrumentsDataFrame)
         self.addInstrument.show()
         
 # Main part of the app
