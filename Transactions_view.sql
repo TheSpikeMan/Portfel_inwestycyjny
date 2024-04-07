@@ -137,18 +137,31 @@ Oznaczenie kolumn:
 pre_final_aggregation AS (
   SELECT
     *,
-    SUM(Transaction_amount_with_sign) 
-      OVER (PARTITION BY Ticker ORDER BY Transaction_date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS transaction_date_ticker_amount,
-    SUM(Transaction_amount) 
-      OVER (PARTITION BY Ticker, Transaction_type_group ORDER BY Transaction_date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) 
-      AS transaction_date_buy_ticker_amount,
-    CASE
-      WHEN Transaction_type_group = 'Sell_amount' THEN SUM(Transaction_amount) 
-      OVER (PARTITION BY Ticker, Transaction_type_group ORDER BY Transaction_date ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
+    SUM(Transaction_amount_with_sign) OVER transaction_amount_until_transaction_date AS transaction_date_ticker_amount,
+    SUM(Transaction_amount)           OVER transaction_amount_with_type_until_transaction_date AS transaction_date_buy_ticker_amount,
+    CASE WHEN Transaction_type_group = 'Sell_amount' THEN SUM(Transaction_amount) OVER transaction_sell_amount_window
     ELSE NULL
     END AS cumulative_sell_amount_per_ticker
   FROM
     intermediate_aggregation
+  WINDOW
+    transaction_amount_until_transaction_date AS (
+            PARTITION BY Ticker 
+            ORDER BY Transaction_date 
+            ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+    ),
+
+    transaction_amount_with_type_until_transaction_date AS (
+            PARTITION BY Ticker, Transaction_type_group 
+            ORDER BY Transaction_date 
+            ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+    ),
+
+    transaction_sell_amount_window AS (
+      PARTITION BY Ticker, Transaction_type_group 
+      ORDER BY Transaction_date 
+      ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+    )
 ),
  
 almost_final_aggregation AS (
