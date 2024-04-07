@@ -89,7 +89,31 @@ class BigQueryReaderAndExporter():
         query_job_instruments = client.query(query=query_Instrument_And_Instrument_Types)
         self.instrumentsDataFrame = query_job_instruments.to_dataframe()
 
-        return self.currenciesDataFrame, self.instrumentsDataFrame
+        # downloading transactions data
+        query_transactions = f"""
+        SELECT
+            instruments.instrument_id                           AS Ticker_id,
+            instruments.Ticker                              AS Ticker,
+            transactions.transaction_date_ticker_amount     AS Amount
+        FROM `{self.project}.{self.dataSetTransactions}.{self.viewTransactionsView}` AS transactions
+        LEFT JOIN `{self.project}.{self.dataSetDaneIntrumentow}.{self.tableInstruments}` AS instruments
+        ON transactions.Instrument_id = instruments.Instrument_id
+        WHERE instruments.status = 1
+        QUALIFY 
+        TRUE
+        AND ROW_NUMBER() OVER last_transaction_date_amount = 1
+        WINDOW
+        last_transaction_date_amount AS (
+            PARTITION BY Ticker
+            ORDER BY Transaction_date DESC
+        )
+        ORDER BY
+        Ticker
+        """
+        query_job_transactions = client.query(query=query_transactions)
+        self.transactionsDataFrame = query_job_transactions.to_dataframe()
+
+        return self.currenciesDataFrame, self.instrumentsDataFrame, self.transactionsDataFrame
 
     
     # Metoda służy wysłaniu danych do BigQuery
@@ -182,12 +206,14 @@ class DodajTransakcje(QWidget):
     def __init__(self, 
                  currenciesDataFrame,
                  instrumentsDataFrame,
+                 transactionsDataFrame,
                  maxTransactionId):
         super().__init__()
 
         # Pobranie danych z klasy MainWindow (poprzez argumenty)
         self.currenciesDataFrame        = currenciesDataFrame
         self.instrumentsDataFrame       = instrumentsDataFrame
+        self.transactionsDataFrame      = transactionsDataFrame
 
         # Konwersja typu DataFrame na float
         self.maxTransactionId           = maxTransactionId.iloc[0,0]
@@ -467,6 +493,7 @@ class DodajTransakcje(QWidget):
             self.Transaction_type  = "Buy"
         else:
             self.Transaction_Type  = np.nan
+
     
         self.Currency              = self.currencyComboBox.currentText()
         if self.priceLineEdit.text():
@@ -484,6 +511,12 @@ class DodajTransakcje(QWidget):
         self.Tax_paid              = bool(self.taxComboBox.currentText())
         if self.taxValueLineEdit.text():
             self.Tax_value             = float(self.taxValueLineEdit.text())
+
+        #if self.valueLineEdit.text():
+        #    if self.Transaction_type == "Dywidenda":
+        #        self.Transaction_price     = self.valueLineEdit.text()/ \
+        #        (self.transactionsDataFrame.query(f"Ticker== '{self.instrumentComboBox.currentText()}'")['Amount'].iloc[0])/ \
+        #        (self.currentCurrency)
 
         transaction_parameters = [self.Transaction_id,
                                   self.Transaction_date,
@@ -561,7 +594,7 @@ class MainWindow(QMainWindow):
         # danych z BigQuery, a następnie przypisanie wyniku pracy metody do zmiennych
         # Tą część będzie można ulepszyć - w tej chwili pobieranie danych powoduje zwiększenie czasu uruchamiania programu.
         # Warto będzie dodać okno wstępne z informacją o konieczności pobrania danych i oczekiwania.
-        self.currenciesDataFrame, self.instrumentsDataFrame = \
+        self.currenciesDataFrame, self.instrumentsDataFrame, self.transactionsDataFrame = \
             BigQueryReaderAndExporter().downloadDataFromBigQuery()
         self.addWidgets()
     
@@ -603,6 +636,7 @@ class MainWindow(QMainWindow):
         self.maxTransactionId = BigQueryReaderAndExporter().downloadLastTransactionId()
         self.dodajTransakcje  = DodajTransakcje(self.currenciesDataFrame,
                                                self.instrumentsDataFrame,
+                                               self.transactionsDataFrame,
                                                self.maxTransactionId)
         self.dodajTransakcje.show()
     
