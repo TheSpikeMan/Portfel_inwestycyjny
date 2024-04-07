@@ -467,19 +467,23 @@ class DodajTransakcje(QWidget):
             self.Transaction_type  = "Buy"
         else:
             self.Transaction_Type  = np.nan
-        
+    
         self.Currency              = self.currencyComboBox.currentText()
-        self.Transaction_price     = float(self.priceLineEdit.text())
-        self.Transaction_amount    = float(self.quantityLineEdit.text())
+        if self.priceLineEdit.text():
+            self.Transaction_price     = float(self.priceLineEdit.text())
+        if self.quantityLineEdit.text():
+            self.Transaction_amount    = float(self.quantityLineEdit.text())
 
         # Na podstawie Tickera wyznaczam Instrument_id
         self.Instrument_id         = self.instrumentsDataFrame.query(f"Ticker== '{self.instrumentComboBox.currentText()}'") \
                                                                                  ['Instrument_id'] .\
                                                                                  iloc[0]
-        self.Commision_id          = float(self.commisionLineEdit.text())
+        if self.commisionLineEdit.text():
+            self.Commision_id          = float(self.commisionLineEdit.text())
         # self.Dirty_bond_price
         self.Tax_paid              = bool(self.taxComboBox.currentText())
-        self.Tax_value             = float(self.taxValueLineEdit.text())
+        if self.taxValueLineEdit.text():
+            self.Tax_value             = float(self.taxValueLineEdit.text())
 
         transaction_parameters = [self.Transaction_id,
                                   self.Transaction_date,
