@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import (
     QComboBox, 
     QLineEdit,
     QCalendarWidget)
-from PyQt6.QtCore import QSize, Qt, QDate
+from PyQt6.QtCore import QSize, Qt, QDate, QEvent
 from PyQt6.QtGui import QFont
 from google.cloud import bigquery
 import pandas as pd
@@ -293,6 +293,7 @@ class DodajTransakcje(QWidget):
 
         # Dodanie pola do wpisania ilości zakupionego waloru
         self.quantityLineEdit         = QLineEdit()
+        self.quantityLineEdit.installEventFilter(self)
         self.layout.addWidget(self.quantityLineEdit, 5, 1)
 
         # Dodanie QLabel do opisu ceny instrumentu podlegającego transakcji
@@ -302,6 +303,8 @@ class DodajTransakcje(QWidget):
 
         # Dodanie pola do ceny zakupionego waloru
         self.priceLineEdit            = QLineEdit()
+        self.priceLineEdit.installEventFilter(self)
+        self.dot_entered = False
         self.layout.addWidget(self.priceLineEdit, 6, 1)
 
         # Dodanie ComboBoxa do wyboru waluty instrumentu finansowego
@@ -331,6 +334,7 @@ class DodajTransakcje(QWidget):
 
         # Dodanie pola do prowizji zakupionego waloru
         self.commisionLineEdit          = QLineEdit()
+        self.commisionLineEdit.installEventFilter(self)
         self.layout.addWidget(self.commisionLineEdit, 8, 1)
 
         # Dodanie QLabel do opisu wartośći instrumentu podlegającego transakcji
@@ -340,6 +344,7 @@ class DodajTransakcje(QWidget):
 
         # Dodanie pola do wpisania wartości
         self.valueLineEdit              = QLineEdit()
+        self.valueLineEdit.installEventFilter(self)
         self.layout.addWidget(self.valueLineEdit, 9, 1)
 
         # Dodanie przycisku do przeliczenia wartości
@@ -366,6 +371,7 @@ class DodajTransakcje(QWidget):
 
         # Dodanie pola do wpisania wartości podatku
         self.taxValueLineEdit              = QLineEdit()
+        self.taxValueLineEdit.installEventFilter(self)
         self.layout.addWidget(self.taxValueLineEdit, 11, 1)
 
         # Dodanie przycisku do wysłania danych do BigQuery
@@ -388,6 +394,44 @@ class DodajTransakcje(QWidget):
         self.layout.setColumnStretch(1, 2)
         self.layout.setColumnStretch(2, 1)
         self.setLayout(self.layout)
+
+    # Metoda maskująca wprowadzane dane. Ograniczenie do danych liczbowych, backspace'a oraz pojedynczej kropki.
+    def eventFilter(self, obj, event):
+        if (obj is self.priceLineEdit or
+            obj is self.commisionLineEdit or
+            obj is self.valueLineEdit or
+            obj is self.taxValueLineEdit) and event.type() == QEvent.Type.KeyPress:
+            key = event.key()
+            if obj is self.priceLineEdit:
+                text = self.priceLineEdit.text()
+            elif  obj is self.commisionLineEdit:
+                text = self.commisionLineEdit.text()
+            elif  obj is self.valueLineEdit:
+                text = self.valueLineEdit.text()
+            elif  obj is self.taxValueLineEdit:
+                text = self.taxValueLineEdit.text()
+            if key == Qt.Key.Key_Backspace:
+                if '.' in text:
+                    self.dot_entered = False  # Resetuj dot_entered, jeśli usunięto kropkę
+                return False  # Pozwól na obsługę backspace
+            if key == Qt.Key.Key_Period:
+                if '.' in text:
+                    return True  # Jeśli już jest kropka, zablokuj kolejną
+                else:
+                    self.dot_entered = True
+                    return False  # Pozwól na wprowadzenie kropki
+            if not event.text().isnumeric() and key != Qt.Key.Key_Period:  # Sprawdź, czy wprowadzony znak nie jest cyfrą
+                return True
+    
+        elif obj is self.quantityLineEdit and event.type() == QEvent.Type.KeyPress:
+            key = event.key()
+            if key == Qt.Key.Key_Backspace:
+                return False # Pozwól na obsługę Backspace
+            if not event.text().isnumeric():
+                return True
+            
+        return super().eventFilter(obj, event)
+
     
     # Metoda uruchamiająca się podczas zmiany typu instrumentu
     def instrumentTypeChanged(self):
@@ -508,7 +552,12 @@ class DodajTransakcje(QWidget):
         if self.commisionLineEdit.text():
             self.Commision_id          = float(self.commisionLineEdit.text())
         # self.Dirty_bond_price
-        self.Tax_paid              = bool(self.taxComboBox.currentText())
+        print(bool(self.taxComboBox.currentText()))
+        self.Tax_paid                  = self.taxComboBox.currentText()
+        if self.Tax_paid               == "Tak":
+            self.Tax_paid              = True
+        elif self.Tax_paid             == "Nie":
+            self.Tax_paid              = False
         if self.taxValueLineEdit.text():
             self.Tax_value             = float(self.taxValueLineEdit.text())
 
