@@ -24,21 +24,7 @@ W kroku tym każdej transakcji przyporządkowany jest numer, którego zasada prz
 - Wszystkim transakcjom przypisz numerację, od najnowszej transakcji do najstarszej
 
 W kroku tym wyciągana jest ostatnia operacja (zakup, sprzedaż instrumentu) dla danego Tickera.
-*/
 
-initial_aggregation AS (
-  SELECT
-    *,
-    ROW_NUMBER() OVER(PARTITION BY Ticker ORDER BY Transaction_date DESC) AS last_transaction_id
-  FROM
-    transaction_view
-  WHERE
-    Transaction_type_group IN ('Buy_amount', 'Sell_amount')
-),
-
-
- -- MED AGGREGATION --
-/*
 Wyciągnięcie tickerów instrumentów, które znajdują się w aktualnym porfelu.
 Następie następuje wyciągnięcie tickerów instrumentów, które znajdują się w aktualnym porfelu.
 Uwzględniamy tylko takie, które posiadają niezerowe wolumeny (posiadamy je w portfelu).
@@ -46,14 +32,19 @@ Uwzględniamy tylko takie, które posiadają niezerowe wolumeny (posiadamy je w 
 
 med_aggregation AS (
   SELECT
-    Ticker AS Ticker,
+    Ticker
   FROM
-    initial_aggregation
+    transaction_view
   WHERE
-    last_transaction_id = 1 AND
-    transaction_date_ticker_amount <> 0
+    Transaction_type_group IN ('Buy_amount', 'Sell_amount')
+    AND transaction_date_ticker_amount <> 0
+  QUALIFY TRUE
+    AND ROW_NUMBER() OVER last_transaction_window = 1
+  WINDOW
+    last_transaction_window AS (
+      PARTITION BY Ticker ORDER BY Transaction_date DESC
+    )
 ),
-
 
 -- INTERMEDIATE AGGREGATION --
 /*
@@ -78,7 +69,7 @@ intermediate_aggregation AS (
   ON transaction_view.Ticker = med_aggregation.Ticker
   WHERE
     Transaction_type_group IN ('Buy_amount', 'Sell_amount')
-  AND transaction_date_ticker_amount <> 0
+    AND transaction_date_ticker_amount <> 0
   ),
 
 -- MINIMUM BUY DATES FOR TICKERS --
@@ -120,7 +111,8 @@ present_instruments_view AS (
     Ticker,
     Name,
     Currency AS currency_exposure,
-    MAX(transaction_date_ticker_amount) AS ticker_present_amount,
+    MAX(transaction_date_ticker_amount) AS ticker_present_amount, --> Do przebudowy w tym miejscu.
+    -- Warto skorzystać z transaction_date_ticker_amount dla ostatniej transakcji. Wskaże on ilość instrumentu.
     MAX(age_of_instrument) AS max_age_of_instrument,
     ROUND(SUM(transaction_value_pln), 2) AS ticker_buy_value,
     ROUND(SUM(transaction_value_pln)/MAX(transaction_date_ticker_amount), 2) AS ticker_average_close
