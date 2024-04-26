@@ -9,39 +9,37 @@ W tym kroku pobierane są dane:
 */
 
 WITH 
+-- Przechowuje dane transakcji giełdowych
 transactions_data AS (SELECT * FROM `projekt-inwestycyjny.Transactions.Transactions`),
-currency_data AS (SELECT * FROM `projekt-inwestycyjny.Waluty.Currency`),
-tickers_data AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instruments`),
+-- Przechowuje informacje o kursach walut na dany dzień
+currency_data_raw AS (SELECT * FROM `projekt-inwestycyjny.Waluty.Currency`),
+-- Przechowuje dane instrumentów finansowych
+instruments_data AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instruments`),
+-- Przechowuje dane typów instrumentów finansowych
 instruments_types AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instrument_types`),
-unique_dates AS (SELECT DISTINCT Currency_date FROM currency_data),
+-- Przechowuje pzypisanie dat do kwartałów -- DO ROZWAŻENIA USUNIĘCIE
 calendar_dates AS (SELECT * FROM `projekt-inwestycyjny.Calendar.Dates`),
+-- Przechowuje dane giełdowe instrumentów finansowych
 daily AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Daily`),
 
--- DATES AGGREAGTION --
-/*
-Widok stworzony na potrzeby wyznaczania ostatniego dnia roboczego danej transakcji.
-Do daty transakcji przypisywany jest ostatni dzień wyznaczenia kursu walutowego wobec danej dany, za pomocą funkcji LAG.
-*/
 
-dates_list AS (
-  SELECT DISTINCT 
-    Currency_date as Currency_date,
-    LAG(Currency_date) OVER(ORDER BY Currency_date) as last_working_day
-  FROM
-    unique_dates
-  ORDER BY Currency_date
+currency_data AS (
+  SELECT
+    Currency_date                                   AS Currency_date,
+    Currency                                        AS Currency,
+    Currency_close                                  AS Currency_close,
+    -- Ostatni dzień roboczy
+    LAG(Currency_date)  OVER currency_window        AS last_working_day,
+    -- Kurs walutowy z ostatniego dnia roboczego
+    LAG(Currency_close) OVER currency_window        AS last_currency_close
+  FROM currency_data_raw
+  QUALIFY TRUE
+  WINDOW
+    currency_window AS (
+      PARTITION BY Currency
+      ORDER BY Currency_date
+    )
 ),
-
--- DAILY DATA --
-/*
-Widok stworzony w celu pobraniu danych kursów instrumentów na dany moment. 
-*/
-
-daily_data AS (
-  SELECT *
-  FROM daily
-),
-
 -- INITIAL AGGREGATION --
 /*
 W kroku tym pobierane są wszystkie dane transakcyjne, a następnie dołączane do nich dane tickerów oraz dane z kwerendy określającej ostatnią datę wyznaczenia kursu walutowego.
@@ -49,80 +47,53 @@ W kroku tym pobierane są wszystkie dane transakcyjne, a następnie dołączane 
 
 initial_aggregation AS (
   SELECT 
-    * EXCEPT (Instrument_id, Currency, Instrument_type_id, Ticker),
-    tickers_data.Instrument_id,
-    tickers_data.Ticker,
-    transactions_data.Currency,
-    instruments_types.Instrument_type_id
-  FROM transactions_data
-  LEFT JOIN tickers_data
-  ON transactions_data.Instrument_id = tickers_data.Instrument_id
-  LEFT JOIN instruments_types
-  ON tickers_data.Instrument_type_id = instruments_types.Instrument_type_id
-  LEFT JOIN dates_list
-  ON transactions_data.Transaction_date = dates_list.Currency_date
-  LEFT JOIN daily
-  ON tickers_data.Ticker = daily.Ticker
-  AND transactions_data.Transaction_date = daily.Date
-),
-
--- DATA MID AGGREGATION --
-/*
-W kolejnym kroku wyciągane są wszystkie dane z poprzedniego widoku oraz dokładane:
-- dane walutowe na podstawie połączenia ostatniego dnia roboczego z poprzedniego kroku oraz dnia wyznaczenia wartości waluty,
-- dane kalendarzowe w celu podpięcia odpowiedniego kwartał pod dane.
-Wyznaczana jest dodatkowo wartość transakcji w jednostkch PLN.
-*/
-
-data_mid_aggregation AS (
-  SELECT
-    * EXCEPT (Currency_date, Currency, Currency_close, Date),
-    IFNULL(currency_data.Currency_date, transaction_date) as Currency_data,
-    initial_aggregation.Currency as Currency,
-    IFNULL(currency_data.Currency_close, 1) as Currency_close,
+    * EXCEPT (Instrument_id, Currency, Instrument_type_id, Ticker, Currency_date, last_currency_close),
+    instruments_data.Instrument_id                           AS Instrument_id,                       
+    instruments_data.Ticker                                  AS Ticker,
+    transactions_data.Currency                               AS Currency,
+    instruments_types.Instrument_type_id                     AS Instrument_type_id,
+    COALESCE(currency_data.Currency_date, Transaction_date)  AS Currency_date,
+    COALESCE(currency_data.last_currency_close, 1)           AS last_currency_close,
+    -- Utworzenie kolumny, która przechowuje wartość transakcji w PLN
+    ROUND(
+      Transaction_amount *
+      Transaction_price *
+      COALESCE(currency_data.last_currency_close, 1)
+      , 2)                                                   AS Transaction_value_pln,
+    -- Utworzenie grupy instrumentów, dla rozliczeń podatkowych
     CASE
-      WHEN initial_aggregation.Currency = 'PLN' THEN ROUND(Transaction_amount * Transaction_price, 2)
-    ELSE ROUND (Transaction_amount * Transaction_price * Currency_close, 2)
-    END AS Transaction_value_pln,
-    CASE
-      WHEN Transaction_type = 'Sell' THEN 'Sell_amount'
-      WHEN Transaction_type = 'Wykup' THEN 'Sell_amount'
-      WHEN Transaction_type = 'Buy' THEN 'Buy_amount'
+      WHEN Transaction_type = 'Sell'      THEN 'Sell_amount'
+      WHEN Transaction_type = 'Wykup'     THEN 'Sell_amount'
+      WHEN Transaction_type = 'Buy'       THEN 'Buy_amount'
       WHEN Transaction_type = 'Dywidenda' THEN 'Div_related_amount'
-      WHEN Transaction_type = 'Odsetki' THEN 'Div_related_amount'
+      WHEN Transaction_type = 'Odsetki'   THEN 'Div_related_amount'
     ELSE NULL
-    END AS Transaction_type_group
-  FROM initial_aggregation
-  LEFT JOIN currency_data
-  ON currency_data.Currency_date = initial_aggregation.last_working_day
-  AND currency_data.Currency = initial_aggregation.Currency 
-  LEFT JOIN calendar_dates
-  ON calendar_dates.Date = initial_aggregation.Transaction_date
-  ORDER BY initial_aggregation.Transaction_id DESC
-),
-
--- INTERMEDIATE AGGREGATION --
-/*
-W kroku tym dokonywana jest przypisanie do wolumentu oraz sprzedaży wartości znaku:
-- Dla wolumenu i wartości zakupowych przyjęty jest znak "+"
-- Dla wolumenu i wartośći sprzedażowych (oraz wykupu) przyjęty jest znak "-"
-
-Dodatkowo obliczany jest wiek instrumentu w postaci zmiennej age_of_instrument
-*/
-
-intermediate_aggregation AS (
-  SELECT
-    *,
+    END                                                      AS Transaction_type_group,
     CASE
-      WHEN Transaction_type_group = 'Buy_amount' THEN Transaction_amount
-      WHEN Transaction_type_group = 'Sell_amount' THEN (-1) * Transaction_amount
-      WHEN Transaction_type_group = 'Div_related_amount' THEN 0
-    ELSE 0
-    END AS Transaction_amount_with_sign,
-    DATE_DIFF(CURRENT_DATE(), Transaction_date, DAY) AS age_of_instrument
-  FROM data_mid_aggregation
+      WHEN Transaction_type = 'Sell'      THEN SAFE_NEGATE(Transaction_amount)
+      WHEN Transaction_type = 'Wykup'     THEN SAFE_NEGATE(Transaction_amount)
+      WHEN Transaction_type = 'Buy'       THEN Transaction_amount
+      WHEN Transaction_type = 'Dywidenda' THEN 0
+      WHEN Transaction_type = 'Odsetki'   THEN 0
+    END                                                      AS Transaction_amount_with_sign,  
+    -- Liczba dni, która upłynęła od transakcji do dnia dzisiejszego                          
+    DATE_DIFF(CURRENT_DATE(), Transaction_date, DAY)         AS age_of_instrument
+  FROM transactions_data
+  -- Połączenie z danymi instrumentów
+  LEFT JOIN instruments_data
+  ON transactions_data.Instrument_id = instruments_data.Instrument_id
+  -- Połączenie z danymi typów instrumentów
+  LEFT JOIN instruments_types
+  ON instruments_data.Instrument_type_id = instruments_types.Instrument_type_id
+  -- Połączenie z danymi giełdowymi
+  LEFT JOIN daily
+  ON instruments_data.Ticker = daily.Ticker
+  AND transactions_data.Transaction_date = daily.Date
+  -- Połączanie z danymi walutowymi
+  LEFT JOIN currency_data
+  ON transactions_data.Transaction_date  = currency_data.Currency_date
+  AND transactions_data.Currency          = currency_data.Currency
 ),
-
 
 -- PRE FINAL AGGREGATION --
 /*
@@ -134,16 +105,20 @@ Oznaczenie kolumn:
 - cumulative_sell_amoutn_per_ticker - jest to łączna, niezależna od daty transakcji wartość wolumenu sprzedanego danego instrumentu
 */
 
+
+-- DO POPRAWKI OD TEGO MIEJSCA
+
 pre_final_aggregation AS (
   SELECT
     *,
-    SUM(Transaction_amount_with_sign) OVER transaction_amount_until_transaction_date AS transaction_date_ticker_amount,
+    SUM(Transaction_amount_with_sign) OVER transaction_amount_until_transaction_date           AS transaction_date_ticker_amount,
     SUM(Transaction_amount)           OVER transaction_amount_with_type_until_transaction_date AS transaction_date_buy_ticker_amount,
-    CASE WHEN Transaction_type_group = 'Sell_amount' THEN SUM(Transaction_amount) OVER transaction_sell_amount_window
+    CASE 
+      WHEN Transaction_type_group = 'Sell_amount' THEN SUM(Transaction_amount) OVER transaction_sell_amount_window
     ELSE NULL
     END AS cumulative_sell_amount_per_ticker
   FROM
-    intermediate_aggregation
+    initial_aggregation
   WINDOW
     transaction_amount_until_transaction_date AS (
             PARTITION BY Ticker 
