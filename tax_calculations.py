@@ -65,7 +65,7 @@ for index, transaction in enumerate(transactions_df.iterrows()):
             amount_sold_total   = transaction[1]['Transaction_amount']
             ticker_search       = ticker
             price_sold          = transaction[1]['Transaction_price']
-            currency_sold       = transaction[1]['Currency_close']
+            currency_sold       = transaction[1]['last_currency_close']
             commision_sold      = transaction[1]['Commision_id']
             instrument_type     = transaction[1]['Instrument_type']
             country             = transaction[1]['Country']
@@ -94,7 +94,7 @@ for index, transaction in enumerate(transactions_df.iterrows()):
             elif transaction[1]['Instrument_type'] == "Obligacje korporacyjne":
                 price_bought    = transactions_df.loc[k, 'Dirty_bond_price']
 
-            currency_bought     = transactions_df.loc[k, 'Currency_close']
+            currency_bought     = transactions_df.loc[k, 'last_currency_close']
 
             # 13. Dodanie wartości zapłaconej prowizji przy transakcji zakupu.
             commision_buy_paid  = transactions_df.loc[k, 'Commision_id']
@@ -138,10 +138,10 @@ for index, transaction in enumerate(transactions_df.iterrows()):
                            instrument_headquarter,
                            ticker,
                            ticker_id, 
-                           (Amount * price_bought * currency_bought + commision_buy_paid  + commision_sell_paid).round(2),
-                           (Amount * price_sold * currency_sold).round(2),
-                           (Amount * price_sold * currency_sold).round(2) - 
-                                (Amount * price_bought * currency_bought + commision_buy_paid  + commision_sell_paid).round(2),
+                           round((Amount * price_bought * currency_bought + commision_buy_paid  + commision_sell_paid), 2),
+                           round((Amount * price_sold * currency_sold), 2),
+                           round((Amount * price_sold * currency_sold).round(2) - 
+                                (Amount * price_bought * currency_bought + commision_buy_paid  + commision_sell_paid), 2),
                            tax_paid,
                            tax_value
                            ]
@@ -156,7 +156,7 @@ for index, transaction in enumerate(transactions_df.iterrows()):
             dividend_interest_payment_date   = transaction[1]['Transaction_date']
             dividend_interest_amount         = transaction[1]['Transaction_amount']
             dividend_interest_value          = transaction[1]['Transaction_price']
-            dividend_interest_currency_value = transaction[1]['Currency_close']
+            dividend_interest_currency_value = transaction[1]['last_currency_close']
             dividend_interest_ticker         = transaction[1]['Ticker']
             dividend_interest_ticker_id      = transaction[1]['Instrument_id']
             dividend_interest_currency       = transaction[1]['Currency']
