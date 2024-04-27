@@ -185,7 +185,7 @@ final_aggregation AS (
     instrument_type_window_until_transaction_day_window AS (
       PARTITION BY Instrument_type_id
       ORDER BY Transaction_date
-      ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+      ROWS BETWEEN CURRENT ROW AND CURRENT ROW
     ),
     instrument_window AS (
       PARTITION BY Ticker
