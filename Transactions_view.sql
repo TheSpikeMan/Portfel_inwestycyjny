@@ -1,11 +1,11 @@
--- IMPORTING THE DATA INTO TABLES -- 
+
 /*
 W tym kroku pobierane są dane:
-- transakcyjne, przechowujące dane o transakcjach finansowych,
-- walutowe, przechowujące dane o wartości walut USD oraz EUR,
-- dane instrumentów finansowych (tickery),
-- dane dat wyznaczania wartości walut USD oraz EUR, dla celów wyznaczenia kursu walutowego z poprzedniego dnia roboczego,
-- dane kalendarzowe, dla celów podpięcia kwartału do daty transakcji.
+- transakcyjne, przechowujące informacje o transakcjach finansowych,
+- walutowe, przechowujące informacje o wartości walut USD oraz EUR na dany dzień względem PLN,
+- instrumentów, przechowujące informacje o instrumentach finasowych,
+- o typach instrumentów finansowych,
+- dziennych kursów giełdowych
 */
 
 WITH 
@@ -17,12 +17,11 @@ currency_data_raw AS (SELECT * FROM `projekt-inwestycyjny.Waluty.Currency`),
 instruments_data AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instruments`),
 -- Przechowuje dane typów instrumentów finansowych
 instruments_types AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instrument_types`),
--- Przechowuje pzypisanie dat do kwartałów -- DO ROZWAŻENIA USUNIĘCIE
-calendar_dates AS (SELECT * FROM `projekt-inwestycyjny.Calendar.Dates`),
 -- Przechowuje dane giełdowe instrumentów finansowych
 daily AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Daily`),
 
-
+-- CURRENCY_DATA --
+/* Przechowuje informacje o kursach walutowych, wraz z wyznaczeniem kursu walutowego na dzień poprzedni */
 currency_data AS (
   SELECT
     Currency_date                                   AS Currency_date,
@@ -40,12 +39,20 @@ currency_data AS (
       ORDER BY Currency_date
     )
 ),
--- INITIAL AGGREGATION --
+
+
+-- DATA AGGREGATED --
 /*
-W kroku tym pobierane są wszystkie dane transakcyjne, a następnie dołączane do nich dane tickerów oraz dane z kwerendy określającej ostatnią datę wyznaczenia kursu walutowego.
+Połączenie wszystkich danych.
+Wyznaczenie wskaźników:
+- Kwartału,
+- Wartość transakcji w PLN,
+- Grupy transakcyjnej,
+- Wolumenu transakcji wraz ze znakiem,
+- Liczby dni, która upłynęła od danej transakcji.
 */
 
-initial_aggregation AS (
+data_aggregated AS (
   SELECT 
     * EXCEPT (Instrument_id, Currency, Instrument_type_id, Ticker, Currency_date, last_currency_close),
     instruments_data.Instrument_id                           AS Instrument_id,                       
@@ -54,6 +61,12 @@ initial_aggregation AS (
     instruments_types.Instrument_type_id                     AS Instrument_type_id,
     COALESCE(currency_data.Currency_date, Transaction_date)  AS Currency_date,
     COALESCE(currency_data.last_currency_close, 1)           AS last_currency_close,
+    CASE 
+      WHEN EXTRACT(QUARTER FROM Transaction_date) = 1        THEN "I kwartał"
+      WHEN EXTRACT(QUARTER FROM Transaction_date) = 2        THEN "II kwartał"
+      WHEN EXTRACT(QUARTER FROM Transaction_date) = 3        THEN "III kwartał"
+      WHEN EXTRACT(QUARTER FROM Transaction_date) = 4        THEN "IV kwartał"
+    END                                                      AS Quarter,
     -- Utworzenie kolumny, która przechowuje wartość transakcji w PLN
     ROUND(
       Transaction_amount *
@@ -97,39 +110,44 @@ initial_aggregation AS (
 
 -- PRE FINAL AGGREGATION --
 /*
-W tym kroku wyznaczona jest wartość instrumentu oraz jego wolumen, in total, na moment transakcji.
-Dodatkowo wyznaczona jest łączna wartość sprzedaży - wyświetlana wyłącznie dla typu 'Sell' oraz łączna wartość zakupów po typie 'Buy'.
 Oznaczenie kolumn:
-- transaction_date_buy_ticker_amount - suma wolumenu zakupowego lub sprzedażowego na moment transakcji - wartość jest sumowana po typie transakcji (buy/sell)
-- transaction_date_ticker_amount - suma wolumenu uwzględniająca rodzaj transakcji - jest to aktualna ilość wolumenu danego instrumentu na moment transakcji
+- transaction_date_buy_ticker_amount - suma wolumenu zakupowego lub sprzedażowego na moment transakcj. 
+Wartość jest sumowana po typie transakcji (buy/sell).
+- transaction_date_ticker_value - wartość giełdowa instrumentu finansowego na moment transakcji.
+- transaction_date_ticker_amount - suma wolumenu uwzględniająca rodzaj transakcji. 
+Jest to aktualna ilość wolumenu danego instrumentu na moment transakcji
 - cumulative_sell_amoutn_per_ticker - jest to łączna, niezależna od daty transakcji wartość wolumenu sprzedanego danego instrumentu
 */
 
-
--- DO POPRAWKI OD TEGO MIEJSCA
-
-pre_final_aggregation AS (
+data_aggregated_with_windows AS (
   SELECT
     *,
-    SUM(Transaction_amount_with_sign) OVER transaction_amount_until_transaction_date           AS transaction_date_ticker_amount,
-    SUM(Transaction_amount)           OVER transaction_amount_with_type_until_transaction_date AS transaction_date_buy_ticker_amount,
+    -- Wyznacza wartość wolumenu danego instrumentu na moment danej transakcji (po danej transakcji)
+    SUM(Transaction_amount_with_sign)       OVER transaction_amount_until_transaction_date      AS transaction_date_ticker_amount,
+    -- Wyznacza wartość danego instrumentu na moment danej transakcji (po danej transakcji)
+    ROUND(SUM(Transaction_amount_with_sign) OVER transaction_amount_until_transaction_date * Close, 2)   
+                                                                                                AS transaction_date_ticker_value,
+    -- Wyznacza wartość wolumenu danego instrumentu na moment danej transakcji (po danej transakcji), lecz z uwzglęnieniem typu transakcji
+    SUM(Transaction_amount)                 OVER transaction_amount_with_type_until_transaction_date 
+                                                                                                AS transaction_date_buy_ticker_amount,
+    -- Wyznacza całkowitą wartość sprzedaży danego instrumentu finansowego
     CASE 
       WHEN Transaction_type_group = 'Sell_amount' THEN SUM(Transaction_amount) OVER transaction_sell_amount_window
-    ELSE NULL
-    END AS cumulative_sell_amount_per_ticker
+      ELSE NULL
+      END                                                                                       AS cumulative_sell_amount_per_ticker,
   FROM
-    initial_aggregation
+    data_aggregated
   WINDOW
     transaction_amount_until_transaction_date AS (
-            PARTITION BY Ticker 
-            ORDER BY Transaction_date 
-            ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+      PARTITION BY Ticker 
+      ORDER BY Transaction_date 
+      ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
     ),
 
     transaction_amount_with_type_until_transaction_date AS (
-            PARTITION BY Ticker, Transaction_type_group 
-            ORDER BY Transaction_date 
-            ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+      PARTITION BY Ticker, Transaction_type_group 
+     ORDER BY Transaction_date 
+      ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
     ),
 
     transaction_sell_amount_window AS (
@@ -138,32 +156,44 @@ pre_final_aggregation AS (
       ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
     )
 ),
- 
-almost_final_aggregation AS (
-  SELECT
-    *,
-    CASE
-      WHEN Transaction_type_group <> "Div_related_amount" THEN ROUND(SUM(transaction_date_ticker_amount) OVER(PARTITION BY Instrument_type_id ORDER BY Transaction_date ROWS BETWEEN CURRENT ROW AND CURRENT ROW) * Close, 2) 
-    ELSE 0
-    END AS instrument_type_cumulative_value,
-    ROUND(transaction_date_ticker_amount * Close, 2) AS transaction_date_ticker_value
-  FROM 
-    pre_final_aggregation
-),
 
 -- FINAL AGGREGATION --
 /*
-W kroku tym następuje przypianie do okna dla danego tickera, w zakresie kolumny cumulative_sell_amount_per_ticker wartości dla każdego typu danych (wcześniej była ona podpięta tylko do wartości sprzedaży) - tym samym cała kolumna dla danego tickera prezentuje skumulowaną wartość jego sprzedaży.
-Jeżeli nie ma żadnych sprzedaży wartość tego parametru przyjmie 0.
+Oznaczenie kolumn:
+- instrument_type_cumulative_value - wartość wszystkich instrumentów danego typu na moment transakcji,
+- cumulative_sell_amount_per_ticker - wartość sprzedaży danego instrumentu skumulowana TOTAL
 */
+
 
 final_aggregation AS (
   SELECT
     * EXCEPT(cumulative_sell_amount_per_ticker),
-    IFNULL(MAX(cumulative_sell_amount_per_ticker) OVER (PARTITION BY Ticker), 0) AS cumulative_sell_amount_per_ticker,
+    -- Określenie wartości danego typu instrumentu na danych dzień
+    CASE
+      WHEN Transaction_type_group <> "Div_related_amount" 
+      THEN ROUND(SUM(transaction_date_ticker_amount) OVER instrument_type_window_until_transaction_day_window * Close, 2)                                                                                         
+      ELSE 0
+    END                                                                                         AS instrument_type_cumulative_value,
+    -- Przepisanie wartości sprzedaży danego instrumentu na wiersze zakupowe & dywidendowe itp.
+    COALESCE(
+      MAX(cumulative_sell_amount_per_ticker) OVER instrument_window,
+      0
+    )                                                                                           AS cumulative_sell_amount_per_ticker
   FROM
-    almost_final_aggregation
+    data_aggregated_with_windows
+  WINDOW
+    instrument_type_window_until_transaction_day_window AS (
+      PARTITION BY Instrument_type_id
+      ORDER BY Transaction_date
+      ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+    ),
+    instrument_window AS (
+      PARTITION BY Ticker
+    )
 )
 
-SELECT * FROM final_aggregation ORDER BY Transaction_date DESC;
+SELECT
+  *
+FROM final_aggregation 
+ORDER BY Transaction_date 
 
