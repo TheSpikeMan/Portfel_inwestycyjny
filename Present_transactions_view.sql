@@ -10,10 +10,10 @@ W pierwszym kroku pobierane są dane transakcyjne, dane z giełdy oraz dane inst
 */
 
 WITH 
-transaction_view AS (SELECT * FROM `projekt-inwestycyjny.Transactions.Transactions_view`),
-daily AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Daily`),
-instruments AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instruments`),
-instrument_types AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instrument_types`),
+transaction_view          AS (SELECT * FROM `projekt-inwestycyjny.Transactions.Transactions_view`),
+daily                     AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Daily`),
+instruments               AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instruments`),
+instrument_types          AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instrument_types`),
 
 --- AGREGACJE POCZĄTKOWE - FILTR INSTRUMENTÓW OBECNYCH W PORTFELU ---
 
@@ -45,6 +45,50 @@ med_aggregation AS (
       PARTITION BY Ticker ORDER BY Transaction_date DESC
     )
 ),
+
+/*
+
+LOGIKA DO POPRAWKI
+SELECT
+--*
+  Transaction_date,
+  Transaction_type,
+  Transaction_amount,
+  transaction_date_ticker_amount,
+  transaction_date_buy_ticker_amount,
+  cumulative_sell_amount_per_ticker,
+  CASE
+    WHEN Transaction_type_group IN ('Sell_amount', 'Buy_amount') AND
+    transaction_date_buy_ticker_amount - cumulative_sell_amount_per_ticker <= 0
+    THEN "Sprzedany"
+
+    WHEN Transaction_type_group IN ('Sell_amount', 'Buy_amount')  AND
+    transaction_date_buy_ticker_amount - cumulative_sell_amount_per_ticker > 0
+    THEN "Aktualny"
+    
+    ELSE "Nieoznaczony"
+    END AS transaction_status,
+  -- transaction_date_ticker_amount - cumulative_sell_amount_per_ticker AS pozostala_ilosc,
+  CASE
+    WHEN transaction_date_ticker_amount - cumulative_sell_amount_per_ticker > 0
+    AND Transaction_amount > cumulative_sell_amount_per_ticker
+    THEN transaction_date_ticker_amount - cumulative_sell_amount_per_ticker
+
+    WHEN Transaction_amount < cumulative_sell_amount_per_ticker
+    THEN Transaction_amount
+
+    ELSE 0
+    END AS pozostala_ilosc
+
+FROM final_aggregation
+WHERE Ticker = 'IEDY'
+WINDOW
+  last_ticker_transaction_window AS (
+    PARTITION BY Ticker
+    ORDER BY Transaction_date DESC
+  )
+ORDER BY Transaction_date 
+*/
 
 -- INTERMEDIATE AGGREGATION --
 /*
