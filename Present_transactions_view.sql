@@ -19,8 +19,8 @@ instrument_types          AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumen
 
 -- INITIAL AGGREGATION --
 /*
-W kroku tym każdej transakcji przyporządkowany jest numer, którego zasada prz
-- Wszystkie wiersze ułóż malejąco wg daty transakcji,
+W kroku tym każdej transakcji przyporządkowany jest numer, którego zasada przypisania jest następują:
+- Wszystkie dane podziel po tickerze, a następnie ułóż malejąco wg daty transakcji,
 - Wszystkim transakcjom przypisz numerację, od najnowszej transakcji do najstarszej
 
 W kroku tym wyciągana jest ostatnia operacja (zakup, sprzedaż instrumentu) dla danego Tickera.
@@ -44,13 +44,31 @@ med_aggregation AS (
     last_transaction_window AS (
       PARTITION BY Ticker ORDER BY Transaction_date DESC
     )
-),
+)
+
+
+SELECT
+  Transaction_id,
+  Transaction_date,	
+  Transaction_type,	
+  Transaction_price,	
+  Transaction_amount,	
+  Transaction_value_pln,	
+  Transaction_type_group,	
+  Transaction_amount_with_sig,
+  transaction_date_ticker_amount,
+  transaction_date_ticker_value,	
+  transaction_date_buy_ticker_amount,
+  cumulative_sell_amount_per_ticker,
+  CASE
+    WHEN Transaction_type_group = "Buy_amount"
+    AND transaction_date_buy_ticker_amount - cumulative_sell_amount_per_ticker <= 0
+    THEN 0
+    ELSE transaction_date_buy_ticker_amount - cumulative_sell_amount_per_ticker
+    OVER last_ticker_transaction_window 
+    END AS cumulative_amount_per_day
 
 /*
-
-LOGIKA DO POPRAWKI
-SELECT
---*
   Transaction_date,
   Transaction_type,
   Transaction_amount,
@@ -79,16 +97,18 @@ SELECT
 
     ELSE 0
     END AS pozostala_ilosc
-
-FROM final_aggregation
-WHERE Ticker = 'IEDY'
+*/
+FROM transaction_view
+WHERE TRUE
+  AND Ticker = 'ABS'
+  -- AND Ticker IN (SELECT * FROM med_aggregation)
 WINDOW
   last_ticker_transaction_window AS (
     PARTITION BY Ticker
-    ORDER BY Transaction_date DESC
+    ORDER BY Transaction_date ASC
   )
-ORDER BY Transaction_date 
-*/
+
+
 
 -- INTERMEDIATE AGGREGATION --
 /*
