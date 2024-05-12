@@ -54,12 +54,13 @@ Wyznaczenie wskaźników:
 
 data_aggregated AS (
   SELECT 
-    * EXCEPT (Instrument_id, Currency, Instrument_type_id, Ticker, Currency_date, last_currency_close),
+    * EXCEPT (Instrument_id, Currency, Instrument_type_id, Ticker, Currency_date, last_currency_close, Currency_close),
     instruments_data.Instrument_id                           AS Instrument_id,                       
     instruments_data.Ticker                                  AS Ticker,
     transactions_data.Currency                               AS Currency,
     instruments_types.Instrument_type_id                     AS Instrument_type_id,
     COALESCE(currency_data.Currency_date, Transaction_date)  AS Currency_date,
+    COALESCE(Currency_close, 1)                              AS Currency_close,
     COALESCE(currency_data.last_currency_close, 1)           AS last_currency_close,
     CASE 
       WHEN EXTRACT(QUARTER FROM Transaction_date) = 1        THEN "I kwartał"
