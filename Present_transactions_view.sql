@@ -15,198 +15,113 @@ daily                     AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumen
 instruments               AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instruments`),
 instrument_types          AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instrument_types`),
 
---- AGREGACJE POCZĄTKOWE - FILTR INSTRUMENTÓW OBECNYCH W PORTFELU ---
-
 -- INITIAL AGGREGATION --
 /*
-W kroku tym każdej transakcji przyporządkowany jest numer, którego zasada przypisania jest następują:
-- Wszystkie dane podziel po tickerze, a następnie ułóż malejąco wg daty transakcji,
-- Wszystkim transakcjom przypisz numerację, od najnowszej transakcji do najstarszej
-
-W kroku tym wyciągana jest ostatnia operacja (zakup, sprzedaż instrumentu) dla danego Tickera.
-
-Wyciągnięcie tickerów instrumentów, które znajdują się w aktualnym porfelu.
-Następie następuje wyciągnięcie tickerów instrumentów, które znajdują się w aktualnym porfelu.
-Uwzględniamy tylko takie, które posiadają niezerowe wolumeny (posiadamy je w portfelu).
+W tym kroku wyciągane są wszystkie transakcje i wykonywane jest działanie mające na celu określenie pozostałej ilości
+w posiadaniu, dla danej transakcji zakupu.
+Sprawdzanie są po kolei 4 warunki:
+- Jeżeli analizowaną transakcją jest transakcja zakupowa i skumulowana ilość zakupiona jest mniejsza niż ilość
+sprzedana, oznacza to, że dana transakcja została sprzedana całkowicie.
+- Dla wszystkich transakcji związanych ze sprzedażami i wypłatą dywidendy/odsetek, wpisujemy od razu 0.
+- Jeżeli dana ilość zakupiona w danym momencie jest większa niż całkowita ilość sprzedana i jest to pierwsza tego
+transakcja oraz nastąpiła jakakolwiek sprzedaż oblicza pozostałą ilość jako różnicę w całkowitej ilości zakupionej
+do danego momentu i sprzedanej in total.
+- W pozostałych przypadkach podaje wartość zakupioną w danej transakcji.
 */
 
-med_aggregation AS (
-  SELECT
-    Ticker
-  FROM
-    transaction_view
-  WHERE
-    Transaction_type_group IN ('Buy_amount', 'Sell_amount')
-    AND transaction_date_ticker_amount <> 0
-  QUALIFY TRUE
-    AND ROW_NUMBER() OVER last_transaction_window = 1
-  WINDOW
-    last_transaction_window AS (
-      PARTITION BY Ticker ORDER BY Transaction_date DESC
-    )
-)
-
-
+initial_aggregation AS (
 SELECT
   Transaction_id,
-  Transaction_date,	
+  Transaction_date,
+  Ticker,
+  Name,
+  Currency,
+  age_of_instrument,
   Transaction_type,	
   Transaction_price,	
   Transaction_amount,	
   Transaction_value_pln,	
   Transaction_type_group,	
-  Transaction_amount_with_sig,
+  Transaction_amount_with_sign,
   transaction_date_ticker_amount,
   transaction_date_ticker_value,	
   transaction_date_buy_ticker_amount,
   cumulative_sell_amount_per_ticker,
   CASE
-    WHEN Transaction_type_group = "Buy_amount"
+    WHEN Transaction_type_group                                                = "Buy_amount"
     AND transaction_date_buy_ticker_amount - cumulative_sell_amount_per_ticker <= 0
     THEN 0
-    ELSE transaction_date_buy_ticker_amount - cumulative_sell_amount_per_ticker
-    OVER last_ticker_transaction_window 
-    END AS cumulative_amount_per_day
-
-/*
-  Transaction_date,
-  Transaction_type,
-  Transaction_amount,
-  transaction_date_ticker_amount,
-  transaction_date_buy_ticker_amount,
-  cumulative_sell_amount_per_ticker,
-  CASE
-    WHEN Transaction_type_group IN ('Sell_amount', 'Buy_amount') AND
-    transaction_date_buy_ticker_amount - cumulative_sell_amount_per_ticker <= 0
-    THEN "Sprzedany"
-
-    WHEN Transaction_type_group IN ('Sell_amount', 'Buy_amount')  AND
-    transaction_date_buy_ticker_amount - cumulative_sell_amount_per_ticker > 0
-    THEN "Aktualny"
-    
-    ELSE "Nieoznaczony"
-    END AS transaction_status,
-  -- transaction_date_ticker_amount - cumulative_sell_amount_per_ticker AS pozostala_ilosc,
-  CASE
-    WHEN transaction_date_ticker_amount - cumulative_sell_amount_per_ticker > 0
-    AND Transaction_amount > cumulative_sell_amount_per_ticker
-    THEN transaction_date_ticker_amount - cumulative_sell_amount_per_ticker
-
-    WHEN Transaction_amount < cumulative_sell_amount_per_ticker
-    THEN Transaction_amount
-
-    ELSE 0
-    END AS pozostala_ilosc
-*/
+    WHEN Transaction_type_group IN ("Sell_amount", "Div_related_amount")
+    THEN 0
+    WHEN ROW_NUMBER() OVER last_ticker_transaction_window                      = 1
+    AND transaction_date_buy_ticker_amount - cumulative_sell_amount_per_ticker > 0
+    AND cumulative_sell_amount_per_ticker                                      <> 0
+    THEN transaction_date_buy_ticker_amount - cumulative_sell_amount_per_ticker
+    ELSE Transaction_amount
+    END AS transaction_amount_left
 FROM transaction_view
 WHERE TRUE
-  AND Ticker = 'ABS'
-  -- AND Ticker IN (SELECT * FROM med_aggregation)
 WINDOW
   last_ticker_transaction_window AS (
     PARTITION BY Ticker
-    ORDER BY Transaction_date ASC
+    ORDER BY Transaction_date ASC, Transaction_id ASC
   )
-
-
-
--- INTERMEDIATE AGGREGATION --
-/*
-W kroku tym zestawiana jest kumulowana ilość zakupów dane instrumentów, z łączną ilością sprzedaży.
-W kolejnym kroku zestawiana jest kumulowana ilość zakupów dane instrumentów, z łączną ilością sprzedaży.
-Na tej podstawie wyznaczany jest wskaźnik, który przyjmuje dwie wartości:
-- "Sprzedany", jeśli instrument z danej tranakcji został sprzedany,
-- "Aktualny", jeśli instrument z danej transakcji wciąż znajduje się w portfelu.
-*/
-
-intermediate_aggregation AS (
-  SELECT
-    * EXCEPT(Ticker),
-    med_aggregation.Ticker,
-    CASE
-      WHEN (transaction_date_buy_ticker_amount - cumulative_sell_amount_per_ticker <= 0) THEN "Sprzedany"
-    ELSE "Aktualny"
-    END AS transaction_status
-  FROM
-    transaction_view
-  INNER JOIN med_aggregation
-  ON transaction_view.Ticker = med_aggregation.Ticker
-  WHERE
-    Transaction_type_group IN ('Buy_amount', 'Sell_amount')
-    AND transaction_date_ticker_amount <> 0
-  ),
-
--- MINIMUM BUY DATES FOR TICKERS --
-/*
-Widok stworzony jest po to, aby znaleźć minimalną datę zakupu dla danego tickera, 
-w celu późniejszego odfiltrowania wszystkich dywidend, które zostały zrealizowane wcześniej 
-(np. w przypadku całkowitego sprzedania instrumentu i potem ponownego zakupu dywidendy 
-mogłyby się naliczać niepoprawnie). Bazą dla wyszukiwanych transakcji, są wszystkie transakcje, 
-dla których obecna wartość jest różna od zera. Bada się wówczas wszystkie transakcje zakupowe, 
-które nie zostały jeszcze sprzedane (przy wykorzystaniu mechanizmu badania sum cząstkowych - 
-jeżeli dana transakcja została zrealizowana, to skumulowana wartość zakupowa w danym dniu była 
-mniejsza niż skumulowana wartość sprzedaży).
-*/
-
-minimum_buy_dates_for_tickers AS (
-  SELECT
-    Ticker,
-    MIN(Transaction_date) AS minimum_buy_date
-  FROM intermediate_aggregation
-  WHERE TRUE
-    AND transaction_status = "Aktualny"
-    AND transaction_type = 'Buy'
-  GROUP BY
-    Ticker
 ),
 
 -- PRESENT INSTRUMENTS VIEW --
 /*
-W tym kroku odfiltrowane są wszystkie sprzedane instrumenty.
+W tym kroku odfiltrowane są wszystkie sprzedane instrumenty (transaction_amount_left <> 0 )
 Dodatkowo wyznaczane są następujące parametry:
-- Aktualny wolumen,
-- Wartość zakupu,
-- Średnia cena zakupu,
-- Maksymalną liczbę dni od zakupu danego instrumentu.
+- Aktualny wolumen - ticker_present_amount
+- Wartość zakupu - ticker_buy_value
+- Średnia cena zakupu - ticker_average_close
+- Maksymalną liczbę dni od zakupu danego instrumentu - max_age_of_instrument
+- Minimalną datę zakupu w obrębie aktualnych instrumentów - minimum_buy_date
 */
 
 present_instruments_view AS (
   SELECT
+    Ticker                                                      AS Ticker,
+    Name                                                        AS Name,
+    Currency                                                    AS currency_exposure,
+    SUM(transaction_amount_left)                                AS ticker_present_amount, 
+    MAX(age_of_instrument)                                      AS max_age_of_instrument,
+    ROUND(
+      SUM(transaction_amount_left * transaction_price), 
+      2)                                                        AS ticker_buy_value,
+    ROUND(
+      SUM(transaction_amount_left * transaction_price)/
+      SUM(transaction_amount_left), 
+      2)                                                        AS ticker_average_close,
+    MIN(Transaction_date)                                       AS minimum_buy_date
+  FROM initial_aggregation
+  WHERE
+    transaction_amount_left <> 0 
+  GROUP BY
     Ticker,
     Name,
-    Currency AS currency_exposure,
-    MAX(transaction_date_ticker_amount) AS ticker_present_amount, --> Do przebudowy w tym miejscu.
-    -- Warto skorzystać z transaction_date_ticker_amount dla ostatniej transakcji. Wskaże on ilość instrumentu.
-    MAX(age_of_instrument) AS max_age_of_instrument,
-    ROUND(SUM(transaction_value_pln), 2) AS ticker_buy_value,
-    ROUND(SUM(transaction_value_pln)/MAX(transaction_date_ticker_amount), 2) AS ticker_average_close
-  FROM intermediate_aggregation
-  WHERE
-    transaction_status = "Aktualny"
-  GROUP BY
-    1,2,3 
-  ORDER BY
-    1,2,3
+    Currency
 ),
 
 -- DAILY DATA --
 /*
-W tym kroku wyciągane są ostatnie dane z giełdy, dzięki którym możliwe jest wyznaczenie aktualnego kursu, wolumenu i obrotu dla danego instrumentu
+W tym kroku wyciągane są ostatnie dane z giełdy, dzięki którym możliwe jest wyznaczenie aktualnego kursu 
+dla danego instrumentu
 */
 
 daily_data AS (
   SELECT
-  * EXCEPT(row_num)
-  FROM
-  (
-    SELECT
-      *,
-      ROW_NUMBER() OVER(PARTITION BY Ticker ORDER BY `Date` DESC) AS row_num
-    FROM
-      daily
-  )
-  WHERE
-    row_num = 1
+    Ticker,
+    `Date`,
+    Close,
+  FROM daily
+  QUALIFY TRUE
+    AND ROW_NUMBER() OVER last_ticker_transaction = 1
+  WINDOW
+    last_ticker_transaction AS (
+      PARTITION BY Ticker
+      ORDER BY `Date` DESC
+    )
 ),
 
 --- DYWIDENDY ---
@@ -221,25 +136,30 @@ instrumentu, na moment wypłaty dywidendy).
 
 dividend_selection AS (
   SELECT
-    * EXCEPT (Ticker, Close),
+    transaction_view.* EXCEPT (Ticker, Close),
     transaction_view.Ticker,
-    COALESCE(transaction_view.Close, 0) AS Close,
+    COALESCE(transaction_view.Close, 0)                   AS Close,
     COALESCE(
         ROUND(100 * 
           SAFE_DIVIDE(Transaction_price * Currency_close , 
                       transaction_view.Close * Unit), 
             2),
-            0) AS dividend_ratio_pct
+            0)                                            AS dividend_ratio_pct,
+    present_instruments_view.minimum_buy_date             AS minimum_buy_date,
+    SUM(Transaction_value_pln) OVER ticker_window         AS dividend_sum -- do sprawdzenia
   FROM transaction_view
-  LEFT JOIN minimum_buy_dates_for_tickers
-  ON transaction_view.Ticker = minimum_buy_dates_for_tickers.Ticker
+  LEFT JOIN present_instruments_view
+  ON transaction_view.Ticker = present_instruments_view.Ticker
   LEFT JOIN daily
   ON transaction_view.Ticker = daily.Ticker
   AND transaction_view.Transaction_date = daily.`Date`
-  WHERE
-    TRUE
+  WHERE TRUE
     AND Transaction_type_group = 'Div_related_amount'
-    AND minimum_buy_date < Transaction_date
+    AND present_instruments_view.minimum_buy_date < transaction_view.Transaction_date
+  WINDOW
+    ticker_window AS (
+      PARTITION BY Ticker
+    )
 ),
 
 -- DIVIDEND FREQUENCY --
