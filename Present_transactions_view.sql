@@ -146,7 +146,8 @@ dividend_selection AS (
             2),
             0)                                            AS dividend_ratio_pct,
     present_instruments_view.minimum_buy_date             AS minimum_buy_date,
-    SUM(Transaction_value_pln) OVER ticker_window         AS dividend_sum -- do sprawdzenia
+    SUM(Transaction_value_pln) OVER ticker_window         AS dividend_sum, -- do sprawdzenia
+    COUNT(Transaction_id)      OVER dividend_year_window  AS dividend_frequency,
   FROM transaction_view
   LEFT JOIN present_instruments_view
   ON transaction_view.Ticker = present_instruments_view.Ticker
@@ -156,11 +157,17 @@ dividend_selection AS (
   WHERE TRUE
     AND Transaction_type_group = 'Div_related_amount'
     AND present_instruments_view.minimum_buy_date < transaction_view.Transaction_date
+    AND transaction_view.Ticker = 'IEDY'
   WINDOW
     ticker_window AS (
-      PARTITION BY Ticker
+      PARTITION BY transaction_view.Ticker
+    ),
+    dividend_year_window AS (
+      PARTITION BY 
+        transaction_view.Ticker,
+        EXTRACT(YEAR FROM Transaction_date)
     )
-),
+  ),
 
 -- DIVIDEND FREQUENCY --
 /*
