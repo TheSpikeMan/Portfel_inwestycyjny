@@ -14,6 +14,7 @@ transaction_view          AS (SELECT * FROM `projekt-inwestycyjny.Transactions.T
 daily                     AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Daily`),
 instruments               AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instruments`),
 instrument_types          AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instrument_types`),
+currency_view             AS (SELECT * FROM `projekt-inwestycyjny.Waluty.Currency_view`),
 
 -- INITIAL AGGREGATION --
 /*
@@ -47,6 +48,7 @@ SELECT
   transaction_date_ticker_value,	
   transaction_date_buy_ticker_amount,
   cumulative_sell_amount_per_ticker,
+  last_currency_close,
   CASE
     WHEN Transaction_type_group                                                = "Buy_amount"
     AND transaction_date_buy_ticker_amount - cumulative_sell_amount_per_ticker <= 0
@@ -87,7 +89,7 @@ present_instruments_view AS (
     SUM(transaction_amount_left)                                AS ticker_present_amount, 
     MAX(age_of_instrument)                                      AS max_age_of_instrument,
     ROUND(
-      SUM(transaction_amount_left * transaction_price), 
+      SUM(transaction_amount_left * transaction_price * last_currency_close), 
       2)                                                        AS ticker_buy_value,
     ROUND(
       SUM(transaction_amount_left * transaction_price)/
@@ -253,9 +255,10 @@ present_instruments_plus_present_indicators AS (
   ON present_instruments_view.Ticker = dividend_sum.Ticker
   LEFT JOIN instrument_types
   ON instruments.Instrument_type_id = instrument_types.Instrument_type_id
-
 )
 
 SELECT * 
-FROM present_instruments_plus_present_indicators 
+FROM present_instruments_plus_present_indicators
+WHERE TRUE
+  AND Ticker = 'EUNL'
 ORDER BY Ticker;
