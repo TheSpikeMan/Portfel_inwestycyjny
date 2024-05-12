@@ -14,7 +14,6 @@ transaction_view          AS (SELECT * FROM `projekt-inwestycyjny.Transactions.T
 daily                     AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Daily`),
 instruments               AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instruments`),
 instrument_types          AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instrument_types`),
-currency_view             AS (SELECT * FROM `projekt-inwestycyjny.Waluty.Currency_view`),
 
 -- INITIAL AGGREGATION --
 /*
@@ -38,12 +37,10 @@ SELECT
   Name,
   Currency,
   age_of_instrument,
-  Transaction_type,	
   Transaction_price,	
   Transaction_amount,	
   Transaction_value_pln,	
   Transaction_type_group,	
-  Transaction_amount_with_sign,
   transaction_date_ticker_amount,
   transaction_date_ticker_value,	
   transaction_date_buy_ticker_amount,
@@ -260,5 +257,4 @@ present_instruments_plus_present_indicators AS (
 SELECT * 
 FROM present_instruments_plus_present_indicators
 WHERE TRUE
-  AND Ticker = 'EUNL'
 ORDER BY Ticker;
