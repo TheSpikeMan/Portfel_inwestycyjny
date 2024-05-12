@@ -147,7 +147,7 @@ dividend_selection AS (
             0)                                            AS dividend_ratio_pct,
     present_instruments_view.minimum_buy_date             AS minimum_buy_date,
     SUM(Transaction_value_pln) OVER ticker_window         AS dividend_sum, -- do sprawdzenia
-    COUNT(Transaction_id)      OVER dividend_year_window  AS dividend_frequency,
+    COUNT(Transaction_id)      OVER ticker_year_window    AS dividend_frequency
   FROM transaction_view
   LEFT JOIN present_instruments_view
   ON transaction_view.Ticker = present_instruments_view.Ticker
@@ -157,50 +157,16 @@ dividend_selection AS (
   WHERE TRUE
     AND Transaction_type_group = 'Div_related_amount'
     AND present_instruments_view.minimum_buy_date < transaction_view.Transaction_date
-    AND transaction_view.Ticker = 'IEDY'
   WINDOW
     ticker_window AS (
       PARTITION BY transaction_view.Ticker
     ),
-    dividend_year_window AS (
+    ticker_year_window AS (
       PARTITION BY 
         transaction_view.Ticker,
         EXTRACT(YEAR FROM Transaction_date)
     )
   ),
-
--- DIVIDEND FREQUENCY --
-/*
-W bieżącym widoku dokonywane jest wyznaczenie częstotliwośći wypłaty dywidend i odsetek, 
-aby potem wykorzystać je do wyznaczenia średniej stopy redystrybucji.
-*/
-
-dividend_frequency AS (
-  SELECT
-    Ticker AS Ticker,
-    EXTRACT(YEAR FROM Transaction_date) AS dividend_year,
-    COUNT(Transaction_id) AS  number_od_dividends_in_year
-  FROM dividend_selection
-  WHERE EXTRACT(YEAR FROM Transaction_date) IN (EXTRACT(YEAR FROM CURRENT_DATE()) - 1, EXTRACT(YEAR FROM CURRENT_DATE()) - 2)
-  GROUP BY
-    Ticker,
-    dividend_year
-),
-
-
--- DIVIDEND AVERGAGE FREQUENCY --
-/*
-W widoku wyliczana jest średnia wartość liczby wypłacaonych dywidend w ostatnich dwóch latach.
-*/
-
-dividend_average_frequency AS (
-  SELECT
-    Ticker,
-    AVG(number_od_dividends_in_year) AS number_of_dividends_in_year
-  FROM dividend_frequency
-  GROUP BY
-    Ticker
-),
 
 -- DIVIDEND SUM --
 /*
@@ -210,13 +176,11 @@ W widoku wzięta jest pod uwagę częstotliwość wypłaty dywidendy - wskaźnik
 
 dividend_sum AS (
   SELECT
-    dividend_selection.Ticker AS Ticker,
-    ROUND(SUM(Transaction_value_pln), 2) AS dividend_sum,
-    ROUND(AVG(dividend_ratio_pct * dividend_average_frequency.number_of_dividends_in_year), 2) AS avg_dividend_ratio_per_ticker_pct
-  FROM
-    dividend_selection
-  LEFT JOIN dividend_average_frequency
-  ON dividend_selection.Ticker = dividend_average_frequency.Ticker
+    dividend_selection.Ticker                       AS Ticker,
+    ROUND(SUM(Transaction_value_pln), 2)            AS dividend_sum,
+    ROUND(AVG(dividend_ratio_pct) * 
+          MAX(dividend_frequency), 2)               AS avg_dividend_ratio_per_ticker_pct
+  FROM dividend_selection
   GROUP BY
     Ticker
   ),
@@ -244,38 +208,41 @@ W tym kroku połączone są dane portfelowe z danymi giełdowymi oraz danymi ins
 
 present_instruments_plus_present_indicators AS (
   SELECT
-    instruments.Ticker,
-    Instrument_types.Instrument_type AS instrument_class,
-    currency_exposure AS currency_exposure,
-    instruments.Name AS Name,
-    present_instruments_view.ticker_present_amount AS ticker_present_amount,
-    present_instruments_view.ticker_average_close AS ticker_average_close,
-    present_instruments_view.ticker_buy_value AS ticker_buy_value,
-    ROUND((ticker_present_amount * Close * instruments.unit), 2) AS ticker_present_value,
-    daily_data.Close * instruments.unit AS current_price,
-    daily_data.`Date` AS current_price_date,
-    present_instruments_view.max_age_of_instrument AS max_age_of_instrument,
+    instruments.Ticker                                    AS Ticker,
+    Instrument_types.Instrument_type                      AS instrument_class,
+    currency_exposure                                     AS currency_exposure,
+    instruments.Name                                      AS Name,
+    present_instruments_view.ticker_present_amount        AS ticker_present_amount,
+    present_instruments_view.ticker_average_close         AS ticker_average_close,
+    present_instruments_view.ticker_buy_value             AS ticker_buy_value,
+    ROUND((ticker_present_amount * Close * instruments.unit), 2) 
+                                                          AS ticker_present_value,
+    daily_data.Close * instruments.unit                   AS current_price,
+    daily_data.`Date`                                     AS current_price_date,
+    present_instruments_view.max_age_of_instrument        AS max_age_of_instrument,
     ROUND(100 * (ticker_present_amount * Close * instruments.unit)/SUM(ticker_present_amount * Close * instruments.unit) OVER(), 2) 
-      AS share_of_portfolio,
+                                                          AS share_of_portfolio,
     ROUND(100 * ((ticker_present_amount * Close * instruments.unit)/ticker_buy_value) - 100, 2) AS rate_of_return,
     CASE
     WHEN present_instruments_view.max_age_of_instrument > 120 THEN
     ROUND((365 * (100 * ((ticker_present_amount * Close * instruments.unit)/ticker_buy_value) - 100))
       /max_age_of_instrument, 2)
     ELSE 0
-    END AS  yearly_rate_of_return,
+    END                                                   AS  yearly_rate_of_return,
     CASE
     WHEN present_instruments_view.max_age_of_instrument > 120 THEN
     IFNULL(ROUND((365 * (100 * ((ticker_present_amount * Close * instruments.unit + dividend_sum.dividend_sum)/ticker_buy_value) - 100))
       /max_age_of_instrument, 2), ROUND((365 * (100 * ((ticker_present_amount * Close * instruments.unit)/ticker_buy_value) - 100))
       /max_age_of_instrument, 2))  
     ELSE 0
-    END AS yearly_rate_of_return_incl_div,
-    ROUND((Close * instruments.unit - ticker_average_close) * ticker_present_amount, 2) AS profit,
+    END                                                   AS yearly_rate_of_return_incl_div,
+    ROUND((Close * instruments.unit - ticker_average_close) * ticker_present_amount, 2) 
+                                                          AS profit,
     IFNULL(ROUND(dividend_sum.dividend_sum + (Close * instruments.unit - ticker_average_close) * ticker_present_amount, 2),
-      ROUND((Close * instruments.unit - ticker_average_close) * ticker_present_amount, 2))  AS profit_incl_div,
-    IFNULL(dividend_sum.avg_dividend_ratio_per_ticker_pct, 0) AS avg_dividend_ratio_per_ticker_pct
-  
+      ROUND((Close * instruments.unit - ticker_average_close) * ticker_present_amount, 2))  
+                                                          AS profit_incl_div,
+    IFNULL(dividend_sum.avg_dividend_ratio_per_ticker_pct, 0) 
+                                                          AS avg_dividend_ratio_per_ticker_pct
   FROM
     present_instruments_view
   LEFT JOIN Daily_data
@@ -289,4 +256,6 @@ present_instruments_plus_present_indicators AS (
 
 )
 
-SELECT * FROM present_instruments_plus_present_indicators ORDER BY Ticker;
+SELECT * 
+FROM present_instruments_plus_present_indicators 
+ORDER BY Ticker;
