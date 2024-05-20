@@ -9,69 +9,40 @@ transactions_view AS (SELECT * FROM `projekt-inwestycyjny.Transactions.Transacti
 
 -- INITIAL VIEW --
 /*
-W pierwszym kroku pobrane są wszystkie transakcje (sprzedaże lub zakupy).
-Wykluczenie Tickera w klauzuli SELECT wynika, z konieczności późniejszego łączenia z danymi dywinend i dostosowania kolejności kolumn.
-Wyciągane są wszystkie transakcje, dla które całkowita zakupiona ilość jest mniejsza bądź równa całkowitej ilości sprzedaży. Dzięki temu udaje się wyciągnąć sprzedane instrumenty.
-
+W pierwszym kroku pobrane są wszystkie tickery dla transakcji, które są zrealizowane (analiza ilościowa.)
+Dodatkowo wyznaczana jest maksymalna data zakończonej transakcji, aby dobrać dywidendy
 */
 
 initial_view AS (
-  SELECT
-    * EXCEPT (Ticker),
-    Ticker
+  SELECT DISTINCT
+    Ticker                                      AS Ticker,
+    MAX(Transaction_date) OVER ticker_window    AS max_transaction_date
   FROM transactions_view
   WHERE TRUE
     AND transaction_date_buy_ticker_amount <= cumulative_sell_amount_per_ticker
     AND Transaction_type IN ('Buy', 'Sell', 'Wykup')
+  WINDOW
+    ticker_window AS (
+      PARTITION BY Ticker
+    )
 ),
 
--- MAX TRANSACTION DATES PER TICKER --
+-- all_finished_transactions_and_dividends--
 /*
-W widoku tym wyciągane są maksymalne daty transakcji z poprzedniego widoku (INITIAL VIEW), w celu późniejszego dobrania takich dywidend, które były realizowane w czasie posiadania danego instrumentu w porfelu.
+W widoku tym wyciągane są wszystkie tranakcje i dywidendy, które zrealizowane były w ramach sprzedanych już instrumentów.
 */
 
-max_transaction_dates_per_ticker AS (
-  SELECT
-    Ticker,
-    MAX(Transaction_date) AS max_transaction_date
-  FROM 
-    initial_view
-  GROUP BY
-    Ticker
+all_finished_transactions_and_dividends AS (
+  SELECT 
+    * EXCEPT(Ticker),
+    transactions_view.Ticker    AS Ticker
+  FROM transactions_view
+  INNER JOIN initial_view
+  ON transactions_view.Ticker             = initial_view.Ticker
+  WHERE TRUE
+    AND initial_view.max_transaction_date > Transaction_date
 ),
 
-
--- ALL DIVIDEND TRANSACTIONS WITHIN MAXIMUM DATES --
-/*
-W widoku tym wyciągane są wszystkie dywidendy, które zrealizowane były w ramach sprzedanych już instrumentów.
-*/
-
-all_dividend_transactions_within_maximum_dates AS (
-  SELECT
-    * EXCEPT (Ticker, max_transaction_date),
-    transactions_view.Ticker
-  FROM
-    transactions_view
-  LEFT JOIN max_transaction_dates_per_ticker
-  ON transactions_view.Ticker = max_transaction_dates_per_ticker.Ticker
-  WHERE
-    Transaction_type_group = 'Div_related_amount'
-    AND max_transaction_date > Transaction_date
-),
-
--- TRANSACTIONS PLUS DIVIDENDS --
-/*
-W widoku tym łączone są transakcje zakończone/zrealizowane wraz z wypłaconymi w tym czasie dywidendami.
-*/
-transactions_plus_dividends AS (
-  SELECT *
-  FROM initial_view
-
-  UNION ALL
-
-  SELECT *
-  FROM all_dividend_transactions_within_maximum_dates
-),
 
 -- INTERMEDIATE VIEW --
 /*
@@ -79,9 +50,10 @@ W tym kroku pivotowana jest kolumna Transaction_Type
 */
 
 intermediate_view AS (
-  SELECT *
-  FROM transactions_plus_dividends
-    PIVOT(SUM(Transaction_value_pln) FOR Transaction_type_group IN ('Buy_amount', 'Sell_amount', 'Div_related_amount'))
+  SELECT * 
+  FROM all_finished_transactions_and_dividends
+    PIVOT(SUM(Transaction_value_pln) 
+      FOR Transaction_type_group IN ('Buy_amount', 'Sell_amount', 'Div_related_amount'))
 )
 
 
@@ -99,12 +71,14 @@ Wartość sprzedaży i inne wyciągane są z użyciem funkcji COALESCE - funkcja
 
 SELECT
   Ticker,
-  MAX(Transaction_date) AS Last_transaction_date,
-  ROUND(SUM(COALESCE(Buy_amount, 0)), 2) AS Cumulative_buy_value,
-  ROUND(SUM(COALESCE(Sell_amount, 0)), 2) AS Cumulative_sell_value,
-  ROUND(SUM(COALESCE(Div_related_amount, 0)), 2) AS Cumulative_dividend_value,
-  ROUND(SUM(COALESCE(Sell_amount, 0)) - SUM(COALESCE(Buy_amount, 0)) + SUM(COALESCE(Div_related_amount, 0)), 2) AS profit_inlcuding_dividend,
-  ROUND(100 * (SUM(COALESCE(Sell_amount, 0)) - SUM(COALESCE(Buy_amount, 0)) + SUM(COALESCE(Div_related_amount, 0)))/(SUM(COALESCE(Buy_amount, 0))), 2) AS profit_percentage
+  MAX(Transaction_date)                           AS Last_transaction_date,
+  ROUND(SUM(COALESCE(Buy_amount, 0)), 2)          AS Cumulative_buy_value,
+  ROUND(SUM(COALESCE(Sell_amount, 0)), 2)         AS Cumulative_sell_value,
+  ROUND(SUM(COALESCE(Div_related_amount, 0)), 2)  AS Cumulative_dividend_value,
+  ROUND(SUM(COALESCE(Sell_amount, 0)) - SUM(COALESCE(Buy_amount, 0)) + SUM(COALESCE(Div_related_amount, 0)), 2) 
+                                                  AS profit_inlcuding_dividend,
+  ROUND(100 * (SUM(COALESCE(Sell_amount, 0)) - SUM(COALESCE(Buy_amount, 0)) + SUM(COALESCE(Div_related_amount, 0)))/(SUM(COALESCE(Buy_amount, 0))), 2) 
+                                                  AS profit_percentage
 FROM
   intermediate_view
 GROUP BY
