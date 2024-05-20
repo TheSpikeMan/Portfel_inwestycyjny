@@ -231,7 +231,7 @@ present_instruments_plus_present_indicators AS (
     END                                                   AS  yearly_rate_of_return,
     CASE
       WHEN present_instruments_view.max_age_of_instrument > 120 
-      THEN  IFNULL(ROUND((365 * (100 * ((ticker_present_amount * Close * instruments.unit + dividend_sum.dividend_sum)/ticker_buy_value) - 100))
+      THEN IFNULL(ROUND((365 * (100 * ((ticker_present_amount * Close * instruments.unit + dividend_sum.dividend_sum)/ticker_buy_value) - 100))
       /max_age_of_instrument, 2), ROUND((365 * (100 * ((ticker_present_amount * Close * instruments.unit)/ticker_buy_value) - 100))
       /max_age_of_instrument, 2))  
     ELSE 0
@@ -252,7 +252,7 @@ present_instruments_plus_present_indicators AS (
   LEFT JOIN dividend_sum
   ON present_instruments_view.Ticker = dividend_sum.Ticker
   LEFT JOIN instrument_types
-  ON instruments.Instrument_type_id = instrument_types.Instrument_type_id
+  ON instruments.Instrument_type_id  = instrument_types.Instrument_type_id
 )
 
 SELECT * 
