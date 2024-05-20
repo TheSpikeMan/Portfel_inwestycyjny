@@ -31,21 +31,21 @@ do danego momentu i sprzedanej in total.
 
 initial_aggregation AS (
 SELECT
-  Transaction_id,
-  Transaction_date,
-  Ticker,
-  Name,
-  Currency,
-  age_of_instrument,
-  Transaction_price,	
-  Transaction_amount,	
-  Transaction_value_pln,	
-  Transaction_type_group,	
-  transaction_date_ticker_amount,
-  transaction_date_ticker_value,	
-  transaction_date_buy_ticker_amount,
-  cumulative_sell_amount_per_ticker,
-  last_currency_close,
+  Transaction_id                      AS Transaction_id,
+  Transaction_date                    AS Transaction_date,
+  Ticker                              AS Ticker,
+  Name                                AS Name,
+  Currency                            AS Currency,
+  age_of_instrument                   AS age_of_instrument,
+  Transaction_price                   AS Transaction_price,
+  Transaction_amount                  AS Transaction_amount,
+  Transaction_value_pln               AS Transaction_value_pln,
+  Transaction_type_group              AS Transaction_type_group,
+  transaction_date_ticker_amount      AS transaction_date_ticket_amount,
+  transaction_date_ticker_value       AS transaction_date_ticker_value,
+  transaction_date_buy_ticker_amount  AS transaction_date_ticket_amount,
+  cumulative_sell_amount_per_ticker   AS cumulative_sell_amount_per_ticker,
+  last_currency_close                 AS last_currency_close,
   CASE
     WHEN Transaction_type_group                                                = "Buy_amount"
     AND transaction_date_buy_ticker_amount - cumulative_sell_amount_per_ticker <= 0
@@ -57,7 +57,7 @@ SELECT
     AND cumulative_sell_amount_per_ticker                                      <> 0
     THEN transaction_date_buy_ticker_amount - cumulative_sell_amount_per_ticker
     ELSE Transaction_amount
-    END AS transaction_amount_left
+    END                               AS transaction_amount_left
 FROM transaction_view
 WHERE TRUE
 WINDOW
@@ -89,7 +89,7 @@ present_instruments_view AS (
       SUM(transaction_amount_left * transaction_price * last_currency_close), 
       2)                                                        AS ticker_buy_value,
     ROUND(
-      SUM(transaction_amount_left * transaction_price)/
+      SUM(transaction_amount_left * transaction_price * last_currency_close)/
       SUM(transaction_amount_left), 
       2)                                                        AS ticker_average_close,
     MIN(Transaction_date)                                       AS minimum_buy_date
@@ -110,9 +110,9 @@ dla danego instrumentu
 
 daily_data AS (
   SELECT
-    Ticker,
-    `Date`,
-    Close,
+    Ticker  AS Ticker,
+    `Date`  AS `Date`,
+    Close   AS Close
   FROM daily
   QUALIFY TRUE
     AND ROW_NUMBER() OVER last_ticker_transaction = 1
@@ -136,7 +136,7 @@ instrumentu, na moment wypłaty dywidendy).
 dividend_selection AS (
   SELECT
     transaction_view.* EXCEPT (Ticker, Close),
-    transaction_view.Ticker,
+    transaction_view.Ticker                               AS Ticker,
     COALESCE(transaction_view.Close, 0)                   AS Close,
     COALESCE(
         ROUND(100 * 
@@ -221,16 +221,17 @@ present_instruments_plus_present_indicators AS (
     present_instruments_view.max_age_of_instrument        AS max_age_of_instrument,
     ROUND(100 * (ticker_present_amount * Close * instruments.unit)/SUM(ticker_present_amount * Close * instruments.unit) OVER(), 2) 
                                                           AS share_of_portfolio,
-    ROUND(100 * ((ticker_present_amount * Close * instruments.unit)/ticker_buy_value) - 100, 2) AS rate_of_return,
+    ROUND(100 * ((ticker_present_amount * Close * instruments.unit)/ticker_buy_value) - 100, 2) 
+                                                          AS rate_of_return,
     CASE
-    WHEN present_instruments_view.max_age_of_instrument > 120 THEN
-    ROUND((365 * (100 * ((ticker_present_amount * Close * instruments.unit)/ticker_buy_value) - 100))
+      WHEN present_instruments_view.max_age_of_instrument > 120 
+        THEN ROUND((365 * (100 * ((ticker_present_amount * Close * instruments.unit)/ticker_buy_value) - 100))
       /max_age_of_instrument, 2)
     ELSE 0
     END                                                   AS  yearly_rate_of_return,
     CASE
-    WHEN present_instruments_view.max_age_of_instrument > 120 THEN
-    IFNULL(ROUND((365 * (100 * ((ticker_present_amount * Close * instruments.unit + dividend_sum.dividend_sum)/ticker_buy_value) - 100))
+      WHEN present_instruments_view.max_age_of_instrument > 120 
+      THEN  IFNULL(ROUND((365 * (100 * ((ticker_present_amount * Close * instruments.unit + dividend_sum.dividend_sum)/ticker_buy_value) - 100))
       /max_age_of_instrument, 2), ROUND((365 * (100 * ((ticker_present_amount * Close * instruments.unit)/ticker_buy_value) - 100))
       /max_age_of_instrument, 2))  
     ELSE 0
