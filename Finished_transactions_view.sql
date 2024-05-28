@@ -1,29 +1,52 @@
 /*
-OPIS WIDOKU
-
 W widoku zawarte są transakcje wszystkich instrumentów, które zostały sprzedane.
 */
 
 WITH 
 transactions_view_raw AS (SELECT * FROM `projekt-inwestycyjny.Transactions.Transactions_view`),
 
--- INITIAL VIEW --
+-- transactions_view --
 /*
-W pierwszym kroku pobrane są wszystkie tickery dla transakcji, które są zrealizowane (analiza ilościowa)
-Dodatkowo wyznaczana jest maksymalna data zakończonej transakcji, aby dobrać dywidendy
+Wyciągnięcie danych transakcyjnych wraz z wyznaczeniem dla wszystkich transakcji wolumenu sprzedanego.
+Transakcje sprzedażowe obecne są w całości.
+Dywidendy i odsetki nieobecne.
 */
 
-initial_view AS (
-  SELECT DISTINCT
-    Ticker                                      AS Ticker,
-    MAX(Transaction_date) OVER ticker_window    AS max_transaction_date
+transactions_view AS (
+  SELECT
+    Transaction_date              AS Transaction_date,
+    Ticker                        AS Ticker,
+    Transaction_type_group        AS Transaction_type_group,
+    Transaction_price             AS Transaction_price,
+    Currency_close                AS Currency_close,
+    CASE
+      -- Przypadek całkowitej sprzedaży danej transakcji zakupowej
+      WHEN Transaction_type_group = "Buy_amount"
+      AND transaction_date_buy_ticker_amount - cumulative_sell_amount_per_ticker <= 0
+      THEN Transaction_amount
+
+      -- Przypadek częściowej sprzedaży danej transakcji zakupowej
+      WHEN Transaction_type_group = "Buy_amount"
+      AND transaction_date_buy_ticker_amount - cumulative_sell_amount_per_ticker > 0
+      AND ROW_NUMBER() OVER last_ticker_transaction_window = 1
+      THEN cumulative_sell_amount_per_ticker
+
+      -- Rozważam wszystkie przypadki sprzedaży
+      WHEN Transaction_type_group = "Sell_amount"
+      THEN Transaction_amount
+
+      -- Chociażby przypadki, gdy analizowana transakcja nie została całkowicie zrealizowana, ale nastąpiła
+      -- jakakolwiek sprzedaż lub Dywidendy/Odsetki
+      ELSE 0
+      END                         AS amount_sold,
   FROM transactions_view_raw
-  WHERE TRUE
-    AND transaction_date_buy_ticker_amount <= cumulative_sell_amount_per_ticker
-    AND Transaction_type IN ('Buy', 'Sell', 'Wykup')
   WINDOW
-    ticker_window AS (
-      PARTITION BY Ticker
+    last_ticker_transaction_window AS (
+      PARTITION BY
+        Ticker
+      ORDER BY
+        Transaction_date,
+        Transaction_id
     )
 ),
 
@@ -32,21 +55,22 @@ initial_view AS (
 W widoku tym wyciągane są wszystkie tranakcje i dywidendy, które zrealizowane były w ramach sprzedanych już instrumentów.
 */
 
-all_finished_transactions_and_dividends AS (
+all_finished_transactions AS (
   SELECT 
-    * EXCEPT(Ticker),
-    tvr.Ticker                      AS Ticker,
-    COALESCE(CASE WHEN Transaction_type_group = 'Buy_amount' THEN Transaction_value_pln ELSE 0 END, 0) 
-                                    AS Buy_amount,
-    COALESCE(CASE WHEN Transaction_type_group = 'Sell_amount' THEN Transaction_value_pln ELSE 0 END, 0) 
-                                    AS Sell_amount,
-    COALESCE(CASE WHEN Transaction_type_group = 'Div_related_amount' THEN Transaction_value_pln ELSE 0 END, 0) 
-                                    AS Div_related_amount
-  FROM transactions_view_raw        AS tvr
-  INNER JOIN initial_view           AS iv
-  ON tvr.Ticker                     = iv.Ticker
+    Ticker                                           AS Ticker,
+    Transaction_date                                 AS Transaction_date,
+    COALESCE(
+      CASE WHEN Transaction_type_group = 'Buy_amount' 
+      THEN amount_sold * Transaction_price * Currency_close ELSE 0 END, 0)      AS Buy_amount,
+    COALESCE(
+      CASE WHEN Transaction_type_group = 'Sell_amount' 
+      THEN amount_sold * Transaction_price * Currency_close ELSE 0 END, 0)      AS Sell_amount,
+    COALESCE(
+      CASE WHEN Transaction_type_group = 'Div_related_amount' 
+      THEN amount_sold * Transaction_price * Currency_close ELSE 0 END, 0)      AS Div_related_amount
+  FROM transactions_view
   WHERE TRUE
-    AND iv.max_transaction_date     > tvr.Transaction_date
+    AND amount_sold <> 0 
 )
 
 -- FINAL AGGREGATON --
@@ -55,10 +79,8 @@ W tym kroku wyciągane są:
 - Data ostatniej transakcji,
 - Skumulowana wartość zakupów,
 - Skumulowana wartość sprzedaży,
-- Skumulowany zysk z uwzględnieniem dywidend,
+- Skumulowany zysk z uwzględnieniem dywidend -> DO DOROBIENIA
 - Skumulowany zysk procentowy na danym instrumencie.
-\
-Wartość sprzedaży i inne wyciągane są z użyciem funkcji COALESCE - funkcja ta wybiera pierwszą nienulową wartość, więć jeśli kolumny Buy lub Sell przyjmuję NULL zastępuje je wartośćią 0.
 */
 
 SELECT
@@ -68,11 +90,13 @@ SELECT
   ROUND(SUM(COALESCE(Sell_amount, 0)), 2)         AS Cumulative_sell_value,
   ROUND(SUM(COALESCE(Div_related_amount, 0)), 2)  AS Cumulative_dividend_value,
   ROUND(SUM(COALESCE(Sell_amount, 0)) - SUM(COALESCE(Buy_amount, 0)) + SUM(COALESCE(Div_related_amount, 0)), 2) 
-                                                  AS profit_inlcuding_dividend,
+                                                  AS profit_including_dividend,
   ROUND(100 * (SUM(COALESCE(Sell_amount, 0)) - SUM(COALESCE(Buy_amount, 0)) + SUM(COALESCE(Div_related_amount, 0)))/(SUM(COALESCE(Buy_amount, 0))), 2) 
                                                   AS profit_percentage
-FROM all_finished_transactions_and_dividends
+FROM all_finished_transactions
+WHERE TRUE
 GROUP BY ALL
-ORDER BY Ticker 
+ORDER BY
+  profit_percentage DESC
 
 
