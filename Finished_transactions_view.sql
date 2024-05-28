@@ -94,7 +94,6 @@ SELECT
   ROUND(100 * (SUM(COALESCE(Sell_amount, 0)) - SUM(COALESCE(Buy_amount, 0)) + SUM(COALESCE(Div_related_amount, 0)))/(SUM(COALESCE(Buy_amount, 0))), 2) 
                                                   AS profit_percentage
 FROM all_finished_transactions
-WHERE TRUE
 GROUP BY ALL
 ORDER BY
   profit_percentage DESC
