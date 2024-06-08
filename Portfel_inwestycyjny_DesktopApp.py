@@ -514,16 +514,10 @@ class DodajTransakcje(QWidget):
         print("Uruchamiam funkcję PrepareDataForBigQueryExport")
 
         # Przypisanie wartości domyślnych do zmiennych
-        self.Transaction_id        = np.nan
-        self.Transaction_date      = np.nan
-        self.Transaction_type      = np.nan
-        self.Currency              = np.nan
         self.Transaction_price     = np.nan
         self.Transaction_amount    = np.nan
-        self.Instrument_id         = np.nan
         self.Commision_id          = np.nan
-        self.Dirty_bond_price      = np.nan
-        self.Tax_paid              = np.nan
+        self.Dirty_bond_price      = 0
         self.Tax_value             = np.nan
 
         # Dodanie do obecnie ostatniego numeru transakcji wartości większej od 1
