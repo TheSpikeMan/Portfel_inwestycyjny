@@ -220,7 +220,7 @@ class DodajTransakcje(QWidget):
 
         # Ustawienie okna oraz załadowanie widgetów
         self.setWindowTitle("Transakcje")
-        self.setFixedSize(QSize(800,500))
+        self.setFixedSize(QSize(800,600))
         self.addWidgets()
     
     def addWidgets(self):
@@ -632,7 +632,7 @@ class MainWindow(QMainWindow):
         self.title = "Portfel_inwestycyjny_Desktop_App"
         # Ustawienie parametrów okna i ustawienie widgetów
         self.setWindowTitle(self.title)
-        self.setFixedSize(QSize(800,500))
+        self.setFixedSize(QSize(800,600))
 
         # Utworzenie obiektu klasy BigQueryReaderAndExporter, wywołanie na nim metody 'downloadDataFromBigQuery' - pobranie 
         # danych z BigQuery, a następnie przypisanie wyniku pracy metody do zmiennych
