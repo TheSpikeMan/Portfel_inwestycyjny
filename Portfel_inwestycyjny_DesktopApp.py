@@ -360,7 +360,7 @@ class DodajTransakcje(QWidget):
         # Dodanie ComboBoxa do wyboru waluty instrumentu finansowego
         self.taxComboBox = QComboBox()
         self.taxComboBox.addItems(["Tak", "Nie"])
-        self.taxComboBox.setCurrentText("Tak")
+        self.taxComboBox.setCurrentText("Nie")
         self.layout.addWidget(self.taxComboBox, 10, 1)
         self.taxComboBox.currentTextChanged.connect(self.taxStateChosen)
 
@@ -373,6 +373,7 @@ class DodajTransakcje(QWidget):
         self.taxValueLineEdit              = QLineEdit()
         self.taxValueLineEdit.installEventFilter(self)
         self.layout.addWidget(self.taxValueLineEdit, 11, 1)
+        self.taxValueLineEdit.setEnabled(False)
 
         # Dodanie przycisku do wysłania danych do BigQuery
         sendDataPushButton       = QPushButton()
@@ -428,7 +429,7 @@ class DodajTransakcje(QWidget):
             if key == Qt.Key.Key_Backspace:
                 return False # Pozwól na obsługę Backspace
             if not event.text().isnumeric():
-                return True
+                return True # Blokuj inne znaki niż numeryczne
             
         return super().eventFilter(obj, event)
 
