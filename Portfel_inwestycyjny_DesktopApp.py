@@ -8,7 +8,8 @@ from PyQt6.QtWidgets import (
     QLabel, 
     QComboBox, 
     QLineEdit,
-    QCalendarWidget)
+    QCalendarWidget,
+    QTextEdit)
 from PyQt6.QtCore import QSize, Qt, QDate, QEvent
 from PyQt6.QtGui import QFont
 from google.cloud import bigquery
@@ -148,7 +149,8 @@ class BigQueryReaderAndExporter():
                                         mode = "NULLABLE")
                                         ]
         else:
-            print("Brak zdefiniowanej schemy dla tego przypadku.")
+            self.informationTextEdit.append("Brak zdefiniowanej schemy dla tego przypadku")
+            
         
         job_config = bigquery.LoadJobConfig(schema = self.schema,
                                     write_disposition = "WRITE_APPEND")
@@ -158,9 +160,11 @@ class BigQueryReaderAndExporter():
                                                    self.destination,
                                                    job_config = job_config)
             job.result()
-            print("Dane zostały wyeksportowane do tabeli w BigQuery.")
+            
+            self.message = "Dane zostały wyeksportowane do tabeli w BigQuery"
         except Exception as e:
-            print(f"Error uploading data to BigQuery: {str(e)}")
+            self.message = f"Error uploading data to BigQuery: {str(e)}"
+        return self.message
 
 class DodajInstrumentDoSlownika(QWidget):
 
@@ -375,18 +379,23 @@ class DodajTransakcje(QWidget):
         self.layout.addWidget(self.taxValueLineEdit, 11, 1)
         self.taxValueLineEdit.setEnabled(False)
 
+        # Dodanie widgetu wyświetlającego informacje podczas wykonywania programu
+        self.informationTextEdit = QTextEdit()
+        self.layout.addWidget(self.informationTextEdit, 12, 0, 1, 3)
+        self.informationTextEdit.setEnabled(False)
+
         # Dodanie przycisku do wysłania danych do BigQuery
         sendDataPushButton       = QPushButton()
         sendDataPushButton.setText("Wyślij dane do bazy")
         sendDataPushButton.pressed.connect(self.sendDataToBigQuery)
         sendDataPushButton.clicked.connect(self.close)
-        self.layout.addWidget(sendDataPushButton, 12, 1)
+        self.layout.addWidget(sendDataPushButton, 13, 1)
 
         # Wyjście do poprzedniego okna
         returnButton             = QPushButton()
         returnButton.setText("Powrót")
         returnButton.pressed.connect(self.close)
-        self.layout.addWidget(returnButton, 13, 1)
+        self.layout.addWidget(returnButton, 14, 1)
 
         self.layout.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignHCenter)
         self.layout.setSpacing(10)
@@ -436,14 +445,14 @@ class DodajTransakcje(QWidget):
     
     # Metoda uruchamiająca się podczas zmiany typu instrumentu
     def instrumentTypeChanged(self):
-        print("Zmieniono typ instrumentu")
+        self.informationTextEdit.append("Zmieniono typ instrumentu.")
         self.instrumentComboBox.clear()
         self.instrumentComboBox.addItems(self.instrumentsDataFrame.query(f"Instrument_type == '{self.instrumentTypeComboBox.currentText()}'")['Ticker'].to_list())
 
     # Metoda sprawdza aktualny stan ComboBoxa i w zależności od niego definiuje widoczność lub nie pola 'self.taxValueLineEdit'
     def taxStateChosen(self, currentTextChanged):
-        print("Zmieniono stan")
-        print("Obecny stan: ", currentTextChanged)
+        self.informationTextEdit.append("Zmieniono stan przycisku związanego z podatkiem. Obecny stan to: " 
+                                        + currentTextChanged)
         if currentTextChanged == "Nie":
             self.taxValueLineEdit.setEnabled(False)
         else:
@@ -474,7 +483,6 @@ class DodajTransakcje(QWidget):
         self.dateEditField = self.dateEditField.toString("yyyy-MM-dd")
         # Pobranie waluty z Comboboxa
         self.currentCurrency  = currentTextChanged
-        print("Metoda CurrencChanged")
 
         # Sprawdzenie waluty i podpięcie ostatniego kursu waluty dla danego dnia. Wykorzystanie widoku Currency_view.
         if self.currentCurrency != 'PLN':
@@ -517,7 +525,7 @@ class DodajTransakcje(QWidget):
         self.Transaction_price     = np.nan
         self.Transaction_amount    = np.nan
         self.Commision_id          = np.nan
-        self.Dirty_bond_price      = 0
+        self.Dirty_bond_price      = 0.0
         self.Tax_value             = np.nan
 
         # Dodanie do obecnie ostatniego numeru transakcji wartości większej od 1
@@ -604,7 +612,8 @@ class DodajTransakcje(QWidget):
 
         # Tworzę obiekt BigQueryReaderAndExporter do eksportu danych do BQ
         bigQueryExporterObject = BigQueryReaderAndExporter()
-        bigQueryExporterObject.sendDataToBigQuery(transaction_data_to_export, self.destination)
+        self.message = bigQueryExporterObject.sendDataToBigQuery(transaction_data_to_export, self.destination)
+        self.informationTextEdit.append(self.message)
 
 
 # Klasa tymczasowo nieaktywna - do wprowadzenia w przyszłości
