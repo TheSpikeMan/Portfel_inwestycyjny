@@ -179,26 +179,41 @@ class DodajInstrumentDoSlownika(QWidget):
         self.addWidgets()
 
     def addWidgets(self):
-        layout = QGridLayout()
+        self.layout = QGridLayout()
+        
+        # Dodanie QLabel do rodzaju instrumentu finansowego
+        instrumentTypeLabel = QLabel()
+        instrumentTypeLabel.setText("Rodzaj instrumentu finansowego")
+        self.layout.addWidget(instrumentTypeLabel, 0, 0)
 
         # Dodanie ComboBoxa do wyboru typu danych
         instrumentTypes = QComboBox()
         instrumentTypes.addItems(["Akcje", "ETF", "Obligacje skarbowe", "Obligacje korporacyjne"])
-        layout.addWidget(instrumentTypes, 0, 0)
+        self.layout.addWidget(instrumentTypes, 0, 1)
+
+        # Dodanie QLabel wskazującego na konkretny ticker
+        instrumentLabel = QLabel()
+        instrumentLabel.setText("Ticker")
+        self.layout.addWidget(instrumentLabel, 1, 0)
+
+        # Dodane QLineEdit do wprowadzenia Tickera 
+        self.tickerLineEdit         = QLineEdit()
+        # self.quantityLineEdit.installEventFilter(self) --> Do wprowadzenia
+        self.layout.addWidget(self.tickerLineEdit, 1, 1)
 
         # Dodanie przycisku do wysłania danych do BigQuery
         sendDataPushButton       = QPushButton()
         sendDataPushButton.setText("Wyślij dane do bazy")
         sendDataPushButton.pressed.connect(self.sendDataToBigQuery)
-        layout.addWidget(sendDataPushButton, 1, 0)
+        self.layout.addWidget(sendDataPushButton, 2, 1)
 
         # Wyjście do poprzedniego okna
         returnButton             = QPushButton()
         returnButton.setText("Powrót")
         returnButton.pressed.connect(self.close)
-        layout.addWidget(returnButton, 2, 0)
+        self.layout.addWidget(returnButton, 3, 1)
 
-        self.setLayout(layout)
+        self.setLayout(self.layout)
     
     # Metoda odpowiedzialna za wysłanie danych do BigQuery
     def sendDataToBigQuery(self):
