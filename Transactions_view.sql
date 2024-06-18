@@ -80,14 +80,14 @@ data_aggregated AS (
   FROM transactions_data
   -- Połączenie z danymi instrumentów
   LEFT JOIN instruments_data
-  ON transactions_data.Instrument_id = instruments_data.Instrument_id
+  ON transactions_data.Instrument_id      = instruments_data.Instrument_id
   -- Połączenie z danymi typów instrumentów
   LEFT JOIN instruments_types
-  ON instruments_data.Instrument_type_id = instruments_types.Instrument_type_id
+  ON instruments_data.Instrument_type_id  = instruments_types.Instrument_type_id
   -- Połączenie z danymi giełdowymi
   LEFT JOIN daily
   ON instruments_data.Ticker = daily.Ticker
-  AND transactions_data.Transaction_date = daily.Date
+  AND transactions_data.Transaction_date  = daily.Date
   -- Połączanie z danymi walutowymi
   LEFT JOIN currency_data
   ON transactions_data.Transaction_date   = currency_data.Currency_date
