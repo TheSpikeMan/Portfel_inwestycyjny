@@ -12,34 +12,25 @@ WITH
 -- Przechowuje dane transakcji giełdowych
 transactions_data AS (SELECT * FROM `projekt-inwestycyjny.Transactions.Transactions`),
 -- Przechowuje informacje o kursach walut na dany dzień
-currency_data_raw AS (SELECT * FROM `projekt-inwestycyjny.Waluty.Currency`),
+currency_data_raw AS (SELECT * FROM `projekt-inwestycyjny.Waluty.Currency_view`),
 -- Przechowuje dane instrumentów finansowych
-instruments_data AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instruments`),
+instruments_data  AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instruments`),
 -- Przechowuje dane typów instrumentów finansowych
 instruments_types AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instrument_types`),
 -- Przechowuje dane giełdowe instrumentów finansowych
-daily AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Daily`),
+daily             AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Daily`),
+-- Przechowuje informacje kalendarzowe
+dates             AS (SELECT * FROM `projekt-inwestycyjny.Calendar.Dates`),
 
 -- CURRENCY_DATA --
 /* Przechowuje informacje o kursach walutowych, wraz z wyznaczeniem kursu walutowego na dzień poprzedni */
 currency_data AS (
   SELECT
-    Currency_date                                   AS Currency_date,
-    Currency                                        AS Currency,
-    Currency_close                                  AS Currency_close,
-    -- Ostatni dzień roboczy
-    LAG(Currency_date)  OVER currency_window        AS last_working_day,
-    -- Kurs walutowy z ostatniego dnia roboczego
-    LAG(Currency_close) OVER currency_window        AS last_currency_close
+    * EXCEPT(Currency_date),
+    CAST(Currency_date AS DATE) AS Currency_date
   FROM currency_data_raw
-  QUALIFY TRUE
-  WINDOW
-    currency_window AS (
-      PARTITION BY Currency
-      ORDER BY Currency_date
-    )
+  WHERE TRUE
 ),
-
 
 -- DATA AGGREGATED --
 /*
@@ -62,12 +53,6 @@ data_aggregated AS (
     COALESCE(currency_data.Currency_date, Transaction_date)  AS Currency_date,
     COALESCE(Currency_close, 1)                              AS Currency_close,
     COALESCE(currency_data.last_currency_close, 1)           AS last_currency_close,
-    CASE 
-      WHEN EXTRACT(QUARTER FROM Transaction_date) = 1        THEN "I kwartał"
-      WHEN EXTRACT(QUARTER FROM Transaction_date) = 2        THEN "II kwartał"
-      WHEN EXTRACT(QUARTER FROM Transaction_date) = 3        THEN "III kwartał"
-      WHEN EXTRACT(QUARTER FROM Transaction_date) = 4        THEN "IV kwartał"
-    END                                                      AS Quarter,
     -- Utworzenie kolumny, która przechowuje wartość transakcji w PLN
     ROUND(
       Transaction_amount *
@@ -105,9 +90,13 @@ data_aggregated AS (
   AND transactions_data.Transaction_date = daily.Date
   -- Połączanie z danymi walutowymi
   LEFT JOIN currency_data
-  ON transactions_data.Transaction_date  = currency_data.Currency_date
+  ON transactions_data.Transaction_date   = currency_data.Currency_date
   AND transactions_data.Currency          = currency_data.Currency
+  -- Połączenie z danymi kalendarza
+  LEFT JOIN dates
+  ON transactions_data.Transaction_date   = dates.Date
 ),
+
 
 -- PRE FINAL AGGREGATION --
 /*
