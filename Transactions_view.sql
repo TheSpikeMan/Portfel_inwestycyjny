@@ -45,7 +45,8 @@ Wyznaczenie wskaźników:
 
 data_aggregated AS (
   SELECT 
-    * EXCEPT (Instrument_id, Currency, Instrument_type_id, Ticker, Currency_date, last_currency_close, Currency_close),
+    * EXCEPT (Instrument_id, Currency, Instrument_type_id, Ticker, Currency_date, last_currency_close, Currency_close,
+    `Date`), 
     instruments_data.Instrument_id                           AS Instrument_id,                       
     instruments_data.Ticker                                  AS Ticker,
     transactions_data.Currency                               AS Currency,
