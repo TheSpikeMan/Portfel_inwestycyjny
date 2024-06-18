@@ -214,19 +214,26 @@ present_instruments_plus_present_indicators AS (
     present_instruments_view.ticker_present_amount        AS ticker_present_amount,
     present_instruments_view.ticker_average_close         AS ticker_average_close,
     present_instruments_view.ticker_buy_value             AS ticker_buy_value,
-    ROUND((ticker_present_amount * Close * instruments.unit), 2) 
+    ROUND(
+      (ticker_present_amount * Close * instruments.unit), 
+      2) 
                                                           AS ticker_present_value,
     daily_data.Close * instruments.unit                   AS current_price,
     daily_data.`Date`                                     AS current_price_date,
     present_instruments_view.max_age_of_instrument        AS max_age_of_instrument,
-    ROUND(100 * (ticker_present_amount * Close * instruments.unit)/SUM(ticker_present_amount * Close * instruments.unit) OVER(), 2) 
+    ROUND(100 * (ticker_present_amount * Close * instruments.unit)/
+          SUM(ticker_present_amount * Close * instruments.unit) OVER(), 
+          2) 
                                                           AS share_of_portfolio,
-    ROUND(100 * ((ticker_present_amount * Close * instruments.unit)/ticker_buy_value) - 100, 2) 
+    ROUND(100 * ((ticker_present_amount * Close * instruments.unit)/
+                  ticker_buy_value) - 100, 
+                  2) 
                                                           AS rate_of_return,
     CASE
       WHEN present_instruments_view.max_age_of_instrument > 120 
-        THEN ROUND((365 * (100 * ((ticker_present_amount * Close * instruments.unit)/ticker_buy_value) - 100))
-      /max_age_of_instrument, 2)
+        THEN ROUND(
+              (365 * (100 * ((ticker_present_amount * Close * instruments.unit)/ticker_buy_value) - 100))
+              /max_age_of_instrument, 2)
     ELSE 0
     END                                                   AS  yearly_rate_of_return,
     CASE
