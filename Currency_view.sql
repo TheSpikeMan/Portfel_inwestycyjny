@@ -59,7 +59,8 @@ SELECT
     SAFE_CAST(Currency_date AS STRING)              AS Currency_date,    --> Potencjalna data transakcji
     Currency                                        AS Currency,         --> Waluta
     Currency_close                                  AS Currency_close,   --> Kurs zamknięcia na dany dzień
-    LAG(Currency_close) OVER last_currency_close    AS Last_day_currency --> Kurs zamknięcia na ostatni dzień roboczy
+    LAG(Currency_date)  OVER last_currency_close    AS last_working_day, --> Ostatni dzień roboczy
+    LAG(Currency_close) OVER last_currency_close    AS last_currency_close --> Kurs zamknięcia na ostatni dzień roboczy
 FROM
     dates_with_non_null_currency
 WINDOW
