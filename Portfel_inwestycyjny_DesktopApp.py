@@ -63,7 +63,7 @@ class BigQueryReaderAndExporter():
             Currency_date                                   AS Currency_date,
             Currency                                        AS Currency,
             Currency_close                                  AS Currency_close,
-            Last_day_currency                               AS Last_day_currency
+            last_currency_close                             AS last_currency_close
         FROM `{self.project}.{self.dataSetCurrencies}.{self.viewCurrencies}`
         """
         query_job_currencies = client.query(query=queryCurrencies)
@@ -503,7 +503,7 @@ class DodajTransakcje(QWidget):
         if self.currentCurrency != 'PLN':
             self.lastDayCurrency = self.currenciesDataFrame.query(f"Currency== '{self.currentCurrency}' \
                                                                   & Currency_date== '{self.dateEditField}'") \
-                                                                    ['Last_day_currency'].\
+                                                                    ['last_currency_close'].\
                                                                     iloc[0]
             self.currencyValueLineEdit.setText(f"{self.lastDayCurrency}")
         else:
