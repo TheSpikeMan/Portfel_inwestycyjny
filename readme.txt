@@ -2,8 +2,7 @@ Projekt inwestycyjny jest autorskim pomysłem, którego głównym celem jest pro
 
 W tej chwili w projekcie funkcjonują trzy moduły przetwarzające dane giełdowe:
 
-- webscraping_investing_data - Moduł ściągania danych kursu, wolumenu oraz obrotu dla danego instrumentu finansowego.
-- currencies_webscraping - Moduł scrapujący dane kursów NBP dla walut USD oraz EUR.
+- webscraping_in_total - Moduł ściągania danych kursu, wolumenu oraz obrotu dla danego instrumentu finansowego oraz scrapujący dane kursów NBP dla walut USD oraz EUR.
 - inflation_webscraping - Moduł scrapujący dane inflacyjne.
 
 Wszystkie zaprezentowane moduły napisane są w języku Python i przetwarzane przez mechanizmy chmurowe Google każdego wieczoru. Zasada działania mechanizmów scrapujących dane jest następująca:
@@ -16,7 +15,12 @@ Wszystkie zaprezentowane moduły napisane są w języku Python i przetwarzane pr
 Tabele niezbędne do działania funkcji to:
 - Tabela o nazwie Daily, przechowująca dane giełdowe,
 - Tabela o nazwie Currency, przechowująca dane walutowe,
-- Tabela o nazwie Inflation, przechowująca dane polskiej inflacji.
+- Tabela o nazwie Inflation, przechowująca dane polskiej inflacji,
+- Tabela o nazwie Dane_instrumentow, przechowująca dane instrumentów,
+- Tabela o nazwie Instrument_types, przechowująca dane typów instrumentów,
+- Tabela o nazwie Transactions, przechowująca dane transakcyjne,
+- Tabela o nazwie Treasury_Bonds, przechowująca dane oprocentowań obligacji skarbowych,
+- Widok o nazwie Transaction_view, przechowujący wszystkie dane transakcyjne zestawione z danymi z innych tabel/
 
 Nazwy tabel można z łatwością dostosować do własnych potrzeb, w obu kodach.
 
