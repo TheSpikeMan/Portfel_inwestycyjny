@@ -14,7 +14,6 @@ from PyQt6.QtCore import QSize, Qt, QDate, QEvent
 from PyQt6.QtGui import QFont
 from google.cloud import bigquery
 import pandas as pd
-import time
 import numpy as np
 
 
@@ -127,25 +126,25 @@ class BigQueryReaderAndExporter():
 
         if self.destination     == "Dane transakcyjne":
             self.destination    = f"{self.project}.{self.dataSetTransactions}.{self.tableTransactions}"
-            self.schema = [bigquery.SchemaField(name = 'Transaction_id', field_type = "INTEGER", \
+            self.schema = [bigquery.SchemaField(name = 'Transaction_id', field_type = "INTEGER",
                                         mode = "REQUIRED"),
-                           bigquery.SchemaField(name = 'Transaction_date', field_type = "DATE",\
+                           bigquery.SchemaField(name = 'Transaction_date', field_type = "DATE",
                                         mode = "REQUIRED"),
-                           bigquery.SchemaField(name = 'Transaction_type', field_type = "STRING",\
+                           bigquery.SchemaField(name = 'Transaction_type', field_type = "STRING",
                                         mode = "REQUIRED"),
-                           bigquery.SchemaField(name = 'Currency', field_type = "STRING",\
+                           bigquery.SchemaField(name = 'Currency', field_type = "STRING",
                                         mode = "REQUIRED"),
-                           bigquery.SchemaField(name = 'Transaction_price', field_type = "FLOAT",\
+                           bigquery.SchemaField(name = 'Transaction_price', field_type = "FLOAT",
                                         mode = "NULLABLE"),
-                           bigquery.SchemaField(name = 'Transaction_amount', field_type = "FLOAT",\
+                           bigquery.SchemaField(name = 'Transaction_amount', field_type = "FLOAT",
                                         mode = "REQUIRED"),
-                           bigquery.SchemaField(name = 'Instrument_id', field_type = "INTEGER",\
+                           bigquery.SchemaField(name = 'Instrument_id', field_type = "INTEGER",
                                         mode = "REQUIRED"),
-                           bigquery.SchemaField(name = 'Commision_id', field_type = "FLOAT",\
+                           bigquery.SchemaField(name = 'Commision_id', field_type = "FLOAT",
                                         mode = "NULLABLE"),
-                           bigquery.SchemaField(name = 'Tax_paid', field_type = "BOOLEAN",\
+                           bigquery.SchemaField(name = 'Tax_paid', field_type = "BOOLEAN",
                                         mode = "REQUIRED"),
-                           bigquery.SchemaField(name = 'Tax_value', field_type = "FLOAT",\
+                           bigquery.SchemaField(name = 'Tax_value', field_type = "FLOAT",
                                         mode = "NULLABLE")
                                         ]
         else:
