@@ -179,38 +179,129 @@ class DodajInstrumentDoSlownika(QWidget):
 
     def addWidgets(self):
         self.layout = QGridLayout()
-        
+
+        # Dodanie QLabel do opisu daty
+        primaryLabel = QLabel()
+        primaryLabel.setText("Słownik instrumentów")
+        self.fontTitle = QFont()
+        self.fontTitle.setPointSize(16)
+        primaryLabel.setFont(self.fontTitle)
+        self.layout.addWidget(primaryLabel, 0, 0, 1, 3,
+        alignment=Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignHCenter)
+
         # Dodanie QLabel do rodzaju instrumentu finansowego
-        instrumentTypeLabel = QLabel()
-        instrumentTypeLabel.setText("Rodzaj instrumentu finansowego")
-        self.layout.addWidget(instrumentTypeLabel, 0, 0)
+        self.instrumentTypeLabel = QLabel()
+        self.instrumentTypeLabel.setText("Rodzaj instrumentu finansowego")
+        self.layout.addWidget(self.instrumentTypeLabel, 2, 0)
 
         # Dodanie ComboBoxa do wyboru typu danych
-        instrumentTypes = QComboBox()
-        instrumentTypes.addItems(["Akcje", "ETF", "Obligacje skarbowe", "Obligacje korporacyjne"])
-        self.layout.addWidget(instrumentTypes, 0, 1)
+        self.instrumentTypes = QComboBox()
+        self.instrumentTypes.addItems(["Akcje", "ETF", "Obligacje skarbowe", "Obligacje korporacyjne"])
+        self.layout.addWidget(self.instrumentTypes, 2, 1)
 
         # Dodanie QLabel wskazującego na konkretny ticker
-        instrumentLabel = QLabel()
-        instrumentLabel.setText("Ticker")
-        self.layout.addWidget(instrumentLabel, 1, 0)
+        self.instrumentLabel = QLabel()
+        self.instrumentLabel.setText("Ticker")
+        self.layout.addWidget(self.instrumentLabel, 3, 0)
 
-        # Dodane QLineEdit do wprowadzenia Tickera 
-        self.tickerLineEdit         = QLineEdit()
+        # Dodanie QLineEdit do wprowadzenia Tickera
+        self.tickerLineEdit = QLineEdit()
         # self.quantityLineEdit.installEventFilter(self) --> Do wprowadzenia
-        self.layout.addWidget(self.tickerLineEdit, 1, 1)
+        self.layout.addWidget(self.tickerLineEdit, 3, 1)
+
+        # Dodanie QLabel wskazującego na konkretną nazwę instrumentu
+        self.instrumentNameLabel = QLabel()
+        self.instrumentNameLabel.setText("Pełna nazwa instrumentu")
+        self.layout.addWidget(self.instrumentNameLabel, 4, 0)
+
+        # Dodanie QLineEdit do wprowadzenia nazwy instrumentu
+        self.instrumentNameLineEdit = QLineEdit()
+        self.layout.addWidget(self.instrumentNameLineEdit, 4, 1)
+
+        # Dodanie QLabel wskazującego na konkretną jednostkę danego instrumentu
+        self.instrumentUnitLabel = QLabel()
+        self.instrumentUnitLabel.setText("Jednostka")
+        self.layout.addWidget(self.instrumentUnitLabel, 5, 0)
+
+        # Dodanie QComboBox do wprowadzenia jednostki instrumentu
+        self.instrumentUnitComboBox = QComboBox()
+        self.instrumentUnitComboBox.addItems(["1", "10", "100", "1000", "10000"])
+        self.layout.addWidget(self.instrumentUnitComboBox, 5, 1)
+
+        # Dodanie QLabel wskazującego na kraj notowania danego instrumentu
+        self.countryLabel = QLabel()
+        self.countryLabel.setText("Kraj notowania (skrót)")
+        self.layout.addWidget(self.countryLabel, 6, 0)
+
+        # Dodanie QLineEdit do wprowadzenia kraju notowania danego instrumentu
+        self.countryLineEdit = QLineEdit()
+        self.layout.addWidget(self.countryLineEdit, 6, 1)
+
+        # Dodanie QLabel wskazującego na identyfikator rynku danego instrumentu
+        self.marketLabel = QLabel()
+        self.marketLabel .setText("Identyfiktor giełdy (skrót)")
+        self.layout.addWidget(self.marketLabel, 7, 0)
+
+        # Dodanie QLineEdit do wprowadzenia identyfikatora rynku danego instrumentu
+        self.marketLineEdit = QLineEdit()
+        self.layout.addWidget(self.marketLineEdit, 7, 1)
+
+        # Dodanie QLabel wskazującego na walutę w jakiej notowany jest dany instrument
+        self.currencyLabel = QLabel()
+        self.currencyLabel .setText("Waluta")
+        self.layout.addWidget(self.currencyLabel, 8, 0)
+
+        # Dodanie QComboBoc do wprowadzenia waluty w jakiej notowany jest dany instrument
+        self.currencyComboBox = QComboBox()
+        self.currencyComboBox.addItems(["USD", "EUR", "GBP", "CHF", "PLN"])
+        self.layout.addWidget(self.currencyComboBox, 8, 1)
+
+        # Dodanie QLabel wskazującego na politykę dystrybucji danego instrumentu
+        self.distributionPolicyLabel = QLabel()
+        self.distributionPolicyLabel.setText("Polityka dystrybucji")
+        self.layout.addWidget(self.distributionPolicyLabel, 9, 0)
+
+        # Dodanie QComboBox do wprowadzenia polityki dystrybucji danego instrumentu
+        self.distributionPolicyCombobox = QComboBox()
+        self.distributionPolicyCombobox.addItems(["Distributing", "Accumulating"])
+        self.layout.addWidget(self.distributionPolicyCombobox, 9, 1)
+
+        # Dodanie QLabel wskazującego na typ instrumentu
+        self.instrumentTypeIdLabel = QLabel()
+        self.instrumentTypeIdLabel.setText("Identyfikator typu instrumentu")
+        self.layout.addWidget(self.instrumentTypeIdLabel, 10, 0)
+
+        # Dodanie QLineEdit do wprowadzenia typu danego instrumentu
+        self.instrumentTypeIdLineEdit = QLineEdit()
+        self.layout.addWidget(self.instrumentTypeIdLineEdit, 10, 1)
+
+        # Dodanie QLabel wskazującego na siedzibę danego instrumentu
+        self.instrumentHeadquarterLabel = QLabel()
+        self.instrumentHeadquarterLabel.setText("Siedziba")
+        self.layout.addWidget(self.instrumentHeadquarterLabel, 11, 0)
+
+        # Dodanie QLineEdit do wprowadzenia siedziby danego instrumentu
+        self.instrumentHeadquarterLineEdit = QLineEdit()
+        self.layout.addWidget(self.instrumentHeadquarterLineEdit, 11, 1)
 
         # Dodanie przycisku do wysłania danych do BigQuery
         sendDataPushButton       = QPushButton()
         sendDataPushButton.setText("Wyślij dane do bazy")
         sendDataPushButton.pressed.connect(self.sendDataToBigQuery)
-        self.layout.addWidget(sendDataPushButton, 2, 1)
+        self.layout.addWidget(sendDataPushButton, 12, 1)
 
         # Wyjście do poprzedniego okna
         returnButton             = QPushButton()
         returnButton.setText("Powrót")
         returnButton.pressed.connect(self.close)
-        self.layout.addWidget(returnButton, 3, 1)
+        self.layout.addWidget(returnButton, 13, 1)
+
+        self.layout.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignHCenter)
+        self.layout.setSpacing(10)
+        self.layout.setContentsMargins(150,20,150,20)
+        self.layout.setColumnStretch(0, 1)
+        self.layout.setColumnStretch(1, 2)
+        self.layout.setColumnStretch(2, 1)
 
         self.setLayout(self.layout)
     
@@ -268,7 +359,7 @@ class DodajTransakcje(QWidget):
         # OpenCalendar, która tworzy nowy obiekt QCalendarWidget, pobiera od użytkownika datę,
         # wpisuje ją do pola obok i zamyka obiekt.
         self.openCalendarButton       = QPushButton()
-        self.openCalendarButton  .setText("Kalendarz")
+        self.openCalendarButton.setText("Kalendarz")
         self.openCalendarButton.pressed.connect(self.OpenCalendar)
         self.layout.addWidget(self.openCalendarButton, 1, 2)
 
