@@ -45,7 +45,9 @@ dates_with_non_null_currency AS (
     AND dates_with_currency.Currency = currency.Currency
     WINDOW
         last_currency_close AS (
-            PARTITION BY Dates_with_currency.Currency ORDER BY Dates_with_currency.Currency_date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+            PARTITION BY Dates_with_currency.Currency 
+            ORDER BY Dates_with_currency.Currency_date 
+            ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
         )
     ORDER BY
         dates_with_currency.Currency_date
@@ -65,6 +67,7 @@ FROM
     dates_with_non_null_currency
 WINDOW
     last_currency_close AS (
-        PARTITION BY Currency ORDER BY Currency_date
+        PARTITION BY Currency 
+        ORDER BY Currency_date
     )
 
