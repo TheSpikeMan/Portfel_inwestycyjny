@@ -9,8 +9,8 @@ CREATE SCHEMA IF NOT EXISTS `projekt-inwestycyjny.Waluty`;
 -- UTWORZENIE TABEL W ZBIORZE CALENDAR --
 -- Tabela przechowująca przypisanie kwartału do określonej daty --
 CREATE TABLE IF NOT EXISTS `projekt-inwestycyjny.Calendar.Dates` (
-  `Date` DATE,
-  Quarter STRING
+  `Date`  DATE      OPTIONS(description="Data"),
+  Quarter STRING    OPTIONS(description="Kwartał")
 );
 
 -- Uzupełnienie tabeli Dates --
@@ -18,9 +18,9 @@ CREATE TABLE IF NOT EXISTS `projekt-inwestycyjny.Calendar.Dates` (
 SELECT
   *,
   CASE
-    WHEN EXTRACT(MONTH FROM `Date`) IN (1, 2, 3) THEN 'I kwartał'
-    WHEN EXTRACT(MONTH FROM `Date`) IN (4, 5, 6) THEN 'II kwartał'
-    WHEN EXTRACT(MONTH FROM `Date`) IN (7, 8, 9) THEN 'III kwartał'
+    WHEN EXTRACT(MONTH FROM `Date`) IN (1, 2, 3)    THEN 'I kwartał'
+    WHEN EXTRACT(MONTH FROM `Date`) IN (4, 5, 6)    THEN 'II kwartał'
+    WHEN EXTRACT(MONTH FROM `Date`) IN (7, 8, 9)    THEN 'III kwartał'
     WHEN EXTRACT(MONTH FROM `Date`) IN (10, 11, 12) THEN 'IV kwartał'
   END AS Quarter
 FROM
@@ -31,26 +31,26 @@ UNNEST(
 -- UTWORZENIE TABEL W ZBIORZE DANE_INSTRUMENTÓW -- 
 -- Tabela przechowująca dane giełdowe instrumentów -- 
 CREATE TABLE IF NOT EXISTS `projekt-inwestycyjny.Dane_instrumentow.Daily`(
-  Ticker STRING NOT NULL,
-  `Date` DATE NOT NULL,
-  Close FLOAT64 NOT NULL,
-  Volume INT64 NOT NULL,
-  Turnover INT64 NOT NULL
+  Ticker   STRING   NOT NULL OPTIONS(description="Ticker instrumentu finansowego"),
+  `Date`   DATE     NOT NULL OPTIONS(description="Data aktualizacji danych danych"),
+  Close    FLOAT64  NOT NULL OPTIONS(description="Kurs zamknięcia instrumentu finansowego"),
+  Volume   INT64    NOT NULL OPTIONS(description="Dzienny wolumen"),
+  Turnover INT64    NOT NULL OPTIONS(description="Dzienny obrót")
 );
 
 -- Tabela przechowująca unikatowe instrumenty --
 CREATE OR REPLACE TABLE `projekt-inwestycyjny.Dane_instrumentow.Instruments` (
-  Instrument_id INT64,
-  Ticker STRING,
-  Name STRING,
-  Unit INT64,
-  Country STRING,
-  Market STRING,
-  Currency STRING,
-  Distribution_policy STRING,
-  Instrument_type_id INT64,
-  Instrument_headquarter STRING,
-  Status INT64
+  Instrument_id          INT64   OPTIONS(description="ID instrumentu finansowego - indeks"),
+  Ticker                 STRING  OPTIONS(description="Ticker instrumentu finansowego"),
+  Name                   STRING  OPTIONS(description="Nazwa instrumentu finansowego"),
+  Unit                   INT64   OPTIONS(description="Jednoska rozliczeniowa instrumentu finansowego"),
+  Country                STRING  OPTIONS(description="Kraj notowania instrumentu finansowego"),
+  Market                 STRING  OPTIONS(description="Rynek instrumentu finansowego"),
+  Currency               STRING  OPTIONS(description="Waluta instrumentu finansowego"),
+  Distribution_policy    STRING  OPTIONS(description="Polityka dystrybucji instrumentu finansowego"),
+  Instrument_type_id     INT64   OPTIONS(description="ID typu instrumentu finansowego"),
+  Instrument_headquarter STRING  OPTIONS(description="Siedziba instrumentu finansowego"),
+  Status                 INT64   OPTIONS(description="Status instrumentu finansowego")
 );
 
 -- Tabela przechowująca typy instrumentów -- 
