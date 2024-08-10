@@ -1,4 +1,6 @@
 """
+Reading DDL to create a specific table
+
 project_name     --> Nazwa projektu
 project_set_name --> Nazwa zbioru danych
 table_name       --> Nazwa tabeli
