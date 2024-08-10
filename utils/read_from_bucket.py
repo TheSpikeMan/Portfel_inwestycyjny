@@ -5,6 +5,8 @@ def list_blobs(bucket_name):
     Lists all the blobs (files) in the bucket
 
     bucket_name: STRING - name of the bucket
+
+    RETURNS: NONE - prints all the files withing the bucket
     
     """
     # bucket_name = "your-bucket-name"
@@ -27,6 +29,8 @@ def read_sql_from_bucket_and_query(user_project, bucket_name, file_name):
     user_project: STRING - project name
     file_name   : STRING - file name with extension
 
+    RETURNS: DATAFRAME based on the SQL queried
+
     """
     storage_client = storage.Client()
 
@@ -45,19 +49,22 @@ def read_sql_from_bucket_and_query(user_project, bucket_name, file_name):
     # Initialize Client Class object
     client = bigquery.Client()
 
-    # Query a SQL from Google Cloud Storage
+    # Query a SQL from Google Cloud Storage. Returns QueryJob Class instance.
     query = client.query(blob)
 
-    # Query result
-    query_results = query.result
-    return query_results 
+    # Converting to DataFrame
+    result = query.to_dataframe()
+
+    return result
 
 
-test = read_sql_from_bucket_and_query(
-    user_project = "projekt-inwestycyjny", 
-    bucket_name  = "portfel_inwestycyjny_desktop_app_bucket", 
-    file_name    = "Currencies_data_from_Currency_view.txt")
+if __name__ == "__main__":
+    query_job = read_sql_from_bucket_and_query(
+        user_project = "projekt-inwestycyjny", 
+        bucket_name  = "portfel_inwestycyjny_desktop_app_bucket", 
+        file_name    = "Currencies_data_from_Currency_view.txt")
 
+    print("Pierwszej 5 wierszy z SQL to: ", query_job.head())
 
 
 
