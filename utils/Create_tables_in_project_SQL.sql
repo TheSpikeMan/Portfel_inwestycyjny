@@ -54,9 +54,10 @@ CREATE OR REPLACE TABLE `projekt-inwestycyjny.Dane_instrumentow.Instruments` (
 );
 
 -- Tabela przechowująca typy instrumentów -- 
-CREATE TABLE IF NOT EXISTS `projekt-inwestycyjny.Dane_instrumentow.Instruments_types` (
-  Instrument_type_id INT64 NOT NULL,
-  Instrument_type STRING NOT NULL
+CREATE TABLE IF NOT EXISTS `projekt-inwestycyjny.Dane_instrumentow.Instrument_types` 
+(
+  Instrument_type_id INT64 NOT NULL  OPTIONS(description="ID typu instrumentu finansowego - indeks"),
+  Instrument_type    STRING NOT NULL OPTIONS(description="Nazwa typu instrumentu finansowego")
 );
 
 -- Uzupełenie tabeli typami danych --
@@ -68,54 +69,63 @@ INSERT INTO `Dane_instrumentow.Instrument_types` VALUES (5, "Obligacje skarbowe"
 INSERT INTO `Dane_instrumentow.Instrument_types` VALUES (6, "Obligacje zagraniczne");
 INSERT INTO `Dane_instrumentow.Instrument_types` VALUES (7, "Obligacje zagraniczne");
 
--- W zbiorze znajduje się również widok 'Trends_analysis'
+-- Tabela przechowująca informację o marży obligacji skarbowych --
+CREATE TABLE IF NOT EXISTS `projekt-inwestycyjny.Dane_instrumentow.Treasury_Bonds`
+(
+  Ticker              STRING NOT NULL  OPTIONS(description="Ticker instrumentu finansowego"),
+  First_year_interest FLOAT64 NOT NULL OPTIONS(description="Marża w pierwszym roku"),
+  Regular_interest    FLOAT64 NOT NULL OPTIONS(description="Marża w kolejnych latach")
+);
 
+-- W zbiorze znajduje się również widok 'Trends_analysis'
 
 -- UTWORZENIE TABEL W ZBIORZE INFLATION -- 
 -- Tabela Inflation zawiera dane inflacyjne scrapowane co miesiąc --
 CREATE TABLE IF NOT EXISTS `projekt-inwestycyjny.Inflation.Inflation`(
-  `date` STRING NOT NULL,
-  inflation FLOAT NOT NULL
+  `date`    STRING  NOT NULL OPTIONS(description="Data"),
+  inflation FLOAT64 NOT NULL OPTIONS(description="Inflacja")
 );
 
 -- UTWORZENIE TABEL W ZBIORZE TRANSACTIONS --
 -- Tabela Transactions zawiera dane transakcyjne --
-CREATE TABLE IF NOT EXISTS `projekt-inwestycyjny.Transactions.Transactions`(
-  Transaction_id INT64 NOT NULL,
-  Transaction_date DATE NOT NULL,
-  Transaction_type STRING NOT NULL,
-  Currency STRING NOT NULL,
-  Transaction_price FLOAT64 NOT NULL,
-  Transaction_amount FLOAT64 NOT NULL,
-  Instrument_id INT64 NOT NULL,
-  Commision FLOAT64,
-  Dirty_bond_price FLOAT64,
-  Tax_paid BOOL NOT NULL,
-  Tax_value FLOAT64 NOT NULL
+
+CREATE OR REPLACE TABLE `projekt-inwestycyjny.Transactions.Transactions`
+(
+  Transaction_id     INT64   OPTIONS(description="ID transakcji - indeks"),
+  Transaction_date   DATE    OPTIONS(description="Data transakcji"),
+  Transaction_type   STRING  OPTIONS(description="Typ transakcji"),
+  Currency           STRING  OPTIONS(description="Waluta"),
+  Transaction_price  FLOAT64 OPTIONS(description="Cena transakcyjna"),
+  Transaction_amount FLOAT64 OPTIONS(description="Liczba"),
+  Instrument_id      INT64   OPTIONS(description="ID instrumentu finansowego"),
+  Commision_id       FLOAT64 OPTIONS(description="Prowizja"),
+  Dirty_bond_price   FLOAT64 OPTIONS(description="Cena brudna"),
+  Tax_paid           BOOL    OPTIONS(description="Podatek zapłacony"),
+  Tax_value          FLOAT64 OPTIONS(description="Wartość podatku")
 );
 
 -- Tabela Transactions zawiera dane do rozliczeń podatkowy --
 CREATE OR REPLACE TABLE `projekt-inwestycyjny.Transactions.Tax_calculations` (
-  Date_sell DATE NOT NULL,
-  Date_buy DATE,
-  Investment_period INT64,
-  Quantity INT64 NOT NULL,
-  Buy_Price FLOAT64,
-  Sell_Price FLOAT64 NOT NULL,
-  Buy_currency FLOAT64,
-  Sell_currency FLOAT64 NOT NULL,
-  Currency STRING,
-  Transaction_type STRING NOT NULL,
-  Instrument_type STRING NOT NULL,
-  Country STRING NOT NULL,
-  Instrument_headquarter STRING NOT NULL,
-  Ticker STRING NOT NULL,
-  Ticker_id INT64 NOT NULL,
-  Tax_deductible_expenses FLOAT64,
-  Income FLOAT64,
-  Profit FLOAT64,
-  Tax_paid BOOL NOT NULL,
-  Tax_value FLOAT64
+  Date_sell               DATE    NOT NULL OPTIONS(description="Data sprzedaży instrumentu finansowego"),
+  Date_buy                DATE             OPTIONS(description="Data zakupu instrumentu finansowego"),
+  Investment_period       INT64            OPTIONS(description="Okres inwestowania - liczba dni"),
+  Quantity                INT64   NOT NULL OPTIONS(description="Ilość"),
+  Buy_Price               FLOAT64          OPTIONS(description="Cena zakupu"),
+  Sell_Price              FLOAT64 NOT NULL OPTIONS(description="Cena sprzedaży"),
+  Buy_currency            FLOAT64          OPTIONS(description="Wartość waluty podczas zakupu"),
+  Sell_currency           FLOAT64 NOT NULL OPTIONS(description="Wartość waluty podczas sprzedaży"),
+  Currency                STRING           OPTIONS(description="Waluta"),
+  Transaction_type        STRING  NOT NULL OPTIONS(description="Typ transakcji"),
+  Instrument_type         STRING  NOT NULL OPTIONS(description="Nazwa typu instrumentu finansowego"),
+  Country                 STRING  NOT NULL OPTIONS(description="Kraj notowania instrumentu finansowego"),
+  Instrument_headquarter  STRING  NOT NULL OPTIONS(description="Siedziba instrumentu finansowego"),
+  Ticker                  STRING  NOT NULL OPTIONS(description="Ticker instrumentu finansowego"),
+  Ticker_id               INT64   NOT NULL OPTIONS(description="ID instrumentu finansowego"),
+  Tax_deductible_expenses FLOAT64          OPTIONS(description="Koszty uzyskania przychodu"),
+  Income                  FLOAT64          OPTIONS(description="Przychód"),
+  Profit                  FLOAT64          OPTIONS(description="Zysk"),
+  Tax_paid                BOOL NOT NULL    OPTIONS(description="Podatek zapłacony"),
+  Tax_value               FLOAT64          OPTIONS(description="Wartość podatku")
 );
 
 
@@ -130,7 +140,7 @@ W zbiorze znajduję się jeszcze następujące widoki:
 -- UTWORZENIE TABEL W ZBIORZE WALUTY -- 
 -- Tabela Currency zawiera dane walutowe --
 CREATE TABLE IF NOT EXISTS `projekt-inwestycyjny.Waluty.Currency`(
-  Currency_date DATE NOT NULL,
-  Currency STRING NOT NULL,
-  Currency_close FLOAT NOT NULL,
+  Currency_date  DATE   NOT NULL OPTIONS(description="Data"),
+  Currency       STRING NOT NULL OPTIONS(description="Waluta"),
+  Currency_close FLOAT  NOT NULL OPTIONS(description="Wartość kursu walutowego wzg. PLN"),
 );
