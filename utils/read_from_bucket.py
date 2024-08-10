@@ -1,4 +1,4 @@
-from google.cloud import storage
+from google.cloud import storage, bigquery
 
 def list_blobs(bucket_name):
     """
@@ -19,9 +19,9 @@ def list_blobs(bucket_name):
         print(blob.name)
 
 
-def read_sql_from_bucket(bucket_name, user_project, file_name):
+def read_sql_from_bucket_and_query(user_project, bucket_name, file_name):
     """
-    Read sql from specific filename from bucket
+    Read sql from specific filename from bucket and returns the result of a query
 
     bucket_name:  STRING - name of the bucket
     user_project: STRING - project name
@@ -42,4 +42,23 @@ def read_sql_from_bucket(bucket_name, user_project, file_name):
     # Decoding the 'bytes' object to string
     blob = blob_as_bytes.decode('UTF-8')
 
-    return blob
+    # Initialize Client Class object
+    client = bigquery.Client()
+
+    # Query a SQL from Google Cloud Storage
+    query = client.query(blob)
+
+    # Query result
+    query_results = query.result
+    return query_results 
+
+
+test = read_sql_from_bucket_and_query(
+    user_project = "projekt-inwestycyjny", 
+    bucket_name  = "portfel_inwestycyjny_desktop_app_bucket", 
+    file_name    = "Currencies_data_from_Currency_view.txt")
+
+
+
+
+
