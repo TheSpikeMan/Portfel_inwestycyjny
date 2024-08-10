@@ -34,27 +34,25 @@ def daily_webscraping_plus_currencies(cloud_event):
 
             """
         
-            self.project_id = project_id
-            self.dataset_instruments = dataset_instruments
-            self.dataset_currencies = dataset_currencies
-            self.dataset_daily = dataset_daily
-            self.dataset_inflation = dataset_inflation
-            self.dataset_transactions = dataset_transactions
-            self.table_instruments = table_instruments
+            self.project_id              = project_id
+            self.dataset_instruments     = dataset_instruments
+            self.dataset_currencies      = dataset_currencies
+            self.dataset_daily           = dataset_daily
+            self.dataset_inflation       = dataset_inflation
+            self.dataset_transactions    = dataset_transactions
+            self.table_instruments       = table_instruments
             self.table_instruments_types = table_instruments_types
-            self.table_currencies = table_currencies
-            self.table_daily = table_daily
-            self.table_inflation = table_inflation
-            self.table_treasury_bonds = table_treasury_bonds
-            self.view_transactions = view_transactions
+            self.table_currencies        = table_currencies
+            self.table_daily             = table_daily
+            self.table_inflation         = table_inflation
+            self.table_treasury_bonds    = table_treasury_bonds
+            self.view_transactions       = view_transactions
 
         def pobierz_aktualne_instrumenty(self):
 
             """
-
             Pobranie listy aktualnych instrumentów ETF - query_job_1.to_dataframe()
             Pobranie listy aktualnych instrumentów akcji polskich i ETF polskich - query_job_2.to_dataframe()
-            
             """
 
             print("Pobieram aktualne instrumenty w ramach ETF oraz polskich akcji.")
@@ -94,11 +92,9 @@ def daily_webscraping_plus_currencies(cloud_event):
         def znajdz_kursy_walut(self):
 
             """
-            
             Znajdź aktualne kursy walut.
             Wykorzystywane są one do wyznaczenia wartość danego instrumentu w PLN.
             Eksportowane są w późniejszych krokach również do tabeli `Waluty.Currency`.
-            
             """
 
             print("Szukam aktualnych kursów walut.")
@@ -110,11 +106,11 @@ def daily_webscraping_plus_currencies(cloud_event):
             aktualne_kursy_walut = pd.DataFrame()
             
             for path in list_of_paths:
-                response = requests.get(path)
+                response       = requests.get(path)
             
                 data = response.json()
-                currency_date = date.today()
-                currency_code = data['code']
+                currency_date  = date.today()
+                currency_code  = data['code']
                 currency_close = data['rates'][0]['mid']
                 
                 currency_df = pd.DataFrame({
@@ -170,12 +166,12 @@ def daily_webscraping_plus_currencies(cloud_event):
             """
         
             client = bigquery.Client()
-            query_job_1 = client.query(query_1)
-            query_job_2 = client.query(query_2)
-            query_job_3 = client.query(query_3)
-            dane_inflacyjne = query_job_1.to_dataframe()
+            query_job_1       = client.query(query_1)
+            query_job_2       = client.query(query_2)
+            query_job_3       = client.query(query_3)
+            dane_inflacyjne   = query_job_1.to_dataframe()
             dane_transakcyjne = query_job_2.to_dataframe()
-            dane_marz = query_job_3.to_dataframe()
+            dane_marz         = query_job_3.to_dataframe()
 
             return dane_inflacyjne, dane_transakcyjne, dane_marz
 
@@ -201,19 +197,19 @@ def daily_webscraping_plus_currencies(cloud_event):
                                                     'Regular_interest']]
             result_df = pd.DataFrame(columns=['Ticker', 'Date', 'Current Value'])
             for dane in dane_do_analizy.iterrows():
-                ticker = dane[1].iloc[0]
-                data_zakupu = dane[1].iloc[1]
-                wolumen = dane[1].iloc[2]
+                ticker             = dane[1].iloc[0]
+                data_zakupu        = dane[1].iloc[1]
+                wolumen            = dane[1].iloc[2]
                 marza_pierwszy_rok = dane[1].iloc[3]
                 marza_kolejne_lata = dane[1].iloc[4]
                 
                 wolumen_jednostkowy = 100
                 
-                start_value = wolumen * wolumen_jednostkowy
+                start_value        = wolumen * wolumen_jednostkowy
             
-                current_date = date.today()
-                liczba_dni = (current_date - data_zakupu).days
-                liczba_lat = int(math.modf(liczba_dni/365)[1])
+                current_date       = date.today()
+                liczba_dni         = (current_date - data_zakupu).days
+                liczba_lat         = int(math.modf(liczba_dni/365)[1])
             
                 n = 1
                 
@@ -269,9 +265,7 @@ def daily_webscraping_plus_currencies(cloud_event):
                                             present_currencies):
             
             """
-            
             Funkcja wyznacza wartość giełdową zagranicznych ETF.
-            
             """
             
             print("Dokonuję webscrapingu dla wybranych instrumentów ETF.")
@@ -384,7 +378,6 @@ def daily_webscraping_plus_currencies(cloud_event):
 
 
             """
-            
             Funkcja uruchamiająca sekwencyjne wszystkie poszczególne części składowe:
             - W pierwszym kroku pobierane są do zmiennych aktualne zagraniczne ETF oraz akcji polskich i polskie ETF.
             - W drugim kroku pobierane są do zmiennych dane inflacyjnej, transakcyjne oraz marż związane z transakcjami na obligacjach skarbowych.
@@ -393,7 +386,6 @@ def daily_webscraping_plus_currencies(cloud_event):
             - W piątym kroku dokonywane jest obliczenie aktualnej wartości obligacji skarbowych.
             - W szóstym kroku następuje eksport danych akcji polskich, ETF polskich, ETF zagranicznych oraz obligacji skarbowych do tabeli w BigQuery danymi giełdowymi.
             - W siódmym kroku dokonywany jest eksport danych walutowych do tabeli w BigQuery.
-            
             """
 
             present_instruments_ETF, present_instruments_akcje = self.pobierz_aktualne_instrumenty()
@@ -484,9 +476,7 @@ def daily_webscraping_plus_currencies(cloud_event):
             
 
             """
-            
             Eksport danych do tabeli Currency.
-            
             """
             
             print("Eksportuję dane walutowe do BigQuery..")
@@ -514,19 +504,19 @@ def daily_webscraping_plus_currencies(cloud_event):
                 print(f"Error uploading data to BigQuery: {str(e)}")
         
 
-    project_id = 'projekt-inwestycyjny'
-    dataset_instruments = 'Dane_instrumentow'
-    dataset_currencies = 'Waluty'
-    dataset_daily = 'Dane_instrumentow'
-    dataset_inflation = 'Inflation'
-    dataset_transactions = 'Transactions'
-    table_instruments = 'Instruments'
+    project_id              = 'projekt-inwestycyjny'
+    dataset_instruments     = 'Dane_instrumentow'
+    dataset_currencies      = 'Waluty'
+    dataset_daily           = 'Dane_instrumentow'
+    dataset_inflation       = 'Inflation'
+    dataset_transactions    = 'Transactions'
+    table_instruments       = 'Instruments'
     table_instruments_types = 'Instrument_types'
-    table_currencies = 'Currency'
-    table_daily = 'Daily'
-    table_inflation = 'Inflation'
-    table_treasury_bonds = 'Treasury_Bonds'
-    view_transactions = 'Transactions_view'
+    table_currencies        = 'Currency'
+    table_daily             = 'Daily'
+    table_inflation         = 'Inflation'
+    table_treasury_bonds    = 'Treasury_Bonds'
+    view_transactions       = 'Transactions_view'
 
     scraper = Scraper(project_id, 
                     dataset_instruments,
