@@ -207,59 +207,63 @@ W tym kroku połączone są dane portfelowe z danymi giełdowymi oraz danymi ins
 
 present_instruments_plus_present_indicators AS (
   SELECT
-    instruments.Ticker                                    AS Ticker,
-    Instrument_types.Instrument_type                      AS instrument_class,
+    inst.Ticker                                           AS Ticker,
+    inst_typ.Instrument_type                              AS instrument_class,
     currency_exposure                                     AS currency_exposure,
-    instruments.Name                                      AS Name,
-    present_instruments_view.ticker_present_amount        AS ticker_present_amount,
-    present_instruments_view.ticker_average_close         AS ticker_average_close,
-    present_instruments_view.ticker_buy_value             AS ticker_buy_value,
+    inst.Name                                             AS Name,
+    piv.ticker_present_amount                             AS ticker_present_amount,
+    piv.ticker_average_close                              AS ticker_average_close,
+    piv.ticker_buy_value                                  AS ticker_buy_value,
     ROUND(
-      (ticker_present_amount * Close * instruments.unit), 
+        (piv.ticker_present_amount 
+        * daily.Close 
+        * inst.unit), 
+      2)                                                  AS ticker_present_value,
+    daily.Close * inst.unit                               AS current_price,
+    daily.Date                                            AS current_price_date,
+    piv.max_age_of_instrument                             AS max_age_of_instrument,
+    ROUND(100 * 
+        (piv.ticker_present_amount 
+        * daily.Close 
+        * inst.unit)/
+          SUM(piv.ticker_present_amount * daily.Close * inst.unit) OVER(), 
       2) 
-                                                          AS ticker_present_value,
-    daily_data.Close * instruments.unit                   AS current_price,
-    daily_data.`Date`                                     AS current_price_date,
-    present_instruments_view.max_age_of_instrument        AS max_age_of_instrument,
-    ROUND(100 * (ticker_present_amount * Close * instruments.unit)/
-          SUM(ticker_present_amount * Close * instruments.unit) OVER(), 
-          2) 
                                                           AS share_of_portfolio,
-    ROUND(100 * ((ticker_present_amount * Close * instruments.unit)/
-                  ticker_buy_value) - 100, 
-                  2) 
+    ROUND(100 * 
+      ((piv.ticker_present_amount * daily.Close * inst.unit) /
+        piv.ticker_buy_value) - 100, 
+      2) 
                                                           AS rate_of_return,
     CASE
-      WHEN present_instruments_view.max_age_of_instrument > 120 
+      WHEN piv.max_age_of_instrument > 120 
         THEN ROUND(
-              (365 * (100 * ((ticker_present_amount * Close * instruments.unit)/ticker_buy_value) - 100))
-              /max_age_of_instrument, 2)
+              (365 * (100 * ((piv.ticker_present_amount * daily.Close * inst.unit)/piv.ticker_buy_value) - 100))
+              /piv.max_age_of_instrument, 2)
     ELSE 0
     END                                                   AS  yearly_rate_of_return,
     CASE
-      WHEN present_instruments_view.max_age_of_instrument > 120 
-      THEN IFNULL(ROUND((365 * (100 * ((ticker_present_amount * Close * instruments.unit + dividend_sum.dividend_sum)/ticker_buy_value) - 100))
-      /max_age_of_instrument, 2), ROUND((365 * (100 * ((ticker_present_amount * Close * instruments.unit)/ticker_buy_value) - 100))
-      /max_age_of_instrument, 2))  
+      WHEN piv.max_age_of_instrument > 120 
+      THEN IFNULL(ROUND((365 * (100 * ((piv.ticker_present_amount * daily.Close * inst.unit + div_sum.dividend_sum)/piv.ticker_buy_value) - 100))
+      /piv.max_age_of_instrument, 2), ROUND((365 * (100 * ((piv.ticker_present_amount * daily.Close * inst.unit)/piv.ticker_buy_value) - 100))
+      /piv.max_age_of_instrument, 2))  
     ELSE 0
     END                                                   AS yearly_rate_of_return_incl_div,
-    ROUND((Close * instruments.unit - ticker_average_close) * ticker_present_amount, 2) 
+    ROUND((daily.Close * inst.unit - piv.ticker_average_close) * ticker_present_amount, 2) 
                                                           AS profit,
-    IFNULL(ROUND(dividend_sum.dividend_sum + (Close * instruments.unit - ticker_average_close) * ticker_present_amount, 2),
-      ROUND((Close * instruments.unit - ticker_average_close) * ticker_present_amount, 2))  
+    IFNULL(ROUND(div_sum.dividend_sum + (daily.Close * inst.unit - piv.ticker_average_close) * piv.ticker_present_amount, 2),
+      ROUND((daily.Close * inst.unit - piv.ticker_average_close) * piv.ticker_present_amount, 2))  
                                                           AS profit_incl_div,
-    IFNULL(dividend_sum.avg_dividend_ratio_per_ticker_pct, 0) 
+    IFNULL(div_sum.avg_dividend_ratio_per_ticker_pct, 0) 
                                                           AS avg_dividend_ratio_per_ticker_pct
-  FROM
-    present_instruments_view
-  LEFT JOIN Daily_data
-  ON present_instruments_view.Ticker = Daily_data.Ticker
-  INNER JOIN instruments
-  ON present_instruments_view.Ticker = instruments.Ticker
-  LEFT JOIN dividend_sum
-  ON present_instruments_view.Ticker = dividend_sum.Ticker
-  LEFT JOIN instrument_types
-  ON instruments.Instrument_type_id  = instrument_types.Instrument_type_id
+  FROM present_instruments_view AS piv
+  LEFT JOIN Daily_data AS daily
+  ON piv.Ticker = daily.Ticker
+  INNER JOIN instruments AS inst
+  ON piv.Ticker = inst.Ticker
+  LEFT JOIN dividend_sum AS div_sum
+  ON piv.Ticker = div_sum.Ticker
+  LEFT JOIN instrument_types AS inst_typ
+  ON inst.Instrument_type_id  = inst_typ.Instrument_type_id
 )
 
 SELECT * 
