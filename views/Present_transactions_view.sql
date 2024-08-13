@@ -47,17 +47,10 @@ SELECT
   cumulative_sell_amount_per_ticker   AS cumulative_sell_amount_per_ticker,
   last_currency_close                 AS last_currency_close,
   CASE
-    WHEN Transaction_type_group                                                = "Buy_amount"
-    AND transaction_date_buy_ticker_amount - cumulative_sell_amount_per_ticker <= 0
-    THEN 0
-    WHEN Transaction_type_group IN ("Sell_amount", "Div_related_amount")
-    THEN 0
-    WHEN ROW_NUMBER() OVER last_ticker_transaction_window                      = 1
-    AND transaction_date_buy_ticker_amount - cumulative_sell_amount_per_ticker > 0
-    AND cumulative_sell_amount_per_ticker                                      <> 0
-    THEN transaction_date_buy_ticker_amount - cumulative_sell_amount_per_ticker
-    ELSE Transaction_amount
-    END                               AS transaction_amount_left
+    WHEN Transaction_type_group = "Buy_amount"
+    THEN Transaction_amount - GREATEST(Transaction_amount - GREATEST(transaction_date_ticker_amount - cumulative_sell_amount_per_ticker, 0), 0)
+    ELSE 0
+    END AS transaction_amount_left
 FROM transaction_view
 WHERE TRUE
 WINDOW
@@ -65,6 +58,10 @@ WINDOW
     PARTITION BY Ticker
     ORDER BY Transaction_date ASC, Transaction_id ASC
   )
+ORDER BY
+  Ticker,
+  Transaction_date,
+  Transaction_id
 ),
 
 -- PRESENT INSTRUMENTS VIEW --
@@ -265,6 +262,7 @@ present_instruments_plus_present_indicators AS (
   LEFT JOIN instrument_types AS inst_typ
   ON inst.Instrument_type_id  = inst_typ.Instrument_type_id
 )
+
 
 SELECT * 
 FROM present_instruments_plus_present_indicators
