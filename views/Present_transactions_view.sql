@@ -116,18 +116,6 @@ corrected_again AS (
 ),
 
 -- INITIAL AGGREGATION --
-/*
-W tym kroku wyciągane są wszystkie transakcje i wykonywane jest działanie mające na celu określenie pozostałej ilości
-w posiadaniu, dla danej transakcji zakupu.
-Sprawdzanie są po kolei 4 warunki:
-- Jeżeli analizowaną transakcją jest transakcja zakupowa i skumulowana ilość zakupiona jest mniejsza niż ilość
-sprzedana, oznacza to, że dana transakcja została sprzedana całkowicie.
-- Dla wszystkich transakcji związanych ze sprzedażami i wypłatą dywidendy/odsetek, wpisujemy od razu 0.
-- Jeżeli dana ilość zakupiona w danym momencie jest większa niż całkowita ilość sprzedana i jest to pierwsza tego
-transakcja oraz nastąpiła jakakolwiek sprzedaż oblicza pozostałą ilość jako różnicę w całkowitej ilości zakupionej
-do danego momentu i sprzedanej in total.
-- W pozostałych przypadkach podaje wartość zakupioną w danej transakcji.
-*/
 
 initial_aggregation AS (
 SELECT
@@ -146,22 +134,8 @@ SELECT
   transaction_date_buy_ticker_amount  AS transaction_date_ticket_amount,
   cumulative_sell_amount_per_ticker   AS cumulative_sell_amount_per_ticker,
   last_currency_close                 AS last_currency_close,
-  CASE
-    WHEN Transaction_type_group = "Buy_amount"
-    THEN Transaction_amount - GREATEST(Transaction_amount - GREATEST(transaction_date_ticker_amount - cumulative_sell_amount_per_ticker, 0), 0)
-    ELSE 0
-    END AS transaction_amount_left
-FROM transaction_view_raw
-WHERE TRUE
-WINDOW
-  last_ticker_transaction_window AS (
-    PARTITION BY Ticker
-    ORDER BY Transaction_date ASC, Transaction_id ASC
-  )
-ORDER BY
-  Ticker,
-  Transaction_date,
-  Transaction_id
+  amount_left_new                     AS transaction_amount_left
+FROM corrected_again
 ),
 
 -- PRESENT INSTRUMENTS VIEW --
@@ -244,7 +218,7 @@ dividend_selection AS (
     present_instruments_view.minimum_buy_date             AS minimum_buy_date,
     SUM(Transaction_value_pln) OVER ticker_window         AS dividend_sum, -- do sprawdzenia
     COUNT(Transaction_id)      OVER ticker_year_window    AS dividend_frequency
-  FROM transaction_view_raw
+  FROM transaction_view
   LEFT JOIN present_instruments_view
   ON transaction_view.Ticker = present_instruments_view.Ticker
   LEFT JOIN daily
