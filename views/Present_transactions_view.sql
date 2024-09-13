@@ -102,7 +102,7 @@ corrected_again AS (
       WHEN SUM(amount_left) OVER sum_last_amount <= amount_left_per_ticker
       THEN amount_left
       ELSE 0
-      END AS amount_left_new
+      END AS transaction_amount_left
   FROM amount_left_per_transaction_corrected
   WINDOW
     sum_last_amount AS (
@@ -113,29 +113,6 @@ corrected_again AS (
         Transaction_Date DESC,
         Instrument_id    DESC
     )
-),
-
--- INITIAL AGGREGATION --
-
-initial_aggregation AS (
-SELECT
-  Transaction_id                      AS Transaction_id,
-  Transaction_date                    AS Transaction_date,
-  Ticker                              AS Ticker,
-  Name                                AS Name,
-  Currency                            AS Currency,
-  age_of_instrument                   AS age_of_instrument,
-  Transaction_price                   AS Transaction_price,
-  Transaction_amount                  AS Transaction_amount,
-  Transaction_value_pln               AS Transaction_value_pln,
-  Transaction_type_group              AS Transaction_type_group,
-  transaction_date_ticker_amount      AS transaction_date_ticket_amount,
-  transaction_date_ticker_value       AS transaction_date_ticker_value,
-  transaction_date_buy_ticker_amount  AS transaction_date_ticket_amount,
-  cumulative_sell_amount_per_ticker   AS cumulative_sell_amount_per_ticker,
-  last_currency_close                 AS last_currency_close,
-  amount_left_new                     AS transaction_amount_left
-FROM corrected_again
 ),
 
 -- PRESENT INSTRUMENTS VIEW --
@@ -164,7 +141,7 @@ present_instruments_view AS (
       SUM(transaction_amount_left), 
       2)                                                        AS ticker_average_close,
     MIN(Transaction_date)                                       AS minimum_buy_date
-  FROM initial_aggregation
+  FROM corrected_again
   WHERE
     transaction_amount_left <> 0 
   GROUP BY
