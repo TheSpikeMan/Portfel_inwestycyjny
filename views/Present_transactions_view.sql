@@ -10,10 +10,110 @@ W pierwszym kroku pobierane są dane transakcyjne, dane z giełdy oraz dane inst
 */
 
 WITH 
-transaction_view          AS (SELECT * FROM `projekt-inwestycyjny.Transactions.Transactions_view`),
+transaction_view_raw      AS (SELECT * FROM `projekt-inwestycyjny.Transactions.Transactions_view`),
 daily                     AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Daily`),
 instruments               AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instruments`),
 instrument_types          AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instrument_types`),
+
+-- Transaction view --
+transaction_view AS (
+  SELECT *
+  FROM transaction_view_raw
+  WHERE TRUE
+),
+
+-- Amount left per ticker --
+amount_left_per_ticker     AS (
+  SELECT
+    Instrument_id                                                                                       AS instrument_id,
+    --> Wyznaczamy pozostałą ilość danego instrumentu na podstawie okna analitycznego (maksymalna wartość różnicy między dwoma poniższymi wskaźnikami)
+    MAX(transaction_date_buy_ticker_amount - cumulative_sell_amount_per_ticker) OVER last_transaction   AS amount_left_per_ticker
+  FROM transaction_view
+  WHERE TRUE
+  AND Transaction_type_group                                                 = "Buy_amount" --> Analizujemy wyłącznie zakupy
+  AND transaction_date_buy_ticker_amount - cumulative_sell_amount_per_ticker > 0            --> Interesują nas wyłącznie przypadki obecnie posiadanych instrumentów
+  QUALIFY TRUE
+    AND ROW_NUMBER() OVER last_transaction = 1
+  WINDOW
+    last_transaction AS (
+      PARTITION BY
+        Instrument_id,
+        Transaction_type_group
+    )
+),
+
+amount_left_per_transaction AS (
+  SELECT
+    tvr.*,
+    --> Pozostała aktualna ilość instrumentu
+    alpt.amount_left_per_ticker                                                                        AS amount_left_per_ticker,
+    --> Skumulowana ilość zakupów od najnowszej transacji
+    SUM(transaction_amount) OVER sum_last_amount                                                       AS cumulative_buy_amount,
+    CASE
+      --> Jeżeli pozostała ilość jest większa lub równa niż skumulowana ilość zakupów zwróć całkowitą wartość wolumentu zakupowego
+      WHEN alpt.amount_left_per_ticker >= SUM(transaction_amount) OVER sum_last_amount
+      AND Transaction_type_group = "Buy_amount"
+      THEN transaction_amount
+      --> Jeżeli pozostała ilość jest mniejsza niż skumulowana ilość zakupów zwróć tymczasowo 0
+      WHEN alpt.amount_left_per_ticker < SUM(transaction_amount) OVER sum_last_amount
+      AND Transaction_type_group = "Buy_amount"
+      THEN 0 
+      END                           AS amount_left
+  FROM transaction_view             AS tvr
+  LEFT JOIN amount_left_per_ticker  AS alpt
+  ON tvr.instrument_id              = alpt.instrument_id
+  WINDOW
+    sum_last_amount AS (
+      PARTITION BY
+        tvr.Instrument_id,
+        Transaction_type_group
+      ORDER BY
+        Transaction_Date     DESC,
+        tvr.Instrument_id    DESC
+    )
+),
+
+amount_left_per_transaction_corrected AS (
+  SELECT
+    * EXCEPT(amount_left),
+    CASE
+    --> Rozważ jeszcze raz przypadki, w których pozostała ilość jest mniejsza niż skumulowana wartość zakupów
+      WHEN amount_left_per_ticker < cumulative_buy_amount
+      --> Przyjmuj, że pozostała ilość dla takich przypadków jest równa różnicy
+      THEN amount_left_per_ticker - SUM(amount_left) OVER sum_last_amount
+      ELSE amount_left
+      END AS amount_left
+  FROM amount_left_per_transaction
+  WINDOW
+    sum_last_amount AS (
+      PARTITION BY
+        Instrument_id,
+        Transaction_type_group
+      ORDER BY
+        Transaction_Date DESC,
+        Instrument_id    DESC
+    )
+),
+
+corrected_again AS (
+  SELECT
+    *,
+    CASE 
+      WHEN SUM(amount_left) OVER sum_last_amount <= amount_left_per_ticker
+      THEN amount_left
+      ELSE 0
+      END AS amount_left_new
+  FROM amount_left_per_transaction_corrected
+  WINDOW
+    sum_last_amount AS (
+      PARTITION BY
+        Instrument_id,
+        Transaction_type_group
+      ORDER BY
+        Transaction_Date DESC,
+        Instrument_id    DESC
+    )
+),
 
 -- INITIAL AGGREGATION --
 /*
@@ -51,7 +151,7 @@ SELECT
     THEN Transaction_amount - GREATEST(Transaction_amount - GREATEST(transaction_date_ticker_amount - cumulative_sell_amount_per_ticker, 0), 0)
     ELSE 0
     END AS transaction_amount_left
-FROM transaction_view
+FROM transaction_view_raw
 WHERE TRUE
 WINDOW
   last_ticker_transaction_window AS (
@@ -144,7 +244,7 @@ dividend_selection AS (
     present_instruments_view.minimum_buy_date             AS minimum_buy_date,
     SUM(Transaction_value_pln) OVER ticker_window         AS dividend_sum, -- do sprawdzenia
     COUNT(Transaction_id)      OVER ticker_year_window    AS dividend_frequency
-  FROM transaction_view
+  FROM transaction_view_raw
   LEFT JOIN present_instruments_view
   ON transaction_view.Ticker = present_instruments_view.Ticker
   LEFT JOIN daily
