@@ -23,6 +23,7 @@ transaction_view AS (
 ),
 
 -- Amount left per ticker --
+--> Wyznaczenie obecnego wolumenu dla wszystkich posiadanych instrumentów
 amount_left_per_ticker     AS (
   SELECT
     Instrument_id                                                                                       AS instrument_id,
@@ -39,6 +40,9 @@ amount_left_per_ticker     AS (
       PARTITION BY
         Instrument_id,
         Transaction_type_group
+      ORDER BY
+        Transaction_date DESC,
+        Transaction_id DESC
     )
 ),
 
