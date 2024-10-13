@@ -42,7 +42,7 @@ amount_left_per_ticker     AS (
         Transaction_type_group
       ORDER BY
         Transaction_date DESC,
-        Transaction_id DESC
+        Transaction_amount DESC
     )
 ),
 
