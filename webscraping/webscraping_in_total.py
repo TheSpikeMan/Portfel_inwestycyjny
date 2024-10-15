@@ -151,10 +151,21 @@ def daily_webscraping_plus_currencies(cloud_event):
 
             query_2 = f"""
             SELECT
-                *
-            FROM  {destination_table_2}
-            WHERE
-                Instrument_type_id = 5
+                Ticker,
+                MAX(Transaction_date)                                            AS Transaction_date,   
+                SUM(Transaction_amount) - MAX(cumulative_sell_amount_per_ticker) AS Transaction_amount
+            FROM {destination_table_2} 
+            WHERE TRUE
+                AND instrument_type_id = 5        --> Obligacje skarbowe
+                AND Transaction_type   <> "Sell"  --> Tylko transakcje zakupowe
+            GROUP BY Ticker
+            WINDOW
+                Ticker_last_amount AS (
+                PARTITION BY
+                    Ticker
+                ORDER BY
+                    Transaction_date DESC
+                )
             """
             
             query_3 = f"""
@@ -188,13 +199,9 @@ def daily_webscraping_plus_currencies(cloud_event):
             """
             
             dane_inflacyjne.columns = ['Inflacja', 'Początek miesiąca']
-            dane_obligacji = dane_transakcyjne.merge(right=dane_marz, 
+            dane_do_analizy = dane_transakcyjne.merge(right=dane_marz, 
                                             how='inner', 
                                             on = 'Ticker')
-            dane_do_analizy = dane_obligacji.loc[:,['Ticker', 'Transaction_date',\
-                                                    'Transaction_amount', \
-                                                    'First_year_interest', \
-                                                    'Regular_interest']]
             result_df = pd.DataFrame(columns=['Ticker', 'Date', 'Current Value'])
             for dane in dane_do_analizy.iterrows():
                 ticker             = dane[1].iloc[0]
