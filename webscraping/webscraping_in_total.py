@@ -249,7 +249,7 @@ def daily_webscraping_plus_currencies(cloud_event):
                                     pd.DataFrame(data=[[ticker, data_zakupu, \
                                                         round(current_value, 2)]], \
                                                     columns=['Ticker', 'Date', 'Current Value'])])
-                data_to_export = result_df.merge(right=dane_obligacji, 
+                data_to_export = result_df.merge(right=dane_do_analizy, 
                                 how='inner',
                                 left_on=['Ticker', 'Date'],
                                 right_on= ['Ticker', 'Transaction_date'])
