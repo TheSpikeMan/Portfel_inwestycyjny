@@ -20,14 +20,14 @@ Podobny mechanizm zastosowany jest do wyciągnięcia ceny zamknięcia.
 
 ticker_date_amount_value AS (
 SELECT
-  dates AS `Date`,
-  calendar_present_instruments.Ticker,
+  dates                                                                                                AS `Date`,
+  calendar_present_instruments.Ticker                                                                  AS Ticker,
   COALESCE(instrument_types.Instrument_type, 
-    LAST_VALUE(instrument_types.Instrument_type IGNORE NULLS) OVER window_transactions_by_ticker) AS Instrument_type,
+    LAST_VALUE(instrument_types.Instrument_type IGNORE NULLS) OVER window_transactions_by_ticker)      AS Instrument_type,
   COALESCE(transaction_date_ticker_amount,
-    LAST_VALUE(transaction_date_ticker_amount IGNORE NULLS) OVER window_transactions_by_ticker) AS transaction_date_ticker_amount,
+    LAST_VALUE(transaction_date_ticker_amount IGNORE NULLS) OVER window_transactions_by_ticker)        AS transaction_date_ticker_amount,
   ROUND(COALESCE(daily.Close, 
-    LAST_VALUE(daily.Close IGNORE NULLS) OVER window_transactions_by_ticker), 2) AS Close,
+    LAST_VALUE(daily.Close IGNORE NULLS) OVER window_transactions_by_ticker), 2)                       AS Close,
   ROUND(COALESCE(transaction_date_ticker_amount,
     LAST_VALUE(transaction_date_ticker_amount IGNORE NULLS) OVER window_transactions_by_ticker) * 
     COALESCE(daily.Close, LAST_VALUE(daily.Close IGNORE NULLS) OVER window_transactions_by_ticker), 2) AS ticker_date_value
@@ -43,8 +43,19 @@ LEFT JOIN instrument_types
 QUALIFY TRUE
 WINDOW
   window_transactions_by_ticker AS (PARTITION BY calendar_present_instruments.Ticker ORDER BY dates ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
-ORDER BY
-  dates DESC
+),
+
+share_of_portfolio_included AS (
+  SELECT
+    *,
+    ROUND(100 * ticker_date_value/SUM(ticker_date_value) OVER date_window, 2) AS share_of_portfolio
+  FROM ticker_date_amount_value
+  WINDOW
+    date_window AS (
+      PARTITION BY `Date`
+    )
+  ORDER BY
+    `Date` DESC
 )
 
-SELECT * FROM ticker_date_amount_value;
+SELECT * FROM share_of_portfolio_included;
