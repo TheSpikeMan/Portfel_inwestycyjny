@@ -325,12 +325,11 @@ def daily_webscraping_plus_currencies(cloud_event):
                                     ):
             
             """
-            
             Funkcja wyznacza aktualną wartość polskich akcji oraz polskich ETF obecnych w portfelu.
-            
             """
-            
-            website_notowania ='https://www.biznesradar.pl/gielda/akcje_gpw'
+
+            print("Pobieranie danych akcji polskich.")
+            website_notowania = 'https://www.biznesradar.pl/gielda/akcje_gpw'
             with requests.get(website_notowania) as r1:
                 if r1.status_code == 200:
                     soup1 = BeautifulSoup(r1.text, 'html.parser')
@@ -345,8 +344,8 @@ def daily_webscraping_plus_currencies(cloud_event):
 
                     dict_of_tickers = {}
                     for index, tr_class in enumerate(trs_classes):
-                        Ticker = soup1.find('tr', class_ = tr_class ).find('a').get_text().split(' ')[0]
-                        dict_of_tickers.update({tr_class : Ticker})
+                        Ticker = soup1.find('tr', class_=tr_class).find('a').get_text().split(' ')[0]
+                        dict_of_tickers.update({tr_class: Ticker})
 
                     list_of_trs_to_update = []
                     for key, value in dict_of_tickers.items():
@@ -354,32 +353,96 @@ def daily_webscraping_plus_currencies(cloud_event):
                             list_of_trs_to_update.append(key)
 
                     for index, tr_class in enumerate(list_of_trs_to_update):
-                        Ticker = soup1.find('tr', class_ = tr_class ).find('a').get_text().split(' ')[0]
-                        Close = soup1.find('tr', class_ = tr_class).find('span', class_ = "q_ch_act").get_text(strip=True).replace(" ", "")
+                        Ticker = soup1.find('tr', class_=tr_class).find('a').get_text().split(' ')[0]
+                        Close = soup1.find('tr', class_=tr_class).find('span', class_="q_ch_act").get_text(strip=True).replace(
+                            " ", "")
                         if Close:
                             Close = float(Close)
                         else:
                             continue
-                        Volume = soup1.find('tr', class_ = tr_class).find('span', class_ = "q_ch_vol").get_text(strip=True).replace(" ", "")
+                        Volume = soup1.find('tr', class_=tr_class).find('span', class_="q_ch_vol").get_text(strip=True).replace(
+                            " ", "")
                         if Volume:
                             Volume = int(Volume)
                         else:
                             continue
-                        Turnover = soup1.find('tr', class_ = tr_class).find('span', class_ = "q_ch_mc").get_text(strip=True).replace(" ", "")
+                        Turnover = soup1.find('tr', class_=tr_class).find('span', class_="q_ch_mc").get_text(
+                            strip=True).replace(" ", "")
                         if Turnover:
                             Turnover = int(Turnover)
                         else:
                             continue
                         instruments = [Ticker, current_date, Close, Volume, Turnover]
-                        result_df = pd.concat([result_df, pd.DataFrame([instruments])], axis = 0)
+                        result_df = pd.concat([result_df, pd.DataFrame([instruments])], axis=0)
 
-                    result_df.columns = ['Ticker' , 'Date', 'Close', 'Volume', 'Turnover']
+                    result_df.columns = ['Ticker', 'Date', 'Close', 'Volume', 'Turnover']
                     print("Pobieranie danych z biznesradar zakończone powodzeniem.")
 
-                    return result_df
                 else:
 
                     print("Nie udało się podłączyć do strony biznesradar.pl.")
+
+            print("Pobieranie danych ETF polskich.")
+            website_notowania = 'https://www.biznesradar.pl/gielda/etf'
+            with requests.get(website_notowania) as r1:
+                if r1.status_code == 200:
+                    print("Podłączono się do strony")
+                    soup1 = BeautifulSoup(r1.text, 'html.parser')
+                    trs = soup1.find_all('tr')
+                    print("Lista trs: ", trs)
+                    trs_classes = [tr.get('class') for tr in trs]
+                    print("Lista klas: ", trs_classes)
+                    trs_classes = [" ".join(tr_class) for tr_class in trs_classes if tr_class != None]
+                    current_date = date.today()
+                    result_df2 = pd.DataFrame()
+
+                    list_of_present_tickers = list(present_instruments_akcje['Ticker'])
+
+                    dict_of_tickers = {}
+                    for index, tr_class in enumerate(trs_classes):
+                        Ticker = soup1.find('tr', class_=tr_class).find('a').get_text().split(' ')[0]
+                        print("Ticker wynosi", Ticker)
+                        dict_of_tickers.update({tr_class: Ticker})
+
+                    list_of_trs_to_update = []
+                    for key, value in dict_of_tickers.items():
+                        if value in list_of_present_tickers:
+                            list_of_trs_to_update.append(key)
+
+                    for index, tr_class in enumerate(list_of_trs_to_update):
+                        Ticker = soup1.find('tr', class_=tr_class).find('a').get_text().split(' ')[0]
+                        Close = soup1.find('tr', class_=tr_class).find('span', class_="q_ch_act").get_text(strip=True).replace(
+                            " ", "")
+                        if Close:
+                            Close = float(Close)
+                        else:
+                            continue
+                        Volume = soup1.find('tr', class_=tr_class).find('span', class_="q_ch_vol").get_text(strip=True).replace(
+                            " ", "")
+                        if Volume:
+                            Volume = int(Volume)
+                        else:
+                            continue
+                        Turnover = soup1.find('tr', class_=tr_class).find('span', class_="q_ch_mc").get_text(
+                            strip=True).replace(" ", "")
+                        if Turnover:
+                            Turnover = int(Turnover)
+                        else:
+                            continue
+                        instruments = [Ticker, current_date, Close, Volume, Turnover]
+                        result_df2 = pd.concat([result_df2, pd.DataFrame([instruments])], axis=0)
+
+                    result_df2.columns = ['Ticker', 'Date', 'Close', 'Volume', 'Turnover']
+                    print("Pobieranie danych z biznesradar zakończone powodzeniem.")
+
+                else:
+
+                    print("Nie udało się podłączyć do strony biznesradar.pl.")
+
+                results = pd.concat([result_df, result_df2], axis = 0)
+                return results
+
+            
             
         def run_scraper(self):
 
