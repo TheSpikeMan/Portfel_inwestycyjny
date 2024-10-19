@@ -376,7 +376,7 @@ def daily_webscraping_plus_currencies(cloud_event):
                         result_df = pd.concat([result_df, pd.DataFrame([instruments])], axis=0)
 
                     result_df.columns = ['Ticker', 'Date', 'Close', 'Volume', 'Turnover']
-                    print("Pobieranie danych z biznesradar zakończone powodzeniem.")
+                    print("Pobieranie danych z biznesradar dla akcji polskich zakończone powodzeniem.")
 
                 else:
 
@@ -386,12 +386,9 @@ def daily_webscraping_plus_currencies(cloud_event):
             website_notowania = 'https://www.biznesradar.pl/gielda/etf'
             with requests.get(website_notowania) as r1:
                 if r1.status_code == 200:
-                    print("Podłączono się do strony")
                     soup1 = BeautifulSoup(r1.text, 'html.parser')
                     trs = soup1.find_all('tr')
-                    print("Lista trs: ", trs)
                     trs_classes = [tr.get('class') for tr in trs]
-                    print("Lista klas: ", trs_classes)
                     trs_classes = [" ".join(tr_class) for tr_class in trs_classes if tr_class != None]
                     current_date = date.today()
                     result_df2 = pd.DataFrame()
@@ -401,7 +398,6 @@ def daily_webscraping_plus_currencies(cloud_event):
                     dict_of_tickers = {}
                     for index, tr_class in enumerate(trs_classes):
                         Ticker = soup1.find('tr', class_=tr_class).find('a').get_text().split(' ')[0]
-                        print("Ticker wynosi", Ticker)
                         dict_of_tickers.update({tr_class: Ticker})
 
                     list_of_trs_to_update = []
@@ -433,7 +429,7 @@ def daily_webscraping_plus_currencies(cloud_event):
                         result_df2 = pd.concat([result_df2, pd.DataFrame([instruments])], axis=0)
 
                     result_df2.columns = ['Ticker', 'Date', 'Close', 'Volume', 'Turnover']
-                    print("Pobieranie danych z biznesradar zakończone powodzeniem.")
+                    print("Pobieranie danych z biznesradar dla ETF polskich zakończone powodzeniem.")
 
                 else:
 
