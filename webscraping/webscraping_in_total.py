@@ -525,19 +525,28 @@ def daily_webscraping_plus_currencies(cloud_event):
                 print(f"Error uploading data to BigQuery: {str(e)}")
         
 
+    # Definiowanie nazwy projektu
     project_id              = 'projekt-inwestycyjny'
+
+    # Definiowanie nazw zbiorów tabel
     dataset_instruments     = 'Dane_instrumentow'
     dataset_currencies      = 'Waluty'
     dataset_daily           = 'Dane_instrumentow'
     dataset_inflation       = 'Inflation'
     dataset_transactions    = 'Transactions'
+
+    # Definiowanie nazw tabel
     table_instruments       = 'Instruments'
     table_instruments_types = 'Instrument_types'
     table_currencies        = 'Currency'
     table_daily             = 'Daily'
     table_inflation         = 'Inflation'
     table_treasury_bonds    = 'Treasury_Bonds'
+
+    # Definiowanie nazw widoków
     view_transactions       = 'Transactions_view'
+
+    # Definiowanie nazw stron do scrapingu
     website_stocks          = 'https://www.biznesradar.pl/gielda/akcje_gpw'
     website_etfs_pl         = 'https://www.biznesradar.pl/gielda/etf'
 
