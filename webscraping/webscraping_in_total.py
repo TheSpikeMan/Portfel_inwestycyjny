@@ -51,15 +51,16 @@ def daily_webscraping_plus_currencies(cloud_event):
             self.view_transactions       = view_transactions
             self.website_stocks          = website_stocks
             self.website_etfs_pl         = website_etfs_pl
+            self.website_catalyst        = website_catalyst
 
         def pobierz_aktualne_instrumenty(self):
 
             """
             Pobranie listy aktualnych instrumentów ETF - query_job_1.to_dataframe()
-            Pobranie listy aktualnych instrumentów akcji polskich i ETF polskich - query_job_2.to_dataframe()
+            Pobranie listy aktualnych instrumentów akcji polskich, ETF polskich, obligacji korporacyjnych - query_job_2.to_dataframe()
             """
 
-            print("Pobieram aktualne instrumenty w ramach ETF oraz polskich akcji.")
+            print("Pobieram aktualne instrumenty w ramach ETF, polskich akcji oraz obligacji korporacyjnych.")
             query_1 = f"""
             SELECT
             Ticker,
@@ -70,7 +71,7 @@ def daily_webscraping_plus_currencies(cloud_event):
             LEFT JOIN `{self.project_id}.{self.dataset_instruments}.{self.table_instruments_types}` AS inst_typ
             ON inst.Instrument_type_id = inst_typ.Instrument_type_id
             WHERE Status = 1
-            AND Instrument_type = 'ETF zagraniczne'
+            AND Instrument_type IN ('ETF zagraniczne')
             """
 
             query_2 = f"""
@@ -81,7 +82,9 @@ def daily_webscraping_plus_currencies(cloud_event):
             LEFT JOIN `{self.project_id}.{self.dataset_instruments}.{self.table_instruments_types}` AS inst_typ
             ON inst.Instrument_type_id = inst_typ.Instrument_type_id
             WHERE Status = 1
-            AND inst.Instrument_type_id IN (1,3)
+            AND Instrument_type IN ('Akcje polskie',
+                                    'ETF polskie',
+                                    'Obligacje korporacyjne')
             """
 
             client = bigquery.Client()
@@ -326,7 +329,7 @@ def daily_webscraping_plus_currencies(cloud_event):
         
         def webscraping_biznesradar(self,
                                     website,
-                                    present_instruments_akcje
+                                    present_instruments_biznesradar
                                     ):
             
             """
@@ -346,7 +349,7 @@ def daily_webscraping_plus_currencies(cloud_event):
                     current_date = date.today()
                     result_df = pd.DataFrame()
 
-                    list_of_present_tickers = list(present_instruments_akcje['Ticker'])
+                    list_of_present_tickers = list(present_instruments_biznesradar['Ticker'])
 
                     dict_of_tickers = {}
                     for index, tr_class in enumerate(trs_classes):
@@ -399,25 +402,27 @@ def daily_webscraping_plus_currencies(cloud_event):
             - W pierwszym kroku pobierane są do zmiennych aktualne zagraniczne ETF oraz akcji polskich i polskie ETF.
             - W drugim kroku pobierane są do zmiennych dane inflacyjnej, transakcyjne oraz marż związane z transakcjami na obligacjach skarbowych.
             - W trzecim kroku dokonywany jest webscraping dla zagranicznych ETF.
-            - W czwartym kroku dokonywany jest webscraping dla akcji polskich oraz ETF.
+            - W czwartym kroku dokonywany jest webscraping dla akcji polskich oraz polskich ETF.
             - W piątym kroku dokonywane jest obliczenie aktualnej wartości obligacji skarbowych.
             - W szóstym kroku następuje eksport danych akcji polskich, ETF polskich, ETF zagranicznych oraz obligacji skarbowych do tabeli w BigQuery danymi giełdowymi.
             - W siódmym kroku dokonywany jest eksport danych walutowych do tabeli w BigQuery.
             """
 
-            present_instruments_ETF, present_instruments_akcje = self.pobierz_aktualne_instrumenty()
+            present_instruments_ETF, present_instruments_biznesradar = self.pobierz_aktualne_instrumenty()
             dane_inflacyjne, dane_transakcyjne, dane_marz = self.zbadaj_dane_inflacyjne()
             present_currencies = self.znajdz_kursy_walut()
             data_to_export_ETFs = self.webscraping_markets_ft_webscraping(present_instruments_ETF,
                                                                         present_currencies)
-            data_to_export_akcje = self.webscraping_biznesradar(website_stocks, present_instruments_akcje)
-            data_to_export_etfs_pl = self.webscraping_biznesradar(website_etfs_pl, present_instruments_akcje)
+            data_to_export_akcje = self.webscraping_biznesradar(website_stocks, present_instruments_biznesradar)
+            data_to_export_catalyst = self.webscraping_biznesradar(website_catalyst, present_instruments_biznesradar)
+            data_to_export_etfs_pl = self.webscraping_biznesradar(website_etfs_pl, present_instruments_biznesradar)
             data_to_export_obligacje = self.obligacje_skarbowe(dane_inflacyjne,
                                                             dane_transakcyjne,
                                                             dane_marz)
 
             data_to_export = pd.concat([data_to_export_ETFs, 
-                                        data_to_export_akcje, 
+                                        data_to_export_akcje,
+                                        data_to_export_catalyst, 
                                         data_to_export_etfs_pl,
                                         data_to_export_obligacje],
                                         ignore_index = True)
@@ -549,6 +554,7 @@ def daily_webscraping_plus_currencies(cloud_event):
     # Definiowanie nazw stron do scrapingu
     website_stocks          = 'https://www.biznesradar.pl/gielda/akcje_gpw'
     website_etfs_pl         = 'https://www.biznesradar.pl/gielda/etf'
+    website_catalyst        = 'https://www.biznesradar.pl/gielda/obligacje'
 
     scraper = Scraper(project_id, 
                     dataset_instruments,
@@ -564,7 +570,8 @@ def daily_webscraping_plus_currencies(cloud_event):
                     table_treasury_bonds,
                     view_transactions,
                     website_stocks,
-                    website_etfs_pl
+                    website_etfs_pl,
+                    website_catalyst 
                     )
 
     scraper.run_scraper()
