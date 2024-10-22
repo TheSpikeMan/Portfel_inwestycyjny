@@ -299,7 +299,7 @@ def daily_webscraping_plus_currencies(cloud_event):
                         f"{instrument[1]['Market']}:" + \
                         f"{instrument[1]['Currency']}"
                         
-                with requests.get(url=url) as r:                    
+                with requests.get(url=url, timeout=10) as r:                    
                     soup = BeautifulSoup(r.text, 'html.parser')
                     close = soup.find_all('span', class_ = 'mod-ui-data-list__value')
                     close = float(close[0].text)
@@ -341,7 +341,7 @@ def daily_webscraping_plus_currencies(cloud_event):
             """
 
             print("Pobieranie danych z portalu biznesradar.")
-            with requests.get(website) as r1:
+            with requests.get(website, timeout=10) as r1:
                 try:
                     soup1 = BeautifulSoup(r1.text, 'html.parser')
                     trs = soup1.find_all('tr')
