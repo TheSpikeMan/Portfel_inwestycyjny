@@ -145,6 +145,7 @@ def daily_webscraping_plus_currencies(cloud_event):
             
             """
 
+            print("Pobieram aktualne dane inflacyjne.")
             destination_table_1 = f"`{project_id}.{dataset_inflation}.{table_inflation}`"
             destination_table_2 = f"`{project_id}.{dataset_transactions}.{view_transactions}`"
             destination_table_3 = f"`{project_id}.{dataset_instruments}.{table_treasury_bonds}`"
@@ -192,6 +193,8 @@ def daily_webscraping_plus_currencies(cloud_event):
             dane_transakcyjne = query_job_2.to_dataframe()
             dane_marz         = query_job_3.to_dataframe()
 
+            print("Pobieranie aktualnych danych inflacyjnch zakończone powodzeniem.")
+
             return dane_inflacyjne, dane_transakcyjne, dane_marz
 
         def obligacje_skarbowe(self,
@@ -206,6 +209,7 @@ def daily_webscraping_plus_currencies(cloud_event):
             
             """
             
+            print("Oceniam obecność wartość obligacji skarbowych.")
             dane_inflacyjne.columns = ['Inflacja', 'Początek miesiąca']
             dane_do_analizy = dane_transakcyjne.merge(right=dane_marz, 
                                             how='inner', 
@@ -272,6 +276,8 @@ def daily_webscraping_plus_currencies(cloud_event):
                     round(decimals = 3)
                 data_to_export_obligacje['Volume'] = 0
                 data_to_export_obligacje['Turnover'] = 0
+            
+            print("Ocena wartości obligacji skarbowych zakończona powodzeniem.")
                 
             return data_to_export_obligacje
 
@@ -283,7 +289,7 @@ def daily_webscraping_plus_currencies(cloud_event):
             Funkcja wyznacza wartość giełdową zagranicznych ETF.
             """
             
-            print("Dokonuję webscrapingu dla wybranych instrumentów ETF.")
+            print("Dokonuję webscrapingu z 'markets.ft.com'.")
             result_df = pd.DataFrame()
             current_date = date.today()
             for instrument in present_instruments_ETF.iterrows():
@@ -293,12 +299,8 @@ def daily_webscraping_plus_currencies(cloud_event):
                         f"{instrument[1]['Market']}:" + \
                         f"{instrument[1]['Currency']}"
                         
-                with requests.get(url=url) as r:
-                    if r.status_code == 200:
-                        print(f"Podłączono się do strony - {instrument[1]['Ticker']}.")
-                    
+                with requests.get(url=url) as r:                    
                     soup = BeautifulSoup(r.text, 'html.parser')
-                    
                     close = soup.find_all('span', class_ = 'mod-ui-data-list__value')
                     close = float(close[0].text)
                     result_df = pd.concat([result_df, 
@@ -325,6 +327,7 @@ def daily_webscraping_plus_currencies(cloud_event):
                                                 'Turnover', 
                                                 'Volume']]
             
+            print("Webscraping z 'markets.ft.com' zakończony powodzeniem.")
 
             return data_to_export_ETFs
         
