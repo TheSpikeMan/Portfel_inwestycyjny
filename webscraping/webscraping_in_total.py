@@ -28,7 +28,8 @@ def daily_webscraping_plus_currencies(cloud_event):
                     table_treasury_bonds,
                     view_transactions,
                     website_stocks,
-                    website_etfs_pl):
+                    website_etfs_pl,
+                    website_catalyst):
             
             """
 
@@ -528,6 +529,7 @@ def daily_webscraping_plus_currencies(cloud_event):
                 print("Dane walutowe zostały wyeksportowane do tabeli BigQuery.")
             except Exception as e:
                 print(f"Error uploading data to BigQuery: {str(e)}")
+
         
 
     # Definiowanie nazwy projektu
