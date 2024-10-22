@@ -26,7 +26,9 @@ def daily_webscraping_plus_currencies(cloud_event):
                     table_daily,
                     table_inflation,
                     table_treasury_bonds,
-                    view_transactions):
+                    view_transactions,
+                    website_stocks,
+                    website_etfs_pl):
             
             """
 
@@ -47,6 +49,8 @@ def daily_webscraping_plus_currencies(cloud_event):
             self.table_inflation         = table_inflation
             self.table_treasury_bonds    = table_treasury_bonds
             self.view_transactions       = view_transactions
+            self.website_stocks          = website_stocks
+            self.website_etfs_pl         = website_etfs_pl
 
         def pobierz_aktualne_instrumenty(self):
 
@@ -321,22 +325,24 @@ def daily_webscraping_plus_currencies(cloud_event):
             return data_to_export_ETFs
         
         def webscraping_biznesradar(self,
+                                    website,
                                     present_instruments_akcje
                                     ):
             
             """
-            Funkcja wyznacza aktualną wartość polskich akcji oraz polskich ETF obecnych w portfelu.
+            Funkcja wyznacza aktualną wartość instrumentów finansowych z portalu biznesradar.
             """
 
-            print("Pobieranie danych akcji polskich.")
-            website_notowania = 'https://www.biznesradar.pl/gielda/akcje_gpw'
-            with requests.get(website_notowania) as r1:
-                if r1.status_code == 200:
+            print("Pobieranie danych z portalu biznesradar.")
+            with requests.get(website) as r1:
+                try:
                     soup1 = BeautifulSoup(r1.text, 'html.parser')
                     trs = soup1.find_all('tr')
                     trs_classes = [tr.get('class') for tr in trs]
                     trs_classes = [" ".join(tr_class) for tr_class in trs_classes if tr_class != None]
-                    trs_classes.remove('ad')
+
+                    if 'ad' in trs_classes:
+                        trs_classes.remove('ad')
                     current_date = date.today()
                     result_df = pd.DataFrame()
 
@@ -376,70 +382,15 @@ def daily_webscraping_plus_currencies(cloud_event):
                         result_df = pd.concat([result_df, pd.DataFrame([instruments])], axis=0)
 
                     result_df.columns = ['Ticker', 'Date', 'Close', 'Volume', 'Turnover']
-                    print("Pobieranie danych z biznesradar dla akcji polskich zakończone powodzeniem.")
+                    print("Pobieranie danych z biznesradar zakończone powodzeniem.")
 
+                    return result_df
+
+                except requests.exceptions.Timeout:
+                    print("Nie udało się podłączyć do strony biznesradar.pl - timeout.")
                 else:
+                    print("Nie udało się podłączyć do strony biznesradar.pl - inny błąd.")
 
-                    print("Nie udało się podłączyć do strony biznesradar.pl.")
-
-            print("Pobieranie danych ETF polskich.")
-            website_notowania = 'https://www.biznesradar.pl/gielda/etf'
-            with requests.get(website_notowania) as r1:
-                if r1.status_code == 200:
-                    soup1 = BeautifulSoup(r1.text, 'html.parser')
-                    trs = soup1.find_all('tr')
-                    trs_classes = [tr.get('class') for tr in trs]
-                    trs_classes = [" ".join(tr_class) for tr_class in trs_classes if tr_class != None]
-                    current_date = date.today()
-                    result_df2 = pd.DataFrame()
-
-                    list_of_present_tickers = list(present_instruments_akcje['Ticker'])
-
-                    dict_of_tickers = {}
-                    for index, tr_class in enumerate(trs_classes):
-                        Ticker = soup1.find('tr', class_=tr_class).find('a').get_text().split(' ')[0]
-                        dict_of_tickers.update({tr_class: Ticker})
-
-                    list_of_trs_to_update = []
-                    for key, value in dict_of_tickers.items():
-                        if value in list_of_present_tickers:
-                            list_of_trs_to_update.append(key)
-
-                    for index, tr_class in enumerate(list_of_trs_to_update):
-                        Ticker = soup1.find('tr', class_=tr_class).find('a').get_text().split(' ')[0]
-                        Close = soup1.find('tr', class_=tr_class).find('span', class_="q_ch_act").get_text(strip=True).replace(
-                            " ", "")
-                        if Close:
-                            Close = float(Close)
-                        else:
-                            continue
-                        Volume = soup1.find('tr', class_=tr_class).find('span', class_="q_ch_vol").get_text(strip=True).replace(
-                            " ", "")
-                        if Volume:
-                            Volume = int(Volume)
-                        else:
-                            continue
-                        Turnover = soup1.find('tr', class_=tr_class).find('span', class_="q_ch_mc").get_text(
-                            strip=True).replace(" ", "")
-                        if Turnover:
-                            Turnover = int(Turnover)
-                        else:
-                            continue
-                        instruments = [Ticker, current_date, Close, Volume, Turnover]
-                        result_df2 = pd.concat([result_df2, pd.DataFrame([instruments])], axis=0)
-
-                    result_df2.columns = ['Ticker', 'Date', 'Close', 'Volume', 'Turnover']
-                    print("Pobieranie danych z biznesradar dla ETF polskich zakończone powodzeniem.")
-
-                else:
-
-                    print("Nie udało się podłączyć do strony biznesradar.pl.")
-
-                results = pd.concat([result_df, result_df2], axis = 0)
-                return results
-
-            
-            
         def run_scraper(self):
 
 
@@ -459,12 +410,16 @@ def daily_webscraping_plus_currencies(cloud_event):
             present_currencies = self.znajdz_kursy_walut()
             data_to_export_ETFs = self.webscraping_markets_ft_webscraping(present_instruments_ETF,
                                                                         present_currencies)
-            data_to_export_akcje = self.webscraping_biznesradar(present_instruments_akcje)
+            data_to_export_akcje = self.webscraping_biznesradar(website_stocks, present_instruments_akcje)
+            data_to_export_etfs_pl = self.webscraping_biznesradar(website_etfs_pl, present_instruments_akcje)
             data_to_export_obligacje = self.obligacje_skarbowe(dane_inflacyjne,
                                                             dane_transakcyjne,
                                                             dane_marz)
 
-            data_to_export = pd.concat([data_to_export_ETFs, data_to_export_akcje, data_to_export_obligacje],
+            data_to_export = pd.concat([data_to_export_ETFs, 
+                                        data_to_export_akcje, 
+                                        data_to_export_etfs_pl,
+                                        data_to_export_obligacje],
                                         ignore_index = True)
             
             exporterObject = BigQueryExporter(project_to_export=project_id,
@@ -583,6 +538,8 @@ def daily_webscraping_plus_currencies(cloud_event):
     table_inflation         = 'Inflation'
     table_treasury_bonds    = 'Treasury_Bonds'
     view_transactions       = 'Transactions_view'
+    website_stocks          = 'https://www.biznesradar.pl/gielda/akcje_gpw'
+    website_etfs_pl         = 'https://www.biznesradar.pl/gielda/etf'
 
     scraper = Scraper(project_id, 
                     dataset_instruments,
@@ -596,10 +553,12 @@ def daily_webscraping_plus_currencies(cloud_event):
                     table_daily,
                     table_inflation,
                     table_treasury_bonds,
-                    view_transactions
+                    view_transactions,
+                    website_stocks,
+                    website_etfs_pl
                     )
 
-    result = scraper.run_scraper()
+    scraper.run_scraper()
 
 
 """"
