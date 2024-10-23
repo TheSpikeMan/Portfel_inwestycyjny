@@ -413,16 +413,20 @@ def daily_webscraping_plus_currencies(cloud_event):
             """
 
             present_instruments_ETF, present_instruments_biznesradar = self.pobierz_aktualne_instrumenty()
-            dane_inflacyjne, dane_transakcyjne, dane_marz = self.zbadaj_dane_inflacyjne()
-            present_currencies = self.znajdz_kursy_walut()
-            data_to_export_akcje = self.webscraping_biznesradar(website_stocks, present_instruments_biznesradar)
-            data_to_export_ETFs = self.webscraping_markets_ft_webscraping(present_instruments_ETF,
-                                                                        present_currencies)
+            dane_inflacyjne, dane_transakcyjne, dane_marz            = self.zbadaj_dane_inflacyjne()
+            present_currencies                                       = self.znajdz_kursy_walut()
+            data_to_export_akcje                                     = self.webscraping_biznesradar(website_stocks, 
+                                                                                                    present_instruments_biznesradar)
+            data_to_export_ETFs                                      = self.webscraping_markets_ft_webscraping(
+                                                                                                    present_instruments_ETF,
+                                                                                                    present_currencies)
             #data_to_export_catalyst = self.webscraping_biznesradar(website_catalyst, present_instruments_biznesradar) DO POPRAWKI
-            data_to_export_obligacje = self.obligacje_skarbowe(dane_inflacyjne,
-                                                            dane_transakcyjne,
-                                                            dane_marz)
-            data_to_export_etfs_pl = self.webscraping_biznesradar(website_etfs_pl, present_instruments_biznesradar)
+            data_to_export_obligacje                                 = self.obligacje_skarbowe(dane_inflacyjne,
+                                                                                               dane_transakcyjne,
+                                                                                               dane_marz)
+            data_to_export_etfs_pl                                   = self.webscraping_biznesradar(
+                                                                                               website_etfs_pl, 
+                                                                                               present_instruments_biznesradar)
             data_to_export = pd.concat([data_to_export_ETFs, 
                                         data_to_export_akcje,
                                         #data_to_export_catalyst, 
@@ -457,14 +461,13 @@ def daily_webscraping_plus_currencies(cloud_event):
             
             """
             
-            self.project_to_export = project_to_export
-            self.dataset_to_export_daily = dataset_to_export_daily
+            self.project_to_export            = project_to_export
+            self.dataset_to_export_daily      = dataset_to_export_daily
             self.dataset_to_export_currencies = dataset_to_export_currencies
-            self.table_to_export_daily = table_to_export_daily
-            self.table_to_export_currencies = table_to_export_currencies
+            self.table_to_export_daily        = table_to_export_daily
+            self.table_to_export_currencies   = table_to_export_currencies
         
-        def exportDataToBigQueryDailyTable(self,
-                                data_to_export):
+        def exportDataToBigQueryDailyTable(self, data_to_export):
             
 
             """
@@ -493,8 +496,8 @@ def daily_webscraping_plus_currencies(cloud_event):
 
             try:
                 job = client.load_table_from_dataframe(data_to_export, 
-                                                    destination_table,
-                                                    job_config = job_config)
+                                                       destination_table,
+                                                       job_config = job_config)
                 job.result()
                 print("Dane giełdowe zostały wyeksportowane do tabeli BigQuery.")
             except Exception as e:
@@ -525,8 +528,8 @@ def daily_webscraping_plus_currencies(cloud_event):
 
             try:
                 job = client.load_table_from_dataframe(currencies_to_export,
-                                                        destination_table,
-                                                        job_config = job_config)
+                                                       destination_table,
+                                                       job_config = job_config)
                 job.result()
                 print("Dane walutowe zostały wyeksportowane do tabeli BigQuery.")
             except Exception as e:
