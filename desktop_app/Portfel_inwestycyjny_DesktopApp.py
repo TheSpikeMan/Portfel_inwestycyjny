@@ -16,25 +16,59 @@ from google.cloud import bigquery
 import pandas as pd
 import numpy as np
 
+class BigQueryProject():
+
+    def __init__(self,
+                 project,
+                 location,
+                 dataSetDaneIntrumentow,
+                 dataSetCurrencies,
+                 dataSetTransactions,
+                 dataSetInflation,
+                 tableDaily,
+                 tableInstrumentTypes,
+                 tableInstruments,
+                 tableTreasuryBonds,
+                 tableInflation,
+                 tableTransactions,
+                 tableCurrency,
+                 viewTransactionsView,
+                 viewCurrencies):
+        self.project                = project
+        self.location               = location
+        self.dataSetDaneIntrumentow = dataSetDaneIntrumentow
+        self.dataSetCurrencies      = dataSetCurrencies
+        self.dataSetTransactions    = dataSetTransactions
+        self.dataSetInflation       = dataSetInflation
+        self.tableDaily             = tableDaily
+        self.tableInstrumentTypes   = tableInstrumentTypes
+        self.tableInstruments       = tableInstruments
+        self.tableTreasuryBonds     = tableTreasuryBonds
+        self.tableInflation         = tableInflation
+        self.tableTransactions      = tableTransactions
+        self.tableCurrency          = tableCurrency
+        self.viewTransactionsView   = viewTransactionsView
+        self.viewCurrencies         = viewCurrencies
 
 class BigQueryReaderAndExporter():
     
-    def __init__(self):
-        self.project = 'projekt-inwestycyjny'
-        self.location = 'europe-central2'
-        self.dataSetDaneIntrumentow = 'Dane_instrumentow'
-        self.dataSetCurrencies      = 'Waluty'
-        self.dataSetTransactions    = 'Transactions'
-        self.dataSetInflation       = 'Inflation'
-        self.tableDaily             = 'Daily'
-        self.tableInstrumentTypes   = 'Instrument_types'
-        self.tableInstruments       = 'Instruments'
-        self.tableTreasuryBonds     = 'Treasury_Bonds'
-        self.tableInflation         = 'Inflation'
-        self.tableTransactions      = 'Transactions'
-        self.tableCurrency          = 'Currency'
-        self.viewTransactionsView   = 'Transactions_view'
-        self.viewCurrencies         = 'Currency_view'
+    def __init__(self, bigQueryProjectObject):
+        self.project                = bigQueryProjectObject.project
+        self.location               = bigQueryProjectObject.location
+        self.dataSetDaneIntrumentow = bigQueryProjectObject.dataSetDaneIntrumentow
+        self.dataSetCurrencies      = bigQueryProjectObject.dataSetCurrencies
+        self.dataSetTransactions    = bigQueryProjectObject.dataSetTransactions
+        self.dataSetInflation       = bigQueryProjectObject.dataSetInflation
+        self.tableDaily             = bigQueryProjectObject.tableDaily
+        self.tableInstrumentTypes   = bigQueryProjectObject.tableInstrumentTypes
+        self.tableInstruments       = bigQueryProjectObject.tableInstruments
+        self.tableTreasuryBonds     = bigQueryProjectObject.tableTreasuryBonds
+        self.tableInflation         = bigQueryProjectObject.tableInflation
+        self.tableTransactions      = bigQueryProjectObject.tableTransactions
+        self.tableCurrency          = bigQueryProjectObject.tableCurrency
+        self.viewTransactionsView   = bigQueryProjectObject.viewTransactionsView
+        self.viewCurrencies         = bigQueryProjectObject.viewCurrencies
+
     
     def downloadLastTransactionId(self):
         client = bigquery.Client(project      = self.project,
@@ -312,7 +346,8 @@ class DodajInstrumentDoSlownika(QWidget):
 # Klasa obsługująca dodanie nowej transakcji.
 class DodajTransakcje(QWidget):
 
-    def __init__(self, 
+    def __init__(self,
+                 bqrae,
                  currenciesDataFrame,
                  instrumentsDataFrame,
                  transactionsDataFrame,
@@ -323,6 +358,9 @@ class DodajTransakcje(QWidget):
         self.currenciesDataFrame        = currenciesDataFrame
         self.instrumentsDataFrame       = instrumentsDataFrame
         self.transactionsDataFrame      = transactionsDataFrame
+
+        # Pobranie obiektu klasy BigQueryProject
+        self.bqrae                      = bqrae
 
         # Konwersja typu DataFrame na float
         self.maxTransactionId           = maxTransactionId.iloc[0,0]
@@ -715,8 +753,8 @@ class DodajTransakcje(QWidget):
         self.destination           = "Dane transakcyjne"
 
 
-        # Tworzę obiekt BigQueryReaderAndExporter do eksportu danych do BQ
-        bigQueryExporterObject = BigQueryReaderAndExporter()
+        # Tworzę obiekt BigQueryReaderAndExporter do eksportu danych do BQ i przekazuję mi dane projektu z klasy BigQueryProject
+        bigQueryExporterObject = BigQueryReaderAndExporter(self.bqrae)
         self.message = bigQueryExporterObject.sendDataToBigQuery(transaction_data_to_export, self.destination)
         self.informationTextEdit.append(self.message)
 
@@ -740,20 +778,25 @@ class InitialWindow(QMainWindow):
         self.setCentralWidget(centralWidget)
         
 
-class MainWindow(QMainWindow):
-    def __init__(self):
+class MainWindow(QMainWindow,):
+    def __init__(self, bigQueryProjectObject):
+        
         super().__init__()
         self.title = "Portfel_inwestycyjny_Desktop_App"
         # Ustawienie parametrów okna i ustawienie widgetów
         self.setWindowTitle(self.title)
         self.setFixedSize(QSize(800,600))
+        self.bigQueryProjectObject = bigQueryProjectObject
 
-        # Utworzenie obiektu klasy BigQueryReaderAndExporter, wywołanie na nim metody 'downloadDataFromBigQuery' - pobranie 
+        # Utworzenie obiektu klasy BigQueryRederAndExporter
+        self.bqrae = BigQueryReaderAndExporter(self.bigQueryProjectObject)
+
+        # Wywołanie na obiekcie klasy BigQueryReaderAndExporter metody 'downloadDataFromBigQuery' - pobranie 
         # danych z BigQuery, a następnie przypisanie wyniku pracy metody do zmiennych
         # Tą część będzie można ulepszyć - w tej chwili pobieranie danych powoduje zwiększenie czasu uruchamiania programu.
         # Warto będzie dodać okno wstępne z informacją o konieczności pobrania danych i oczekiwania.
         self.currenciesDataFrame, self.instrumentsDataFrame, self.transactionsDataFrame = \
-            BigQueryReaderAndExporter().downloadDataFromBigQuery()
+            self.bqrae.downloadDataFromBigQuery()
         self.addWidgets()
     
     def addWidgets(self):
@@ -791,17 +834,41 @@ class MainWindow(QMainWindow):
     # Zdefiniowanie metody uruchamianej po naciśnięciu przycisku 'AddTransaction'
     def addTransactions(self):
 
-        self.maxTransactionId = BigQueryReaderAndExporter().downloadLastTransactionId()
-        self.dodajTransakcje  = DodajTransakcje(self.currenciesDataFrame,
-                                               self.instrumentsDataFrame,
-                                               self.transactionsDataFrame,
-                                               self.maxTransactionId)
+        self.maxTransactionId = self.bqrae.downloadLastTransactionId()
+        self.dodajTransakcje  = DodajTransakcje(self.bqrae,
+                                                self.currenciesDataFrame,
+                                                self.instrumentsDataFrame,
+                                                self.transactionsDataFrame,
+                                                self.maxTransactionId)
         self.dodajTransakcje.show()
     
     # Zdefiniowane metody uruchamianej po naciśnięciu przycisku 'AddInstr'
     def addInstrument(self):
         self.addInstrument = DodajInstrumentDoSlownika(self.instrumentsDataFrame)
         self.addInstrument.show()
+
+# Deklaracja nazw projektu, datasetów i tabel
+project                = 'projekt-inwestycyjny'
+location               = 'europe-central2'
+
+# Definicje nazw DataSetów
+dataSetDaneIntrumentow = 'Dane_instrumentow'
+dataSetCurrencies      = 'Waluty'
+dataSetTransactions    = 'Transactions'
+dataSetInflation       = 'Inflation'
+
+# Definicje nazw tabel
+tableDaily             = 'Daily'
+tableInstrumentTypes   = 'Instrument_types'
+tableInstruments       = 'Instruments'
+tableTreasuryBonds     = 'Treasury_Bonds'
+tableInflation         = 'Inflation'
+tableTransactions      = 'Transactions'
+tableCurrency          = 'Currency'
+
+# Definicje nazw widoków
+viewTransactionsView   = 'Transactions_view'
+viewCurrencies         = 'Currency_view'
         
 # Main part of the app
 app = QApplication([]) 
@@ -809,7 +876,24 @@ app = QApplication([])
 # Inicjalizacje nieaktywne - do aktywacji podczas uruchamiania okna początkowego.
 # window = InitialWindow()
 # window.show()
-window = MainWindow()
+
+bigQueryProjectObject = BigQueryProject(
+    project,
+    location,
+    dataSetDaneIntrumentow,
+    dataSetCurrencies,
+    dataSetTransactions,
+    dataSetInflation,
+    tableDaily,
+    tableInstrumentTypes,
+    tableInstruments,
+    tableTreasuryBonds,
+    tableInflation,
+    tableTransactions,
+    tableCurrency,
+    viewTransactionsView,
+    viewCurrencies)
+window = MainWindow(bigQueryProjectObject)
 window.show()
 
 app.exec()
