@@ -19,7 +19,6 @@ import numpy as np
 class BigQueryProject():
 
     def __init__(self,
-                 project,
                  location,
                  dataSetDaneIntrumentow,
                  dataSetCurrencies,
@@ -34,7 +33,6 @@ class BigQueryProject():
                  tableCurrency,
                  viewTransactionsView,
                  viewCurrencies):
-        self.project                = project
         self.location               = location
         self.dataSetDaneIntrumentow = dataSetDaneIntrumentow
         self.dataSetCurrencies      = dataSetCurrencies
@@ -52,8 +50,8 @@ class BigQueryProject():
 
 class BigQueryReaderAndExporter():
     
-    def __init__(self, bigQueryProjectObject):
-        self.project                = bigQueryProjectObject.project
+    def __init__(self, project, bigQueryProjectObject):
+        self.project                = project
         self.location               = bigQueryProjectObject.location
         self.dataSetDaneIntrumentow = bigQueryProjectObject.dataSetDaneIntrumentow
         self.dataSetCurrencies      = bigQueryProjectObject.dataSetCurrencies
@@ -347,6 +345,7 @@ class DodajInstrumentDoSlownika(QWidget):
 class DodajTransakcje(QWidget):
 
     def __init__(self,
+                 project_name,
                  bqrae,
                  currenciesDataFrame,
                  instrumentsDataFrame,
@@ -359,7 +358,8 @@ class DodajTransakcje(QWidget):
         self.instrumentsDataFrame       = instrumentsDataFrame
         self.transactionsDataFrame      = transactionsDataFrame
 
-        # Pobranie obiektu klasy BigQueryProject
+        # Pobranie obiektu klasy BigQueryProject i nazwy projektu
+        self.project                    = project_name
         self.bqrae                      = bqrae
 
         # Konwersja typu DataFrame na float
@@ -754,7 +754,8 @@ class DodajTransakcje(QWidget):
 
 
         # Tworzę obiekt BigQueryReaderAndExporter do eksportu danych do BQ i przekazuję mi dane projektu z klasy BigQueryProject
-        bigQueryExporterObject = BigQueryReaderAndExporter(self.bqrae)
+        bigQueryExporterObject = BigQueryReaderAndExporter(self.project, 
+                                                           self.bqrae)
         self.message = bigQueryExporterObject.sendDataToBigQuery(transaction_data_to_export, self.destination)
         self.informationTextEdit.append(self.message)
 
@@ -788,67 +789,104 @@ class MainWindow(QMainWindow,):
         self.setFixedSize(QSize(800,600))
         self.bigQueryProjectObject = bigQueryProjectObject
 
-        # Utworzenie obiektu klasy BigQueryRederAndExporter
-        self.bqrae = BigQueryReaderAndExporter(self.bigQueryProjectObject)
-
         # Wywołanie na obiekcie klasy BigQueryReaderAndExporter metody 'downloadDataFromBigQuery' - pobranie 
         # danych z BigQuery, a następnie przypisanie wyniku pracy metody do zmiennych
         # Tą część będzie można ulepszyć - w tej chwili pobieranie danych powoduje zwiększenie czasu uruchamiania programu.
         # Warto będzie dodać okno wstępne z informacją o konieczności pobrania danych i oczekiwania.
-        self.currenciesDataFrame, self.instrumentsDataFrame, self.transactionsDataFrame = \
-            self.bqrae.downloadDataFromBigQuery()
+
+        #  self.currenciesDataFrame, self.instrumentsDataFrame, self.transactionsDataFrame = \
+        #  self.bqrae.downloadDataFromBigQuery()
         self.addWidgets()
     
     def addWidgets(self):
         layout = QGridLayout()
 
+        # Dodanie etykiety pola odpowiedzialnego za pobranie nazwy projektu
+        self.projectLabel = QLabel()
+        self.projectLabel.setText("Nazwa projektu: ")
+        layout.addWidget(self.projectLabel, 0, 0)
+
+        # Dodanie pola odpowiedzialnego za pobranie nazwy projektu
+        self.projectLineEdit            = QLineEdit()
+        layout.addWidget(self.projectLineEdit, 0, 1)
+
+        # Dodanie przycisku do zatwierdzenia nazwy projektu
+        self.projectPushButton          = QPushButton("Zatwierdź")
+        self.projectPushButton.clicked.connect(self.changeButtonState)
+        layout.addWidget(self.projectPushButton, 0, 2)
+
         # Dodanie przycisku odpowiedzialnego za autoryzację
         self.authorizeButton = QPushButton("Autoryzuj")
         #self.authorizeButton.clicked.connect(self.addTransactions)
-        layout.addWidget(self.authorizeButton, 0, 0)
+        layout.addWidget(self.authorizeButton, 1, 0, 1, 3)
 
         # Dodanie przycisku odpowiedzialnego za dodanie transakcji
         self.addTransaction = QPushButton("Dodaj transakcję")
         self.addTransaction.clicked.connect(self.addTransactions)
-        layout.addWidget(self.addTransaction, 1, 0)
+        layout.addWidget(self.addTransaction, 2, 0, 1, 3)
 
         # Dodanie przycisku odpowiedzialnego za dodanie nowego instrumentu do słownika
         self.addInstr = QPushButton("Dodaj nowy instrument do słownika")
         self.addInstr.clicked.connect(self.addInstrument)
-        layout.addWidget(self.addInstr, 2, 0)
+        layout.addWidget(self.addInstr, 3, 0, 1, 3)
 
         # Dodanie przycisku odpowiedzialnego za zamknięcie okna głównego
         self.closeWindow = QPushButton("Zamknij")
         self.closeWindow.clicked.connect(self.close)
-        layout.addWidget(self.closeWindow, 3, 0)
+        layout.addWidget(self.closeWindow, 4, 0, 1, 3)
 
         layout.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignHCenter)
         layout.setSpacing(10)
-        layout.setContentsMargins(100,20,100,20)
+        layout.setContentsMargins(200,20,200,20)
 
         # Zdefiniowanie głównego widgetu
         centralWidget = QWidget()
         centralWidget.setLayout(layout)
         self.setCentralWidget(centralWidget)
+
+    # Metoda sprawdzająca czy pole do wpisania danych projektu jest zatwierdzone
+    def checkProjectLineEdit(self):
+        if self.projectLineEdit.isEnabled():
+            print("Musisz zatwierdzić projekt, zanim przejdziesz dalej")
+            return 0
+        else:
+            return 1
+    
+    # Metoda tworząca obiekt klasy BigQueryProjectObject
+    def createBigQueryProjectObject(self):
+        self.bqrae = BigQueryReaderAndExporter(
+            self.projectLineEdit.text(), 
+            self.bigQueryProjectObject)
+    
+    # Przycisk do zmiany statusu przycisku
+    def changeButtonState(self):
+        if self.projectLineEdit.isEnabled():
+            self.projectLineEdit.setDisabled(True)  # Zablokowanie przycisku
+            self.createBigQueryProjectObject()
+        else:
+            self.projectLineEdit.setEnabled(True)  # Odblokowanie przycisku
     
     # Zdefiniowanie metody uruchamianej po naciśnięciu przycisku 'AddTransaction'
     def addTransactions(self):
-
-        self.maxTransactionId = self.bqrae.downloadLastTransactionId()
-        self.dodajTransakcje  = DodajTransakcje(self.bqrae,
-                                                self.currenciesDataFrame,
-                                                self.instrumentsDataFrame,
-                                                self.transactionsDataFrame,
-                                                self.maxTransactionId)
-        self.dodajTransakcje.show()
-    
+        if self.checkProjectLineEdit():
+            try:
+                self.maxTransactionId = self.bqrae.downloadLastTransactionId()
+                self.dodajTransakcje  = DodajTransakcje(self.projectLineEdit.text(),
+                                                        self.bqrae,
+                                                        self.currenciesDataFrame,
+                                                        self.instrumentsDataFrame,
+                                                        self.transactionsDataFrame,
+                                                        self.maxTransactionId)
+                self.dodajTransakcje.show()
+            except:
+                print("Projekt nie istnieje. Proszę wybrać inny!")
+        
     # Zdefiniowane metody uruchamianej po naciśnięciu przycisku 'AddInstr'
     def addInstrument(self):
         self.addInstrument = DodajInstrumentDoSlownika(self.instrumentsDataFrame)
         self.addInstrument.show()
 
-# Deklaracja nazw projektu, datasetów i tabel
-project                = 'projekt-inwestycyjny'
+# Deklaracja nazw datasetów i tabel
 location               = 'europe-central2'
 
 # Definicje nazw DataSetów
@@ -878,7 +916,6 @@ app = QApplication([])
 # window.show()
 
 bigQueryProjectObject = BigQueryProject(
-    project,
     location,
     dataSetDaneIntrumentow,
     dataSetCurrencies,
