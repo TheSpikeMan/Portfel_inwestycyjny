@@ -10,11 +10,29 @@ from PyQt6.QtWidgets import (
     QLineEdit,
     QCalendarWidget,
     QTextEdit)
-from PyQt6.QtCore import QSize, Qt, QDate, QEvent
+from PyQt6.QtCore import QSize, Qt, QDate, QEvent, QThread, pyqtSignal
 from PyQt6.QtGui import QFont
 from google.cloud import bigquery
 import pandas as pd
 import numpy as np
+
+
+class WorkerThread(QThread):
+    finished = pyqtSignal()
+    data_ready = pyqtSignal(object, object, object)
+
+    def __init__(self, bqrae):
+        super().__init__()
+        self.bqrae = bqrae
+
+    def run(self):
+        # Przykład operacji w tle (np. pobieranie danych, długotrwała operacja)
+        print("Rozpoczynam operację w tle...")
+        self.currenciesDataFrame, self.instrumentsDataFrame, self.transactionsDataFrame = self.bqrae.downloadDataFromBigQuery()  # Wykonanie metody
+        print("Operacja zakończona!")
+
+        self.data_ready.emit(self.currenciesDataFrame, self.instrumentsDataFrame, self.transactionsDataFrame)
+        self.finished.emit()
 
 class BigQueryProject():
 
@@ -784,9 +802,12 @@ class MainWindow(QMainWindow,):
         
         super().__init__()
         self.title = "Portfel_inwestycyjny_Desktop_App"
+
         # Ustawienie parametrów okna i ustawienie widgetów
         self.setWindowTitle(self.title)
         self.setFixedSize(QSize(800,600))
+
+        # Pobranie danych z obiektu do zmiennej
         self.bigQueryProjectObject = bigQueryProjectObject
 
         # Wywołanie na obiekcie klasy BigQueryReaderAndExporter metody 'downloadDataFromBigQuery' - pobranie 
@@ -844,6 +865,36 @@ class MainWindow(QMainWindow,):
         centralWidget.setLayout(layout)
         self.setCentralWidget(centralWidget)
 
+    ##########################################################################################
+    # Obsługa wątku pobocznego
+
+    # Gdy pobrano dane w tle przypisz je do zmiennych
+    def on_data_ready(self, currenciesDataFrame, instrumentsDataFrame, transactionsDataFrame):
+        self.currenciesDataFrame = currenciesDataFrame
+        self.instrumentsDataFrame = instrumentsDataFrame
+        self.transactionsDataFrame = transactionsDataFrame
+    
+    # Wykonaj działania w tle, gdy pole do wpisania nazwy projektu jest nieaktywne
+    def performBackgroundOperations(self):
+        if self.checkProjectLineEdit():
+            # Tworzenie wątku, który wykona operacje w tle
+            self.worker = WorkerThread(self.bqrae)
+            self.worker.data_ready.connect(self.on_data_ready)
+            self.worker.finished.connect(self.on_worker_finished)  # Po zakończeniu operacji wywołaj metodę
+            self.worker.start()  # Rozpoczęcie pracy w tle
+
+    # Wykonaj po zakończeniu działania w tle
+    def on_worker_finished(self):
+        self.currenciesDataFrame, self.instrumentsDataFrame, self.transactionsDataFrame = self.bqrae.downloadDataFromBigQuery()
+
+        # Włącz przyciski
+        self.addTransaction.setEnabled(True)
+        self.addInstr.setEnabled(True)
+
+        # Operacja zakończona
+        print("Operacja zakończona!")
+
+    ##############################################################################
     # Metoda sprawdzająca czy pole do wpisania danych projektu jest zatwierdzone
     def checkProjectLineEdit(self):
         if self.projectLineEdit.isEnabled():
@@ -858,11 +909,17 @@ class MainWindow(QMainWindow,):
             self.projectLineEdit.text(), 
             self.bigQueryProjectObject)
     
-    # Przycisk do zmiany statusu przycisku
+    # Gdy zatwierdzono projekt
     def changeButtonState(self):
         if self.projectLineEdit.isEnabled():
             self.projectLineEdit.setDisabled(True)  # Zablokowanie przycisku
             self.createBigQueryProjectObject()
+            self.performBackgroundOperations()
+
+            # Po włączeniu odświeżania w tle wyłącz wszystkie przyciski
+            self.addTransaction.setDisabled(True)
+            self.addInstr.setDisabled(True)
+
         else:
             self.projectLineEdit.setEnabled(True)  # Odblokowanie przycisku
     
@@ -883,8 +940,12 @@ class MainWindow(QMainWindow,):
         
     # Zdefiniowane metody uruchamianej po naciśnięciu przycisku 'AddInstr'
     def addInstrument(self):
-        self.addInstrument = DodajInstrumentDoSlownika(self.instrumentsDataFrame)
-        self.addInstrument.show()
+        if self.checkProjectLineEdit():
+            try:
+                self.addInstrument = DodajInstrumentDoSlownika(self.instrumentsDataFrame)
+                self.addInstrument.show()
+            except:
+                print("Projekt nie istnieje. Proszę wybrać inny!")
 
 # Deklaracja nazw datasetów i tabel
 location               = 'europe-central2'
