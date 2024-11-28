@@ -2,23 +2,64 @@ from PyQt6.QtWidgets import (
     QApplication, 
     QMainWindow, 
     QPushButton, 
-    QGridLayout, 
+    QGridLayout,
+    QVBoxLayout,
     QWidget, 
     QDateEdit, 
     QLabel, 
     QComboBox, 
     QLineEdit,
     QCalendarWidget,
-    QTextEdit)
+    QTextEdit,
+    QDialog,
+    QProgressBar)
 from PyQt6.QtCore import QSize, Qt, QDate, QEvent, QThread, pyqtSignal
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QFont, QGuiApplication
 from google.cloud import bigquery
 import pandas as pd
 import numpy as np
+import time
 
+class ProgressDialog(QDialog):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Pobieranie niezbędnych danych...")
+        self.setGeometry(100, 100, 300, 100)
+
+        # Tworzymy pasek postępu
+        self.progress_bar = QProgressBar(self)
+        self.progress_bar.setRange(0, 100)  # Zakres paska postępu (0-100)
+        self.progress_bar.setValue(0)  # Początkowa wartość paska postępu
+
+        layout = QVBoxLayout()
+        layout.addWidget(self.progress_bar)
+        self.setLayout(layout)
+
+        self.center_window()
+
+    def update_progress(self, value):
+        self.progress_bar.setValue(value)  # Aktualizowanie wartości paska postępu
+
+    def center_window(self):
+        # Pobieramy rozmiary ekranu
+        screen_geometry = QGuiApplication.primaryScreen().geometry()
+        screen_width = screen_geometry.width()
+        screen_height = screen_geometry.height()
+
+        # Pobieramy rozmiar okna
+        window_width = self.width()
+        window_height = self.height()
+
+        # Obliczamy pozycję okna na środku ekranu
+        x = (screen_width - window_width) // 2
+        y = (screen_height - window_height) // 2
+
+        # Ustawiamy pozycję okna
+        self.move(x, y)
 
 class WorkerThread(QThread):
-    finished = pyqtSignal()
+    progress = pyqtSignal(int) # Sygnał postępu
+    finished = pyqtSignal() # Sygnał zakończenia
     data_ready = pyqtSignal(object, object, object)
 
     def __init__(self, bqrae):
@@ -26,12 +67,11 @@ class WorkerThread(QThread):
         self.bqrae = bqrae
 
     def run(self):
-        # Przykład operacji w tle (np. pobieranie danych, długotrwała operacja)
         print("Rozpoczynam operację w tle...")
+        self.progress.emit(10)
         self.currenciesDataFrame, self.instrumentsDataFrame, self.transactionsDataFrame = self.bqrae.downloadDataFromBigQuery()  # Wykonanie metody
-        print("Operacja zakończona!")
-
         self.data_ready.emit(self.currenciesDataFrame, self.instrumentsDataFrame, self.transactionsDataFrame)
+        self.progress.emit(50)
         self.finished.emit()
 
 class BigQueryProject():
@@ -810,13 +850,7 @@ class MainWindow(QMainWindow,):
         # Pobranie danych z obiektu do zmiennej
         self.bigQueryProjectObject = bigQueryProjectObject
 
-        # Wywołanie na obiekcie klasy BigQueryReaderAndExporter metody 'downloadDataFromBigQuery' - pobranie 
-        # danych z BigQuery, a następnie przypisanie wyniku pracy metody do zmiennych
-        # Tą część będzie można ulepszyć - w tej chwili pobieranie danych powoduje zwiększenie czasu uruchamiania programu.
-        # Warto będzie dodać okno wstępne z informacją o konieczności pobrania danych i oczekiwania.
-
-        #  self.currenciesDataFrame, self.instrumentsDataFrame, self.transactionsDataFrame = \
-        #  self.bqrae.downloadDataFromBigQuery()
+        # Dodanie widgetów
         self.addWidgets()
     
     def addWidgets(self):
@@ -867,51 +901,7 @@ class MainWindow(QMainWindow,):
         centralWidget.setLayout(layout)
         self.setCentralWidget(centralWidget)
 
-    ##########################################################################################
-    # Obsługa wątku pobocznego
-
-    # Gdy pobrano dane w tle przypisz je do zmiennych
-    def on_data_ready(self, currenciesDataFrame, instrumentsDataFrame, transactionsDataFrame):
-        self.currenciesDataFrame = currenciesDataFrame
-        self.instrumentsDataFrame = instrumentsDataFrame
-        self.transactionsDataFrame = transactionsDataFrame
-    
-    # Wykonaj działania w tle, gdy pole do wpisania nazwy projektu jest nieaktywne
-    def performBackgroundOperations(self):
-        if self.checkProjectLineEdit():
-            # Tworzenie wątku, który wykona operacje w tle
-            self.worker = WorkerThread(self.bqrae)
-            self.worker.data_ready.connect(self.on_data_ready)
-            self.worker.finished.connect(self.on_worker_finished)  # Po zakończeniu operacji wywołaj metodę
-            self.worker.start()  # Rozpoczęcie pracy w tle
-
-    # Wykonaj po zakończeniu działania w tle
-    def on_worker_finished(self):
-        self.currenciesDataFrame, self.instrumentsDataFrame, self.transactionsDataFrame = self.bqrae.downloadDataFromBigQuery()
-
-        # Włącz przyciski
-        self.addTransaction.setEnabled(True)
-        self.addInstr.setEnabled(True)
-
-        # Operacja zakończona
-        print("Operacja zakończona!")
-
-    ##############################################################################
-    # Metoda sprawdzająca czy pole do wpisania danych projektu jest zatwierdzone
-    def checkProjectLineEdit(self):
-        if self.projectLineEdit.isEnabled():
-            print("Musisz zatwierdzić projekt, zanim przejdziesz dalej")
-            return 0
-        else:
-            return 1
-    
-    # Metoda tworząca obiekt klasy BigQueryProjectObject
-    def createBigQueryProjectObject(self):
-        self.bqrae = BigQueryReaderAndExporter(
-            self.projectLineEdit.text(), 
-            self.bigQueryProjectObject)
-    
-    # Gdy zatwierdzono projekt
+    # Gdy zatwierdzono projekt utwórz obiekt BigQueryReaderAndExporter i wykonaj działania w tle
     def changeButtonState(self):
         if self.projectLineEdit.isEnabled():
             self.projectLineEdit.setDisabled(True)  # Zablokowanie przycisku
@@ -924,6 +914,57 @@ class MainWindow(QMainWindow,):
 
         else:
             self.projectLineEdit.setEnabled(True)  # Odblokowanie przycisku
+
+    def createBigQueryProjectObject(self):
+        self.bqrae = BigQueryReaderAndExporter(
+            self.projectLineEdit.text(),
+            self.bigQueryProjectObject)
+
+    ##########################################################################################
+    # Obsługa wątku pobocznego
+    def performBackgroundOperations(self):
+        if self.checkProjectLineEdit():
+            # Utworzenie obiektu ProgressDialog
+            print("Tworzę obiekt ProgressDialog")
+            self.progress_dialog = ProgressDialog()
+            self.progress_dialog.show()
+
+            # Tworzenie wątku, który wykona operacje w tle
+            self.worker = WorkerThread(self.bqrae)
+            self.worker.progress.connect(self.progress_dialog.update_progress)
+            self.worker.data_ready.connect(self.on_data_ready)
+            self.worker.finished.connect(self.on_worker_finished)  # Po zakończeniu operacji wywołaj metodę
+            self.worker.start()  # Rozpoczęcie pracy w tle
+
+    # Gdy pobrano dane w tle przypisz je do zmiennych
+    def on_data_ready(self, currenciesDataFrame, instrumentsDataFrame, transactionsDataFrame):
+        self.currenciesDataFrame = currenciesDataFrame
+        self.instrumentsDataFrame = instrumentsDataFrame
+        self.transactionsDataFrame = transactionsDataFrame
+
+    # Wykonaj po zakończeniu działania w tle
+    def on_worker_finished(self):
+        self.currenciesDataFrame, self.instrumentsDataFrame, self.transactionsDataFrame = self.bqrae.downloadDataFromBigQuery()
+
+        self.progress_dialog.setWindowTitle("Zapisuję dane...")
+        self.progress_dialog.update_progress(100)
+        time.sleep(3)
+        # Włącz przyciski
+        self.addTransaction.setEnabled(True)
+        self.addInstr.setEnabled(True)
+
+        # Operacja zakończona
+        print("Operacja zakończona!")
+        self.progress_dialog.close()
+
+    ##############################################################################
+    # Metoda sprawdzająca czy pole do wpisania danych projektu jest zatwierdzone
+    def checkProjectLineEdit(self):
+        if self.projectLineEdit.isEnabled():
+            print("Musisz zatwierdzić projekt, zanim przejdziesz dalej")
+            return 0
+        else:
+            return 1
 
     # Zdefiniowanie metody uruchamianej po naciśnięciu przycisku związanego z dodaniem transakcji lub instrumentu
     def addTransactionOrInstrument(self, id):
