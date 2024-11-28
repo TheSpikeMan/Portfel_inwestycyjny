@@ -843,12 +843,14 @@ class MainWindow(QMainWindow,):
 
         # Dodanie przycisku odpowiedzialnego za dodanie transakcji
         self.addTransaction = QPushButton("Dodaj transakcję")
-        self.addTransaction.clicked.connect(self.addTransactions)
+        self.addTransaction.setProperty("id", "addTransaction")
+        self.addTransaction.clicked.connect(lambda: self.addTransactionOrInstrument(self.addTransaction.property("id")))
         layout.addWidget(self.addTransaction, 2, 0, 1, 3)
 
         # Dodanie przycisku odpowiedzialnego za dodanie nowego instrumentu do słownika
         self.addInstr = QPushButton("Dodaj nowy instrument do słownika")
-        self.addInstr.clicked.connect(self.addInstrument)
+        self.addInstr.setProperty("id", "addInstr")
+        self.addInstr.clicked.connect(lambda: self.addTransactionOrInstrument(self.addTransaction.property("id")))
         layout.addWidget(self.addInstr, 3, 0, 1, 3)
 
         # Dodanie przycisku odpowiedzialnego za zamknięcie okna głównego
@@ -922,30 +924,27 @@ class MainWindow(QMainWindow,):
 
         else:
             self.projectLineEdit.setEnabled(True)  # Odblokowanie przycisku
-    
-    # Zdefiniowanie metody uruchamianej po naciśnięciu przycisku 'AddTransaction'
-    def addTransactions(self):
+
+    # Zdefiniowanie metody uruchamianej po naciśnięciu przycisku związanego z dodaniem transakcji lub instrumentu
+    def addTransactionOrInstrument(self, id):
+        # Jeśli wybór projektu został zatwierdzony
         if self.checkProjectLineEdit():
             try:
-                self.maxTransactionId = self.bqrae.downloadLastTransactionId()
-                self.dodajTransakcje  = DodajTransakcje(self.projectLineEdit.text(),
-                                                        self.bqrae,
-                                                        self.currenciesDataFrame,
-                                                        self.instrumentsDataFrame,
-                                                        self.transactionsDataFrame,
-                                                        self.maxTransactionId)
-                self.dodajTransakcje.show()
+                if id == "addTransaction":
+                    self.maxTransactionId = self.bqrae.downloadLastTransactionId()
+                    self.dodajTransakcje = DodajTransakcje(self.projectLineEdit.text(),
+                                                           self.bqrae,
+                                                           self.currenciesDataFrame,
+                                                           self.instrumentsDataFrame,
+                                                           self.transactionsDataFrame,
+                                                           self.maxTransactionId)
+                    self.dodajTransakcje.show()
+                elif id == "addInstr":
+                    self.addInstrument = DodajInstrumentDoSlownika(self.instrumentsDataFrame)
+                    self.addInstrument.show()
             except:
                 print("Projekt nie istnieje. Proszę wybrać inny!")
-        
-    # Zdefiniowane metody uruchamianej po naciśnięciu przycisku 'AddInstr'
-    def addInstrument(self):
-        if self.checkProjectLineEdit():
-            try:
-                self.addInstrument = DodajInstrumentDoSlownika(self.instrumentsDataFrame)
-                self.addInstrument.show()
-            except:
-                print("Projekt nie istnieje. Proszę wybrać inny!")
+
 
 # Deklaracja nazw datasetów i tabel
 location               = 'europe-central2'
