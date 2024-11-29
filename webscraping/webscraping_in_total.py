@@ -335,68 +335,71 @@ def daily_webscraping_plus_currencies(cloud_event):
                                     website,
                                     present_instruments_biznesradar
                                     ):
-            
+                
             """
             Funkcja wyznacza aktualną wartość instrumentów finansowych z portalu biznesradar.
             """
 
+            present_instruments = present_instruments_biznesradar['Ticker'].tolist()
+
+            current_date = date.today()
+            result_data = []  # Lista na dane do późniejszej konwersji do DataFrame
+
             print("Pobieranie danych z portalu biznesradar.")
-            with requests.get(website, timeout=10) as r1:
-                try:
-                    soup1 = BeautifulSoup(r1.text, 'html.parser')
-                    trs = soup1.find_all('tr')
-                    trs_classes = [tr.get('class') for tr in trs]
-                    trs_classes = [" ".join(tr_class) for tr_class in trs_classes if tr_class != None]
+            try:
+                with requests.get(website, timeout=10) as r1:
+                    # Obsługa statusu odpowiedzi HTTP
+                    r1.raise_for_status()
 
-                    if 'ad' in trs_classes:
-                        trs_classes.remove('ad')
-                    current_date = date.today()
-                    result_df = pd.DataFrame()
+                    # Parsowanie HTML
+                    soup = BeautifulSoup(r1.text, 'html.parser')
+                    for row in soup.find_all('tr', class_='hot-row'):
+                        try:
+                            Ticker = row.find('a').text.split()[0].strip()
+                            if Ticker in present_instruments:
+                                Close = row.find('span', {'data-push-type': 'QuoteClose'})
+                                Volume = row.find('span', {'data-push-type': 'QuoteVolume'})
+                                Turnover = row.find('span', {'data-push-type': 'QuoteMarketCap'})
 
-                    list_of_present_tickers = list(present_instruments_biznesradar['Ticker'])
+                                # Upewniamy się, że elementy istnieją przed pobraniem tekstu
+                                Close_value = Close.text.strip() if Close else None
+                                Volume_value = Volume.text.strip() if Volume else None
+                                Turnover_value = Turnover.text.strip() if Turnover else None
 
-                    dict_of_tickers = {}
-                    for index, tr_class in enumerate(trs_classes):
-                        Ticker = soup1.find('tr', class_=tr_class).find('a').get_text().split(' ')[0]
-                        dict_of_tickers.update({tr_class: Ticker})
+                                # Konwersja Close na float, Volume i Turnover na int, obsługa błędów
+                                try:
+                                    Close_value = float(Close_value.replace(',', '.')) if Close_value else None
+                                except ValueError:
+                                    Close_value = None  # Jeśli konwersja nie powiedzie się, ustawiamy None
+                                
+                                try:
+                                    Volume_value = int(Volume_value.replace(' ', '').replace(',', '')) if Volume_value else None
+                                except ValueError:
+                                    Volume_value = None  # Jeśli konwersja nie powiedzie się, ustawiamy None
+                                
+                                try:
+                                    Turnover_value = int(Turnover_value.replace(' ', '').replace(',', '')) if Turnover_value else None
+                                except ValueError:
+                                    Turnover_value = None  # Jeśli konwersja nie powiedzie się, ustawiamy None
 
-                    list_of_trs_to_update = []
-                    for key, value in dict_of_tickers.items():
-                        if value in list_of_present_tickers:
-                            list_of_trs_to_update.append(key)
-
-                    for index, tr_class in enumerate(list_of_trs_to_update):
-                        Ticker = soup1.find('tr', class_=tr_class).find('a').get_text().split(' ')[0]
-                        Close = soup1.find('tr', class_=tr_class).find('span', class_="q_ch_act").get_text(strip=True).replace(
-                            " ", "")
-                        if Close:
-                            Close = float(Close)
-                        else:
+                                # Dodanie danych do listy
+                                result_data.append([Ticker, current_date, Close_value, Volume_value, Turnover_value])
+                        except AttributeError as e:
+                            print(f"Błąd podczas parsowania wiersza: {e}")
                             continue
-                        Volume = soup1.find('tr', class_=tr_class).find('span', class_="q_ch_vol").get_text(strip=True).replace(
-                            " ", "")
-                        if Volume:
-                            Volume = int(Volume)
-                        else:
-                            continue
-                        Turnover = soup1.find('tr', class_=tr_class).find('span', class_="q_ch_mc").get_text(
-                            strip=True).replace(" ", "")
-                        if Turnover:
-                            Turnover = int(Turnover)
-                        else:
-                            continue
-                        instruments = [Ticker, current_date, Close, Volume, Turnover]
-                        result_df = pd.concat([result_df, pd.DataFrame([instruments])], axis=0)
 
-                    result_df.columns = ['Ticker', 'Date', 'Close', 'Volume', 'Turnover']
+                    # Przekształcenie wyników na DataFrame
+                    result_df = pd.DataFrame(result_data, columns=['Ticker', 'Date', 'Close', 'Volume', 'Turnover'])
                     print("Pobieranie danych z biznesradar zakończone powodzeniem.")
 
-                    return result_df
-
-                except requests.exceptions.Timeout:
-                    print("Nie udało się podłączyć do strony biznesradar.pl - timeout.")
-                else:
-                    print("Nie udało się podłączyć do strony biznesradar.pl - inny błąd.")
+            except requests.exceptions.Timeout:
+                print("Nie udało się podłączyć do strony biznesradar.pl - timeout.")
+            except requests.exceptions.RequestException as e:
+                print(f"Nie udało się podłączyć do strony biznesradar.pl - błąd HTTP: {e}")
+            except Exception as e:
+                print(f"Wystąpił nieoczekiwany błąd: {e}")
+            
+            return result_df
 
         def run_scraper(self):
 
