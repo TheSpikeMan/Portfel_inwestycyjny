@@ -817,26 +817,6 @@ class DodajTransakcje(QWidget):
         self.message = bigQueryExporterObject.sendDataToBigQuery(transaction_data_to_export, self.destination)
         self.informationTextEdit.append(self.message)
 
-
-# Klasa tymczasowo nieaktywna - do wprowadzenia w przyszłości
-class InitialWindow(QMainWindow):
-    def __init__(self):
-        super().__init__()
-        self.title = "Pobieranie danych"
-        self.setWindowTitle(self.title)
-        self.setFixedSize(QSize(400,250))
-        self.addWidgets()
-    
-    def addWidgets(self):
-        self.layout = QGridLayout()
-        welcomeLabel = QLabel()
-        welcomeLabel.setText("Trwa pobieranie danych. Proszę czekać.")
-        self.layout.addWidget(welcomeLabel, 0, 0, alignment= Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignHCenter)
-        centralWidget = QWidget()
-        centralWidget.setLayout(self.layout)
-        self.setCentralWidget(centralWidget)
-        
-
 class MainWindow(QMainWindow,):
     def __init__(self, bigQueryProjectObject):
         
@@ -1011,10 +991,6 @@ viewCurrencies         = 'Currency_view'
         
 # Main part of the app
 app = QApplication([]) 
-
-# Inicjalizacje nieaktywne - do aktywacji podczas uruchamiania okna początkowego.
-# window = InitialWindow()
-# window.show()
 
 bigQueryProjectObject = BigQueryProject(
     location,
