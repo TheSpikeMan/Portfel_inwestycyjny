@@ -817,7 +817,7 @@ class DodajTransakcje(QWidget):
         self.message = bigQueryExporterObject.sendDataToBigQuery(transaction_data_to_export, self.destination)
         self.informationTextEdit.append(self.message)
 
-class MainWindow(QMainWindow,):
+class MainWindow(QMainWindow):
     def __init__(self, bigQueryProjectObject):
         
         super().__init__()
@@ -853,18 +853,21 @@ class MainWindow(QMainWindow,):
         # Dodanie przycisku odpowiedzialnego za autoryzację
         self.authorizeButton = QPushButton("Autoryzuj")
         #self.authorizeButton.clicked.connect(self.addTransactions)
+        self.authorizeButton.setVisible(False)
         layout.addWidget(self.authorizeButton, 1, 0, 1, 3)
 
         # Dodanie przycisku odpowiedzialnego za dodanie transakcji
         self.addTransaction = QPushButton("Dodaj transakcję")
         self.addTransaction.setProperty("id", "addTransaction")
         self.addTransaction.clicked.connect(lambda: self.addTransactionOrInstrument(self.addTransaction.property("id")))
+        self.addTransaction.setVisible(False)
         layout.addWidget(self.addTransaction, 2, 0, 1, 3)
 
         # Dodanie przycisku odpowiedzialnego za dodanie nowego instrumentu do słownika
         self.addInstr = QPushButton("Dodaj nowy instrument do słownika")
         self.addInstr.setProperty("id", "addInstr")
         self.addInstr.clicked.connect(lambda: self.addTransactionOrInstrument(self.addTransaction.property("id")))
+        self.addInstr.setVisible(False)
         layout.addWidget(self.addInstr, 3, 0, 1, 3)
 
         # Dodanie przycisku odpowiedzialnego za zamknięcie okna głównego
@@ -887,11 +890,6 @@ class MainWindow(QMainWindow,):
             self.projectLineEdit.setDisabled(True)  # Zablokowanie przycisku
             self.createBigQueryProjectObject()
             self.performBackgroundOperations()
-
-            # Po włączeniu odświeżania w tle wyłącz wszystkie przyciski
-            self.addTransaction.setDisabled(True)
-            self.addInstr.setDisabled(True)
-
         else:
             self.projectLineEdit.setEnabled(True)  # Odblokowanie przycisku
 
@@ -930,8 +928,9 @@ class MainWindow(QMainWindow,):
         self.progress_dialog.update_progress(100)
         time.sleep(3)
         # Włącz przyciski
-        self.addTransaction.setEnabled(True)
-        self.addInstr.setEnabled(True)
+        self.addTransaction.setVisible(True)
+        self.addInstr.setVisible(True)
+        #self.authorizeButton(True)
 
         # Operacja zakończona
         print("Operacja zakończona!")
