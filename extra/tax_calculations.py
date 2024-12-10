@@ -27,8 +27,8 @@ transactions_df = query_job.to_dataframe()
 # 2. Zdublowanie kolumny, dla celów dokonywania obliczeń na kolumnie
 transactions_df['amount_location'] = transactions_df['Transaction_amount']
 
-# 3. Utworzenie wynikowego pustego DataFrame
-result_df = pd.DataFrame()
+# 3. Utworzenie pustej listy
+list_to_append = []
 
 # 4. Zdefiniowanie parametru k, który będzie iterowalny wewnątrz pętli, w celu
 # wyszuwania transakcji kupna danego tickera.
@@ -147,8 +147,7 @@ for index, transaction in enumerate(transactions_df.iterrows()):
                            ]
             
             # 19. Dodaj do biężącej DataFrame dane z tablicy.
-            result_df = pd.concat([result_df, pd.DataFrame([data_to_add])], 
-                                     axis = 0)
+            list_to_append.append(data_to_add)
             
     # 20. Jeżeli nie znajdziesz transakcji sprzedaży lub wykupu szukaj dywidend i odsetek.
     else: 
@@ -193,8 +192,7 @@ for index, transaction in enumerate(transactions_df.iterrows()):
             
             # 21. Dodaj do biężącej DataFrame dane z tablicy.
 
-            result_df = pd.concat([result_df, pd.DataFrame([data_to_add])], 
-                                        axis = 0)
+            list_to_append.append(data_to_add)
 
 
         else:
@@ -209,16 +207,18 @@ columns = ['Date_sell', 'Date_buy',	'Investment_period',	'Quantity',
            'Sell_currency', 'Currency', 'Transaction_type', 'Instrument_type', 'Country', 
            'Instrument_headquarter', 'Ticker', 'Ticker_id',
            'Tax_deductible_expenses',	'Income',	'Profit', 'Tax_paid', 'Tax_value']
-result_df.columns = columns
 
-# 24. Zdefiniownie miejsca eksportu danych.
+# 24. Utworzenie Df na podstawie zestawu list.
+result_df = pd.DataFrame(data=list_to_append, columns = columns)
+
+# 25. Zdefiniownie miejsca eksportu danych.
 
 project_id = 'projekt-inwestycyjny'
 dataset_id = 'Transactions'
 table_id = 'Tax_calculations'
 destination_table = f"{project_id}.{dataset_id}.{table_id}"
 
-# 25. Przygotowanie schematu danych.
+# 26. Przygotowanie schematu danych.
 schema = [bigquery.SchemaField(name = 'Date_sell', field_type = "DATE", \
                                 mode = "REQUIRED"),
           bigquery.SchemaField(name = 'Date_buy', field_type = "DATE",\
@@ -261,11 +261,11 @@ schema = [bigquery.SchemaField(name = 'Date_sell', field_type = "DATE", \
                                 mode = "NULLABLE")
                                 ]
 
-# 26. Zdefiniowanie joba, który wykona operację eksportu.
+# 27. Zdefiniowanie joba, który wykona operację eksportu.
 job_config = bigquery.LoadJobConfig(schema = schema,
                                     write_disposition = "WRITE_TRUNCATE")
 
-# 27. Wykonanie eksportu danych metodą load_table_from_dataframe na obiekcie client klasy Client.
+# 28. Wykonanie eksportu danych metodą load_table_from_dataframe na obiekcie client klasy Client.
 
 try:
     job = client.load_table_from_dataframe(dataframe=result_df, 
