@@ -397,7 +397,7 @@ class DodajInstrumentDoSlownika(QWidget):
     
     # Metoda odpowiedzialna za wysłanie danych do BigQuery
     def sendDataToBigQuery(self):
-        print("Wysyłam dane do BigQuer.")  
+        print("Wysyłam dane do BigQuery.")  
 
 # Klasa obsługująca dodanie nowej transakcji.
 class DodajTransakcje(QWidget):
@@ -866,7 +866,7 @@ class MainWindow(QMainWindow):
         # Dodanie przycisku odpowiedzialnego za dodanie nowego instrumentu do słownika
         self.addInstr = QPushButton("Dodaj nowy instrument do słownika")
         self.addInstr.setProperty("id", "addInstr")
-        self.addInstr.clicked.connect(lambda: self.addTransactionOrInstrument(self.addTransaction.property("id")))
+        self.addInstr.clicked.connect(lambda: self.addTransactionOrInstrument(self.addInstr.property("id")))
         self.addInstr.setVisible(False)
         layout.addWidget(self.addInstr, 3, 0, 1, 3)
 
