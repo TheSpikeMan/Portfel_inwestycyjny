@@ -18,7 +18,7 @@ instruments_data  AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Inst
 -- Przechowuje dane typów instrumentów finansowych
 instruments_types AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instrument_types`),
 -- Przechowuje dane giełdowe instrumentów finansowych
-daily             AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Daily`),
+daily_raw         AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Daily`),
 -- Przechowuje informacje kalendarzowe
 dates             AS (SELECT * FROM `projekt-inwestycyjny.Calendar.Dates`),
 
@@ -30,6 +30,21 @@ currency_data AS (
     CAST(Currency_date AS DATE) AS Currency_date
   FROM currency_data_raw
   WHERE TRUE
+),
+
+-- DAILY --
+/* Przechowuje dane z dziennego scrapingu*/
+daily AS (
+  SELECT *
+  FROM daily_raw
+  QUALIFY TRUE
+    AND ROW_NUMBER() OVER unique_entries = 1
+  WINDOW
+    unique_entries AS (
+      PARTITION BY
+        Ticker,
+        `Date`
+    )
 ),
 
 -- DATA AGGREGATED --
