@@ -4,8 +4,23 @@ Wyznacza również ostatni kurs walutowy na potrzeby obliczeń transakcyjnych.
 */
 
 WITH
-currency    AS (SELECT * FROM `projekt-inwestycyjny.Waluty.Currency`),
-dates       AS (SELECT * FROM `projekt-inwestycyjny.Calendar.Dates`),
+currency_raw    AS (SELECT * FROM `projekt-inwestycyjny.Waluty.Currency`),
+dates           AS (SELECT * FROM `projekt-inwestycyjny.Calendar.Dates`),
+
+/*
+Znajdź unikatowe dane dla danej waluty na dany dzień
+*/
+currency AS (
+    SELECT *
+    FROM currency_raw
+    QUALIFY TRUE AND ROW_NUMBER() OVER unique_entries = 1
+    WINDOW
+        unique_entries AS (
+            PARTITION BY
+                Currency_date,
+                Currency
+        )
+),
 
 /*
 Pobierz unikatowe transakcje z tabeli z walutami
