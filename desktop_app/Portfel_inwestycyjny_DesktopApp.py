@@ -207,39 +207,56 @@ class BigQueryReaderAndExporter():
 
     
     # Metoda służy wysłaniu danych do BigQuery
-    def sendDataToBigQuery(self, data, destination):
-        self.data               = data
-        self.destination        = destination
-        print("Wysyłam dane do BigQuery, cel: ", self.destination)
+    def sendDataToBigQuery(self, data_to_export, destination_table):
+        # Walidacja danych wejściowych
+        if not isinstance(data_to_export, pd.DataFrame):
+            self.message = "Dane do eksportu muszą być typu pandas DataFrame."
+            return self.message
 
-        # Tworzę obiekt klasy Client
+        self.data_to_export = data_to_export
+        self.destination_table = destination_table
+        print("Wysyłam dane do BigQuery, cel: ", self.destination_table)
+
         client = bigquery.Client()
 
-        if self.destination     == "Dane transakcyjne":
-            self.destination    = f"{self.project}.{self.dataSetTransactions}.{self.tableTransactions}"
+        # Mapowanie destination_table na pełne identyfikatory tabeli w BigQuery
+        destination_mapping = {
+            "Dane transakcyjne": f"{self.project}.{self.dataSetTransactions}.{self.tableTransactions}",
+            "Dane instrumentow": f"{self.project}.{self.dataSetDaneIntrumentow}.{self.tableInstruments}"
+        }
 
-            # Tworzę obiekt klasy Table
-            self.table = client.get_table(self.destination)
-            # Pobieram schemę tabeli
+        # Sprawdzenie, czy destination_table jest zdefiniowane w mappingu
+        self.destination_table = destination_mapping.get(self.destination_table)
+        if self.destination_table:
+            # Pobieranie tabeli i schemy z BigQuery
+            self.table = client.get_table(self.destination_table)
             self.schema = self.table.schema
-
         else:
+            # Jeśli tabela nie została znaleziona w mappingu
             self.informationTextEdit.append("Brak zdefiniowanej schemy dla tego przypadku")
-            
-        
-        job_config = bigquery.LoadJobConfig(schema = self.schema,
-                                    write_disposition = "WRITE_APPEND")
-        
+            return "Brak zdefiniowanej schemy"
+
+        # Konfiguracja zadania ładowania danych do BigQuery
+        job_config = bigquery.LoadJobConfig(
+            schema=self.schema,
+            write_disposition="WRITE_APPEND"
+        )
+
+        # Próba załadowania danych do BigQuery
         try:
-            job = client.load_table_from_dataframe(self.data, 
-                                                   self.destination,
-                                                   job_config = job_config)
-            job.result()
-            
-            self.message = "Dane zostały wyeksportowane do tabeli w BigQuery"
+            job = client.load_table_from_dataframe(self.data_to_export,
+                                                   self.destination_table,
+                                                   job_config=job_config)
+            job.result()  # Czekanie na zakończenie procesu ładowania
+
+            # Po pomyślnym zakończeniu zadania
+            self.message = f"Dane zostały pomyślnie wyeksportowane do tabeli {self.destination_table} w BigQuery. Job ID: {job.job_id}"
         except Exception as e:
-            self.message = f"Error uploading data to BigQuery: {str(e)}"
-        return self.message
+            # Obsługa wyjątków i wyświetlanie szczegółowych informacji o błędzie
+            self.message = f"Napotkano następujący błąd, podczas próby eksportu do BigQuery: {str(e)}"
+
+        print(self.message)
+        return True
 
 class DodajInstrumentDoSlownika(QWidget):
 
@@ -795,7 +812,6 @@ class DodajTransakcje(QWidget):
         # przypisuję do zmiennej wynik pracy metody przygotowującej dane do eksportu
         transaction_data_to_export = self.PrepareDataForBigQueryExport()
         self.destination           = "Dane transakcyjne"
-
 
         # Tworzę obiekt BigQueryReaderAndExporter do eksportu danych do BQ i przekazuję mi dane projektu z klasy BigQueryProject
         bigQueryExporterObject = BigQueryReaderAndExporter(self.project, 
