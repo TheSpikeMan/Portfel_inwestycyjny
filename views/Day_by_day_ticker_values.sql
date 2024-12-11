@@ -1,10 +1,10 @@
 WITH
-transaction_view AS (SELECT * FROM `projekt-inwestycyjny.Transactions.Transactions_view` WHERE Transaction_type <> "Dywidenda"),
-instrument_types AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instrument_types`),
-present_instruments AS (SELECT DISTINCT Ticker FROM `projekt-inwestycyjny.Transactions.Present_transactions_view`),
-daily AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Daily`),
-calendar AS (SELECT dates FROM UNNEST(GENERATE_DATE_ARRAY('2020-01-01', CURRENT_DATE(), INTERVAL 1 DAY)) AS dates),
-calendar_present_instruments AS (SELECT * FROM calendar CROSS JOIN present_instruments),
+transaction_view               AS (SELECT * FROM `projekt-inwestycyjny.Transactions.Transactions_view` WHERE Transaction_type <> "Dywidenda"),
+instrument_types               AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instrument_types`),
+present_instruments            AS (SELECT DISTINCT Ticker FROM `projekt-inwestycyjny.Transactions.Present_transactions_view`),
+daily_raw                      AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Daily`),
+calendar                       AS (SELECT dates FROM UNNEST(GENERATE_DATE_ARRAY('2020-01-01', CURRENT_DATE(), INTERVAL 1 DAY)) AS dates),
+calendar_present_instruments   AS (SELECT * FROM calendar CROSS JOIN present_instruments),
 
 -- TICKER DATE AMOUNT VALUE --
 /*
@@ -17,6 +17,18 @@ W zapytaniu realizowane są następujące obliczenia:
 Podobny mechanizm zastosowany jest do wyciągnięcia ceny zamknięcia.
 - jako podsumowanie wyznaczana jest wartość instrumentu na każdy kolejny dzień
 */
+
+daily AS (
+  SELECT *
+  FROM daily_raw
+  QUALIFY TRUE AND ROW_NUMBER() OVER unique_entries = 1
+  WINDOW
+    unique_entries AS (
+      PARTITION BY
+        `Date`,
+        Ticker
+    )
+),
 
 ticker_date_amount_value AS (
 SELECT
@@ -58,4 +70,4 @@ share_of_portfolio_included AS (
     `Date` DESC
 )
 
-SELECT * FROM share_of_portfolio_included;
+SELECT * FROM share_of_portfolio_included
