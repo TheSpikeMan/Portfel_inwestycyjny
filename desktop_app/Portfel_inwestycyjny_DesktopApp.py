@@ -212,31 +212,17 @@ class BigQueryReaderAndExporter():
         self.destination        = destination
         print("Wysyłam dane do BigQuery, cel: ", self.destination)
 
+        # Tworzę obiekt klasy Client
         client = bigquery.Client()
 
         if self.destination     == "Dane transakcyjne":
             self.destination    = f"{self.project}.{self.dataSetTransactions}.{self.tableTransactions}"
-            self.schema = [bigquery.SchemaField(name = 'Transaction_id', field_type = "INTEGER",
-                                        mode = "REQUIRED"),
-                           bigquery.SchemaField(name = 'Transaction_date', field_type = "DATE",
-                                        mode = "REQUIRED"),
-                           bigquery.SchemaField(name = 'Transaction_type', field_type = "STRING",
-                                        mode = "REQUIRED"),
-                           bigquery.SchemaField(name = 'Currency', field_type = "STRING",
-                                        mode = "REQUIRED"),
-                           bigquery.SchemaField(name = 'Transaction_price', field_type = "FLOAT",
-                                        mode = "NULLABLE"),
-                           bigquery.SchemaField(name = 'Transaction_amount', field_type = "FLOAT",
-                                        mode = "REQUIRED"),
-                           bigquery.SchemaField(name = 'Instrument_id', field_type = "INTEGER",
-                                        mode = "REQUIRED"),
-                           bigquery.SchemaField(name = 'Commision_id', field_type = "FLOAT",
-                                        mode = "NULLABLE"),
-                           bigquery.SchemaField(name = 'Tax_paid', field_type = "BOOLEAN",
-                                        mode = "REQUIRED"),
-                           bigquery.SchemaField(name = 'Tax_value', field_type = "FLOAT",
-                                        mode = "NULLABLE")
-                                        ]
+
+            # Tworzę obiekt klasy Table
+            self.table = client.get_table(self.destination)
+            # Pobieram schemę tabeli
+            self.schema = self.table.schema
+
         else:
             self.informationTextEdit.append("Brak zdefiniowanej schemy dla tego przypadku")
             
