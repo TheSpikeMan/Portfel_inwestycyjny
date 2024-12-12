@@ -127,9 +127,9 @@ class BigQueryReaderAndExporter():
 
     
     def downloadLastTransactionId(self):
-        client = bigquery.Client(project      = self.project,
-                                location      = self.location)
-        
+        client = bigquery.Client(project=self.project,
+                                 location=self.location)
+
         # Download last transaction id from BigQuery
         queryMaxTransactionId = f"""
         SELECT
@@ -143,8 +143,8 @@ class BigQueryReaderAndExporter():
     
     def downloadDataFromBigQuery(self):
 
-        client = bigquery.Client(project    = self.project,
-                                 location   = self.location)
+        client = bigquery.Client(project=self.project,
+                                 location=self.location)
         
         # Downloading Currencies Data from Big Query view
         queryCurrencies = f"""
@@ -158,7 +158,7 @@ class BigQueryReaderAndExporter():
         query_job_currencies = client.query(query=queryCurrencies)
         self.currenciesDataFrame = query_job_currencies.to_dataframe()
 
-        # Downloading Instruments and instrumen Types Data from Big Query
+        # Downloading Instruments and instrument types Data from Big Query
    
         query_Instrument_And_Instrument_Types = f"""
         WITH
@@ -182,7 +182,7 @@ class BigQueryReaderAndExporter():
         # downloading transactions data
         query_transactions = f"""
         SELECT
-            instruments.instrument_id                           AS Ticker_id,
+            instruments.instrument_id                       AS Ticker_id,
             instruments.Ticker                              AS Ticker,
             transactions.transaction_date_ticker_amount     AS Amount
         FROM `{self.project}.{self.dataSetTransactions}.{self.viewTransactionsView}` AS transactions
@@ -209,6 +209,7 @@ class BigQueryReaderAndExporter():
     # Metoda służy wysłaniu danych do BigQuery
     def sendDataToBigQuery(self, data_to_export, destination_table):
         # Walidacja danych wejściowych
+        print("Uruchamiam funkcję sendDataToBigQuery")
         if not isinstance(data_to_export, pd.DataFrame):
             self.message = "Dane do eksportu muszą być typu pandas DataFrame."
             return self.message
@@ -260,7 +261,10 @@ class BigQueryReaderAndExporter():
 
 class DodajInstrumentDoSlownika(QWidget):
 
-    def __init__(self, instrumentsDataFrame):
+    def __init__(self,
+                 project_name,
+                 bqrae,
+                 instrumentsDataFrame):
         super().__init__()
         self.instrumentsDataFrame     = instrumentsDataFrame
         print("Dodaję instrument do słownika.")
@@ -269,6 +273,13 @@ class DodajInstrumentDoSlownika(QWidget):
         self.setWindowTitle("Dodaj instrument")
         self.setFixedSize(QSize(800,500))
         self.addWidgets()
+
+        # Pobranie obiektu klasy BigQueryProject i nazwy projektu
+        self.project                    = project_name
+        self.bqrae                      = bqrae
+
+        # Ustawienie docelowego miejsca eksportu danych
+        self.export_destination = 'Dane instrumentow'
 
     def addWidgets(self):
         self.layout = QGridLayout()
@@ -381,6 +392,7 @@ class DodajInstrumentDoSlownika(QWidget):
         sendDataPushButton       = QPushButton()
         sendDataPushButton.setText("Wyślij dane do bazy")
         sendDataPushButton.pressed.connect(self.sendDataToBigQuery)
+        sendDataPushButton.clicked.connect(self.close)
         self.layout.addWidget(sendDataPushButton, 12, 1)
 
         # Wyjście do poprzedniego okna
@@ -397,10 +409,39 @@ class DodajInstrumentDoSlownika(QWidget):
         self.layout.setColumnStretch(2, 1)
 
         self.setLayout(self.layout)
-    
+
+    # Metoda odpowiedzialna za przygotowanie danych do eksportu
+    def PrepareDataForBigQueryExport(self):
+        print("Uruchamiam funkcję PrepareDataForBigQueryExport")
+        try:
+            self.list_to_export = [
+                self.instrumentsDataFrame['Instrument_id'].astype(int).max() + 1,
+                self.tickerLineEdit.text(),
+                self.instrumentNameLineEdit.text(),
+                int(self.instrumentUnitComboBox.currentText()),
+                self.countryLineEdit.text(),
+                self.marketLineEdit.text(),
+                self.currencyComboBox.currentText(),
+                self.distributionPolicyCombobox.currentText(),
+                int(self.instrumentTypeIdLineEdit.text()),
+                self.instrumentHeadquarterLineEdit.text(),
+                1
+            ]
+            self.column_names   = ['Instrument_id', 'Ticker', 'Name', 'Unit', 'Country', 'Market', 'Currency',
+                                   'Distribution_policy', 'Instrument_type_id', 'Instrument_headquarter', 'Status']
+            self.data_to_export = pd.DataFrame([self.list_to_export], columns= self.column_names)
+        except Exception as e:
+            print(f"Błąd w PrepareDataForBigQueryExport: {e}")
+            raise
+        print("Kończę funkcję PrepareDataForBigQueryExport")
+        return self.data_to_export
     # Metoda odpowiedzialna za wysłanie danych do BigQuery
     def sendDataToBigQuery(self):
-        print("Wysyłam dane do BigQuery.")  
+        self.data_to_export = self.PrepareDataForBigQueryExport()
+        print("Tworzę obiekt BigQueryReaderAndExporter")
+        bigQueryReaderAndExporterObject = BigQueryReaderAndExporter(self.project, self.bqrae)
+        print("Na utworzonym obiekcie odpalam metodę sendDatatoBigQuery")
+        bigQueryReaderAndExporterObject.sendDataToBigQuery(self.data_to_export, self.export_destination)
 
 # Klasa obsługująca dodanie nowej transakcji.
 class DodajTransakcje(QWidget):
@@ -962,7 +1003,9 @@ class MainWindow(QMainWindow):
                                                            self.maxTransactionId)
                     self.dodajTransakcje.show()
                 elif id == "addInstr":
-                    self.addInstrument = DodajInstrumentDoSlownika(self.instrumentsDataFrame)
+                    self.addInstrument = DodajInstrumentDoSlownika(self.projectLineEdit.text(),
+                                                                   self.bqrae,
+                                                                   self.instrumentsDataFrame)
                     self.addInstrument.show()
             except:
                 print("Projekt nie istnieje. Proszę wybrać inny!")
