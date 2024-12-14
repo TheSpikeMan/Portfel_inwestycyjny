@@ -473,6 +473,7 @@ class DodajTransakcje(QWidget):
                  bqrae,
                  currenciesDataFrame,
                  instrumentsDataFrame,
+                 instrumentsTypesDataFrame,
                  transactionsDataFrame,
                  maxTransactionId):
         super().__init__()
@@ -480,6 +481,7 @@ class DodajTransakcje(QWidget):
         # Pobranie danych z klasy MainWindow (poprzez argumenty)
         self.currenciesDataFrame        = currenciesDataFrame
         self.instrumentsDataFrame       = instrumentsDataFrame
+        self.instrumentsTypesDataFrame  = instrumentsTypesDataFrame
         self.transactionsDataFrame      = transactionsDataFrame
 
         # Pobranie obiektu klasy BigQueryProject i nazwy projektu
@@ -543,7 +545,7 @@ class DodajTransakcje(QWidget):
 
         # Dodanie ComboBoxa do wyboru typu instrumentu finansowego
         self.instrumentTypeComboBox = QComboBox()
-        self.instrumentTypeComboBox.addItems(set(self.instrumentsDataFrame['Instrument_type'].to_list()))
+        self.instrumentTypeComboBox.addItems(set(self.instrumentsTypesDataFrame['Instrument_type'].to_list()))
         self.instrumentTypeComboBox.currentTextChanged.connect(self.instrumentTypeChanged)
         self.layout.addWidget(self.instrumentTypeComboBox, 3, 1)
 
@@ -1025,6 +1027,7 @@ class MainWindow(QMainWindow):
                                                            self.bqrae,
                                                            self.currenciesDataFrame,
                                                            self.instrumentsDataFrame,
+                                                           self.instrumentTypesDataFrame,
                                                            self.transactionsDataFrame,
                                                            self.maxTransactionId)
                     self.dodajTransakcje.show()
