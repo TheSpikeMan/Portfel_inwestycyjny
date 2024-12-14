@@ -148,6 +148,21 @@ class BigQueryReaderAndExporter():
         self.maxTransactionId = query_job_max_transaction_id.to_dataframe()
 
         return self.maxTransactionId
+
+    def downloadLastInstrumentId(self):
+        client = bigquery.Client(project=self.project,
+                                 location=self.location)
+
+        # Download last transaction id from BigQuery
+        queryMaxInstrumentId = f"""
+        SELECT
+            MAX(Instrument_id)  AS Max_instrument_id
+        FROM `{self.project}.{self.dataSetDaneIntrumentow}.{self.tableInstruments}`
+        """
+        query_job_max_instrument_id = client.query(query=queryMaxInstrumentId)
+        self.maxInstrument_id = query_job_max_instrument_id.to_dataframe()
+
+        return self.maxInstrument_id
     
     def downloadDataFromBigQuery(self):
 
@@ -285,9 +300,13 @@ class DodajInstrumentDoSlownika(QWidget):
     def __init__(self,
                  project_name,
                  bqrae,
-                 instrumentsDataFrame):
+                 instrumentsDataFrame,
+                 instrumentsTypesDataFrame,
+                 maxInstrument_id):
         super().__init__()
-        self.instrumentsDataFrame     = instrumentsDataFrame
+        self.instrumentsDataFrame = instrumentsDataFrame
+        self.instrumentsTypesDataFrame = instrumentsTypesDataFrame
+        self.maxInstrument_id = maxInstrument_id
         print("Dodaję instrument do słownika.")
 
         # Ustawienie parametrów okna oraz załadowanie widgetów
@@ -296,8 +315,8 @@ class DodajInstrumentDoSlownika(QWidget):
         self.addWidgets()
 
         # Pobranie obiektu klasy BigQueryProject i nazwy projektu
-        self.project                    = project_name
-        self.bqrae                      = bqrae
+        self.project = project_name
+        self.bqrae = bqrae
 
         # Ustawienie docelowego miejsca eksportu danych
         self.export_destination = 'Dane instrumentow'
@@ -321,7 +340,7 @@ class DodajInstrumentDoSlownika(QWidget):
 
         # Dodanie ComboBoxa do wyboru typu danych
         self.instrumentTypes = QComboBox()
-        self.instrumentTypes.addItems(["Akcje", "ETF", "Obligacje skarbowe", "Obligacje korporacyjne"])
+        self.instrumentTypes.addItems(set(self.instrumentsTypesDataFrame['Instrument_type'].to_list()))
         self.layout.addWidget(self.instrumentTypes, 2, 1)
 
         # Dodanie QLabel wskazującego na konkretny ticker
@@ -391,36 +410,27 @@ class DodajInstrumentDoSlownika(QWidget):
         self.distributionPolicyCombobox.addItems(["Distributing", "Accumulating"])
         self.layout.addWidget(self.distributionPolicyCombobox, 9, 1)
 
-        # Dodanie QLabel wskazującego na typ instrumentu
-        self.instrumentTypeIdLabel = QLabel()
-        self.instrumentTypeIdLabel.setText("Identyfikator typu instrumentu")
-        self.layout.addWidget(self.instrumentTypeIdLabel, 10, 0)
-
-        # Dodanie QLineEdit do wprowadzenia typu danego instrumentu
-        self.instrumentTypeIdLineEdit = QLineEdit()
-        self.layout.addWidget(self.instrumentTypeIdLineEdit, 10, 1)
-
         # Dodanie QLabel wskazującego na siedzibę danego instrumentu
         self.instrumentHeadquarterLabel = QLabel()
         self.instrumentHeadquarterLabel.setText("Siedziba")
-        self.layout.addWidget(self.instrumentHeadquarterLabel, 11, 0)
+        self.layout.addWidget(self.instrumentHeadquarterLabel, 10, 0)
 
         # Dodanie QLineEdit do wprowadzenia siedziby danego instrumentu
         self.instrumentHeadquarterLineEdit = QLineEdit()
-        self.layout.addWidget(self.instrumentHeadquarterLineEdit, 11, 1)
+        self.layout.addWidget(self.instrumentHeadquarterLineEdit, 10, 1)
 
         # Dodanie przycisku do wysłania danych do BigQuery
         sendDataPushButton       = QPushButton()
         sendDataPushButton.setText("Wyślij dane do bazy")
         sendDataPushButton.pressed.connect(self.sendDataToBigQuery)
         sendDataPushButton.clicked.connect(self.close)
-        self.layout.addWidget(sendDataPushButton, 12, 1)
+        self.layout.addWidget(sendDataPushButton, 11, 1)
 
         # Wyjście do poprzedniego okna
-        returnButton             = QPushButton()
+        returnButton = QPushButton()
         returnButton.setText("Powrót")
         returnButton.pressed.connect(self.close)
-        self.layout.addWidget(returnButton, 13, 1)
+        self.layout.addWidget(returnButton, 12, 1)
 
         self.layout.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignHCenter)
         self.layout.setSpacing(10)
@@ -434,9 +444,12 @@ class DodajInstrumentDoSlownika(QWidget):
     # Metoda odpowiedzialna za przygotowanie danych do eksportu
     def PrepareDataForBigQueryExport(self):
         print("Uruchamiam funkcję PrepareDataForBigQueryExport")
+        self.selected_instrument_type = self.instrumentsTypesDataFrame['Instrument_type'] == self.instrumentTypes.currentText()
+        # Zamieniam DataFrame na pojedynczy obiekt
+        self.maxInstrument_id = self.maxInstrument_id.iloc[0, 0]
         try:
             self.list_to_export = [
-                self.instrumentsDataFrame['Instrument_id'].astype(int).max() + 1,
+                int(self.maxInstrument_id) + 1,
                 self.tickerLineEdit.text(),
                 self.instrumentNameLineEdit.text(),
                 int(self.instrumentUnitComboBox.currentText()),
@@ -444,7 +457,7 @@ class DodajInstrumentDoSlownika(QWidget):
                 self.marketLineEdit.text(),
                 self.currencyComboBox.currentText(),
                 self.distributionPolicyCombobox.currentText(),
-                int(self.instrumentTypeIdLineEdit.text()),
+                self.instrumentsTypesDataFrame.loc[self.selected_instrument_type, 'Instrument_type_id'],
                 self.instrumentHeadquarterLineEdit.text(),
                 1
             ]
@@ -1032,9 +1045,12 @@ class MainWindow(QMainWindow):
                                                            self.maxTransactionId)
                     self.dodajTransakcje.show()
                 elif id == "addInstr":
+                    self.maxInstrument_id = self.bqrae.downloadLastInstrumentId()
                     self.addInstrument = DodajInstrumentDoSlownika(self.projectLineEdit.text(),
                                                                    self.bqrae,
-                                                                   self.instrumentsDataFrame)
+                                                                   self.instrumentsDataFrame,
+                                                                   self.instrumentTypesDataFrame,
+                                                                   self.maxInstrument_id)
                     self.addInstrument.show()
             except:
                 print("Projekt nie istnieje. Proszę wybrać inny!")
