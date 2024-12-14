@@ -60,7 +60,7 @@ class ProgressDialog(QDialog):
 class WorkerThread(QThread):
     progress = pyqtSignal(int) # Sygnał postępu
     finished = pyqtSignal() # Sygnał zakończenia
-    data_ready = pyqtSignal(object, object, object)
+    data_ready = pyqtSignal(object, object, object, object)
 
     def __init__(self, bqrae):
         super().__init__()
@@ -69,8 +69,16 @@ class WorkerThread(QThread):
     def run(self):
         print("Rozpoczynam operację w tle...")
         self.progress.emit(10)
-        self.currenciesDataFrame, self.instrumentsDataFrame, self.transactionsDataFrame = self.bqrae.downloadDataFromBigQuery()  # Wykonanie metody
-        self.data_ready.emit(self.currenciesDataFrame, self.instrumentsDataFrame, self.transactionsDataFrame)
+
+        (self.currenciesDataFrame,
+         self.instrumentsDataFrame,
+         self.instrumentsTypesDataFrame,
+         self.transactionsDataFrame) = self.bqrae.downloadDataFromBigQuery()  # Wykonanie metody
+
+        self.data_ready.emit(self.currenciesDataFrame,
+                             self.instrumentsDataFrame,
+                             self.instrumentsTypesDataFrame,
+                             self.transactionsDataFrame)
         self.progress.emit(50)
         self.finished.emit()
 
@@ -203,7 +211,20 @@ class BigQueryReaderAndExporter():
         query_job_transactions = client.query(query=query_transactions)
         self.transactionsDataFrame = query_job_transactions.to_dataframe()
 
-        return self.currenciesDataFrame, self.instrumentsDataFrame, self.transactionsDataFrame
+        query_instrument_types = f"""
+        SELECT DISTINCT
+            Instrument_type_id AS Instrument_type_id,
+            Instrument_type    AS Instrument_type
+        FROM `{self.project}.{self.dataSetDaneIntrumentow}.{self.tableInstrumentTypes}`
+        """
+
+        query_job_instrument_types = client.query(query=query_instrument_types)
+        self.instrumentTypesDataFrame = query_job_instrument_types.to_dataframe()
+
+        return (self.currenciesDataFrame,
+                self.instrumentsDataFrame,
+                self.instrumentTypesDataFrame,
+                self.transactionsDataFrame)
 
     
     # Metoda służy wysłaniu danych do BigQuery
@@ -436,6 +457,7 @@ class DodajInstrumentDoSlownika(QWidget):
         print("Kończę funkcję PrepareDataForBigQueryExport")
         return self.data_to_export
     # Metoda odpowiedzialna za wysłanie danych do BigQuery
+
     def sendDataToBigQuery(self):
         self.data_to_export = self.PrepareDataForBigQueryExport()
         print("Tworzę obiekt BigQueryReaderAndExporter")
@@ -958,14 +980,18 @@ class MainWindow(QMainWindow):
             self.worker.start()  # Rozpoczęcie pracy w tle
 
     # Gdy pobrano dane w tle przypisz je do zmiennych
-    def on_data_ready(self, currenciesDataFrame, instrumentsDataFrame, transactionsDataFrame):
+    def on_data_ready(self, currenciesDataFrame, instrumentsDataFrame, instrumentTypesDataFrame, transactionsDataFrame):
         self.currenciesDataFrame = currenciesDataFrame
         self.instrumentsDataFrame = instrumentsDataFrame
+        self.instrumentTypesDataFrame = instrumentTypesDataFrame
         self.transactionsDataFrame = transactionsDataFrame
 
     # Wykonaj po zakończeniu działania w tle
     def on_worker_finished(self):
-        self.currenciesDataFrame, self.instrumentsDataFrame, self.transactionsDataFrame = self.bqrae.downloadDataFromBigQuery()
+        (self.currenciesDataFrame,
+         self.instrumentsDataFrame,
+         self.instrumentTypesDataFrame,
+         self.transactionsDataFrame) = self.bqrae.downloadDataFromBigQuery()
 
         self.progress_dialog.setWindowTitle("Zapisuję dane...")
         self.progress_dialog.update_progress(100)
