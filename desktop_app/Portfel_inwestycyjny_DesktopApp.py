@@ -895,7 +895,7 @@ class DodajTransakcje(QWidget):
         bigQueryExporterObject = BigQueryReaderAndExporter(self.project, 
                                                            self.bqrae)
         self.message = bigQueryExporterObject.sendDataToBigQuery(transaction_data_to_export, self.destination)
-        self.informationTextEdit.append(self.message)
+        # self.informationTextEdit.append(self.message)
 
 class MainWindow(QMainWindow):
     def __init__(self, bigQueryProjectObject):
