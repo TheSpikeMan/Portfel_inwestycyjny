@@ -1,5 +1,6 @@
 CREATE TABLE `projekt-inwestycyjny.Dane_instrumentow.Instruments`
 (
+  Project_id             INT64  OPTIONS(description="ID portfele inwestycyjnego"),
   Instrument_id          INT64  OPTIONS(description="ID instrumentu finansowego - indeks"),
   Ticker                 STRING OPTIONS(description="Ticker instrumentu finansowego"),
   Name                   STRING OPTIONS(description="Nazwa instrumentu finansowego"),
