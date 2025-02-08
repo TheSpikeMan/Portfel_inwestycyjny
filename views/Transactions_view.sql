@@ -60,8 +60,9 @@ Wyznaczenie wskaźników:
 
 data_aggregated AS (
   SELECT 
-    * EXCEPT (Instrument_id, Currency, Instrument_type_id, Ticker, Currency_date, last_currency_close, Currency_close,
-    `Date`), 
+    * EXCEPT (Project_id, Instrument_id, Currency, Instrument_type_id, Ticker, Currency_date, last_currency_close, Currency_close,
+    `Date`),
+    transactions_data.Project_id                             AS Project_id,
     instruments_data.Instrument_id                           AS Instrument_id,                       
     instruments_data.Ticker                                  AS Ticker,
     transactions_data.Currency                               AS Currency,
@@ -97,7 +98,7 @@ data_aggregated AS (
   -- Połączenie z danymi instrumentów
   LEFT JOIN instruments_data
   ON transactions_data.Instrument_id      = instruments_data.Instrument_id
-  AND transactions_data.Project_id        = instruments_data.Project_d
+  AND transactions_data.Project_id        = instruments_data.Project_id
   -- Połączenie z danymi typów instrumentów
   LEFT JOIN instruments_types
   ON instruments_data.Instrument_type_id  = instruments_types.Instrument_type_id
