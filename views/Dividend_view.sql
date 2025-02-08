@@ -18,6 +18,7 @@ Oprócz tego dołożone jest połączenie danych dywidend z danymi danych giełd
 
 preliminary_aggregation AS (
 SELECT
+  Project_id                                AS Project_id,
   Transactions_view.Ticker                  AS Ticker,
   EXTRACT(YEAR FROM `Transaction_date`)     AS year,
   EXTRACT(MONTH FROM `Transaction_date`)    AS month,
@@ -38,8 +39,7 @@ ON Daily_data.Date = Transactions_view.Transaction_date
 AND Transactions_view.Ticker = Daily_data.Ticker
 WHERE TRUE
   AND Transaction_type_group = "Div_related_amount"
-GROUP BY
-  1,2,3,4,5,6,7
+GROUP BY ALL
 ),
 
 -- INITIAL AGGREGATION --
@@ -72,6 +72,7 @@ Wyznaczona jest również wartość średniego divident ratio dla danego tickera
 
 mid_aggregation AS (
 SELECT
+  Project_id                                    AS Project_id,
   Ticker                                        AS Ticker,
   year                                          AS year,
   month                                         AS month,
