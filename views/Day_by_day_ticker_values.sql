@@ -1,7 +1,7 @@
 WITH
 transaction_view               AS (SELECT * FROM `projekt-inwestycyjny.Transactions.Transactions_view` WHERE Transaction_type <> "Dywidenda"),
 instrument_types               AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instrument_types`),
-present_instruments            AS (SELECT DISTINCT Ticker FROM `projekt-inwestycyjny.Transactions.Present_transactions_view`),
+present_instruments            AS (SELECT DISTINCT Project_id, Ticker FROM `projekt-inwestycyjny.Transactions.Present_transactions_view`),
 daily_raw                      AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Daily`),
 calendar                       AS (SELECT dates FROM UNNEST(GENERATE_DATE_ARRAY('2020-01-01', CURRENT_DATE(), INTERVAL 1 DAY)) AS dates),
 calendar_present_instruments   AS (SELECT * FROM calendar CROSS JOIN present_instruments),
@@ -32,6 +32,7 @@ daily AS (
 
 ticker_date_amount_value AS (
 SELECT
+  calendar_present_instruments.Project_id                                                              AS Project_id,
   dates                                                                                                AS `Date`,
   calendar_present_instruments.Ticker                                                                  AS Ticker,
   COALESCE(instrument_types.Instrument_type, 
@@ -47,6 +48,7 @@ FROM calendar_present_instruments
 LEFT JOIN transaction_view
   ON calendar_present_instruments.dates = transaction_view.Transaction_date
   AND calendar_present_instruments.Ticker = transaction_view.Ticker
+  AND calendar_present_instruments.Project_id = transaction_view.Project_id
 LEFT JOIN daily
   ON calendar_present_instruments.dates = daily.`Date`
   AND calendar_present_instruments.Ticker = daily.Ticker
@@ -54,7 +56,11 @@ LEFT JOIN instrument_types
   ON transaction_view.Instrument_type_id = instrument_types.Instrument_type_id
 QUALIFY TRUE
 WINDOW
-  window_transactions_by_ticker AS (PARTITION BY calendar_present_instruments.Ticker ORDER BY dates ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
+  window_transactions_by_ticker AS (
+    PARTITION BY 
+      calendar_present_instruments.Project_id, 
+      calendar_present_instruments.Ticker 
+    ORDER BY dates ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
 ),
 
 share_of_portfolio_included AS (
@@ -64,10 +70,13 @@ share_of_portfolio_included AS (
   FROM ticker_date_amount_value
   WINDOW
     date_window AS (
-      PARTITION BY `Date`
+      PARTITION BY 
+        Project_id,
+        `Date`
     )
   ORDER BY
     `Date` DESC
 )
 
-SELECT * FROM share_of_portfolio_included
+SELECT * 
+FROM share_of_portfolio_included
