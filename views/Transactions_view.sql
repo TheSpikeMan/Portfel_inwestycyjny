@@ -148,19 +148,19 @@ data_aggregated_with_windows AS (
   WINDOW
     transaction_amount_until_transaction_date AS (
       PARTITION BY Project_id, Ticker 
-      ORDER BY Transaction_date 
+      ORDER BY Transaction_date, Transaction_id DESC
       ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
     ),
 
     transaction_amount_with_type_until_transaction_date AS (
       PARTITION BY Project_id, Ticker, Transaction_type_group 
-      ORDER BY Transaction_date 
+      ORDER BY Transaction_date, Transaction_id DESC
       ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
     ),
 
     transaction_sell_amount_window AS (
       PARTITION BY Project_id, Ticker, Transaction_type_group 
-      ORDER BY Transaction_date 
+      ORDER BY Transaction_date, Transaction_id DESC
       ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
     )
 ),
