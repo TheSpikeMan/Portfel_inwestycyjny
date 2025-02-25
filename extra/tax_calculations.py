@@ -42,6 +42,7 @@ for index, transaction in enumerate(transactions_df.iterrows()):
         while(transactions_df.loc[index, 'amount_location'] != 0):
 
             # 8. Przypisz do zmiennych wartości z obiektu Series.
+            project_id          = transaction[1]['Project_id']
             ticker              = transaction[1]['Ticker']
             ticker_id           = transaction[1]['Instrument_id']
             currency_type       = transaction[1]['Currency']
@@ -72,6 +73,7 @@ for index, transaction in enumerate(transactions_df.iterrows()):
           
             while not((transactions_df.loc[k, 'Transaction_type'] == "Buy") and \
                          (transactions_df.loc[k, 'amount_location'] != 0) and \
+                         (transactions_df.loc[k, 'Project_id'] == project_id) and \
                          (transactions_df.loc[k, 'Ticker'] == ticker_search)):
                 k = k + 1
 
@@ -116,7 +118,8 @@ for index, transaction in enumerate(transactions_df.iterrows()):
             
             # 18. Zbierz wszystkie dane do tablicy.
 
-            data_to_add = [date_sold, 
+            data_to_add = [project_id,
+                           date_sold,
                            date_bought, 
                            (date_sold-date_bought).days,
                            Amount,
@@ -145,6 +148,7 @@ for index, transaction in enumerate(transactions_df.iterrows()):
     # 20. Jeżeli nie znajdziesz transakcji sprzedaży lub wykupu szukaj dywidend i odsetek.
     else: 
         if (transaction[1]['Transaction_type']=="Dywidenda") or (transaction[1]['Transaction_type']=="Odsetki"):
+            project_id                       = transaction[1]['Project_id']
             dividend_interest_payment_date   = transaction[1]['Transaction_date']
             dividend_interest_amount         = transaction[1]['Transaction_amount']
             dividend_interest_value          = transaction[1]['Transaction_price']
@@ -161,7 +165,9 @@ for index, transaction in enumerate(transactions_df.iterrows()):
 
             # 19. Zbierz wszystkie dane dywidend do tablicy.
 
-            data_to_add = [dividend_interest_payment_date, 
+            data_to_add = [
+                        project_id,
+                        dividend_interest_payment_date,
                         None, 
                         None,
                         dividend_interest_amount,
@@ -195,7 +201,7 @@ for index, transaction in enumerate(transactions_df.iterrows()):
   
 # 23. Zmień nazwy kolumn na odpowiednie, zdefiniowane poniżej.
     
-columns = ['Date_sell', 'Date_buy',	'Investment_period',	'Quantity',
+columns = ['Project_id', 'Date_sell', 'Date_buy',	'Investment_period',	'Quantity',
            'Buy_Price', 'Sell_Price', 'Buy_currency',
            'Sell_currency', 'Currency', 'Transaction_type', 'Instrument_type', 'Country', 
            'Instrument_headquarter', 'Ticker', 'Ticker_id',
@@ -212,7 +218,9 @@ table_id = 'Tax_calculations'
 destination_table = f"{project_id}.{dataset_id}.{table_id}"
 
 # 26. Przygotowanie schematu danych.
-schema = [bigquery.SchemaField(name = 'Date_sell', field_type = "DATE", \
+schema = [bigquery.SchemaField(name = 'Project_id', field_type = "INTEGER", \
+                                mode = "REQUIRED"),
+          bigquery.SchemaField(name = 'Date_sell', field_type = "DATE", \
                                 mode = "REQUIRED"),
           bigquery.SchemaField(name = 'Date_buy', field_type = "DATE",\
                                 mode = "NULLABLE"),
