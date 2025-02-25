@@ -24,7 +24,7 @@ transactions_df['amount_location'] = transactions_df['Transaction_amount']
 list_to_append = []
 
 # 4. Zdefiniowanie parametru k, który będzie iterowalny wewnątrz pętli, w celu
-# wyszuwania transakcji kupna danego tickera.
+# wyszukiwania transakcji kupna danego instrumentu finansowego.
 k = 0
 
 # 5. Zdefiniowanie parametru l, który przechowuje ilość transakcji zakupowych dla danego
