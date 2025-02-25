@@ -137,7 +137,7 @@ def daily_webscraping_plus_currencies(cloud_event):
 
             Funkcja zwraca trzy rezultaty swojego działania:
             - query_job_1.to_dataframe() - DataFrame z danymi inflacyjnymi.
-            - query_job_2.to_dataframe() - DataFrame z danymi wszystkich tranakcji na obligacjach skarbowych.
+            - query_job_2.to_dataframe() - DataFrame z danymi wszystkich transakcji na obligacjach skarbowych.
             - query_job_3.to_dataframe() - DataFrame z danymi marży zarobku dla obligacji skarbowych, na których
                 następowały transakcje.
             
