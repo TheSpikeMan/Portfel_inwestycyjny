@@ -61,7 +61,7 @@ def daily_webscraping_plus_currencies(cloud_event):
             Pobranie listy aktualnych instrumentów akcji polskich, ETF polskich, obligacji korporacyjnych - query_job_2.to_dataframe()
             """
 
-            print("Pobieram aktualne instrumenty w ramach ETF, polskich akcji oraz obligacji korporacyjnych.")
+            print("Pobieram aktualne instrumenty w ramach ETF zagranicznych.")
             query_1 = f"""
             SELECT
             Ticker,
@@ -75,6 +75,7 @@ def daily_webscraping_plus_currencies(cloud_event):
             AND Instrument_type IN ('ETF zagraniczne')
             """
 
+            print("Pobieram aktualne instrumenty w ramach akcji polskich, ETF polskich oraz obligacji korporacyjnych")
             query_2 = f"""
             SELECT
             Ticker,
