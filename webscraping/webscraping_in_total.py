@@ -316,6 +316,7 @@ def daily_webscraping_plus_currencies(cloud_event):
             data_to_export = data_to_export.merge(present_currencies,
                                                 how = 'inner',
                                                 on = 'Currency')
+            data_to_export['Project_id'] = None
             data_to_export['Close'] = (data_to_export['Close'] * \
                                     data_to_export['Currency_close']).\
                                     round(decimals = 2)
@@ -323,11 +324,12 @@ def daily_webscraping_plus_currencies(cloud_event):
             data_to_export['Volume'] = 0 
             data_to_export['Turnover'] = 0 
 
-            data_to_export_ETFs = data_to_export.loc[:,['Ticker', 
-                                                'Date', 
-                                                'Close', 
-                                                'Turnover', 
-                                                'Volume']]
+            data_to_export_ETFs = data_to_export.loc[:,['Project_id',
+                                                        'Ticker',
+                                                        'Date',
+                                                        'Close',
+                                                        'Turnover',
+                                                        'Volume']]
             
             print("Webscraping z 'markets.ft.com' zakończony powodzeniem.")
 
@@ -390,8 +392,10 @@ def daily_webscraping_plus_currencies(cloud_event):
                             print(f"Błąd podczas parsowania wiersza: {e}")
                             continue
 
+                    result_data['Project_id'] = None
+
                     # Przekształcenie wyników na DataFrame
-                    result_df = pd.DataFrame(result_data, columns=['Ticker', 'Date', 'Close', 'Volume', 'Turnover'])
+                    result_df = pd.DataFrame(result_data, columns=['Project_id', 'Ticker', 'Date', 'Close', 'Volume', 'Turnover'])
                     print("Pobieranie danych z biznesradar zakończone powodzeniem.")
 
             except requests.exceptions.Timeout:
@@ -485,7 +489,10 @@ def daily_webscraping_plus_currencies(cloud_event):
             client = bigquery.Client()
             destination_table = f"{self.project_to_export}.{self.dataset_to_export_daily}.{self.table_to_export_daily}"
             
-            schema = [bigquery.SchemaField(name = 'Ticker', field_type = "STRING", \
+            schema = [
+                    bigquery.SchemaField(name='Project_id', field_type="INTEGER", \
+                                        mode="REQUIRED"),
+                    bigquery.SchemaField(name = 'Ticker', field_type = "STRING", \
                                         mode = "REQUIRED"),
                     bigquery.SchemaField(name = 'Date', field_type = "DATE",\
                                         mode = "REQUIRED"),
