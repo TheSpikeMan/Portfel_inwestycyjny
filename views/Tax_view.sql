@@ -25,6 +25,7 @@ Akcje_polskie_transakcje_GPW AS (
     AND Instrument_headquarter      = 'Polska'
     AND Tax_paid                    IS FALSE
   GROUP BY
+    Project_id,
     EXTRACT(YEAR FROM Date_sell),
     Rodzaj_transakcji,
     Kategoria
@@ -55,6 +56,7 @@ Obligacje_korporacyjne_transakcje AS (
     AND Instrument_headquarter      = 'Polska'
     AND Tax_paid                    IS FALSE
   GROUP BY
+    Project_id,
     EXTRACT(YEAR FROM Date_sell),
     Rodzaj_transakcji,
     Kategoria
@@ -83,6 +85,7 @@ Akcje_zagraniczne_transakcje_GPW AS (
     AND Instrument_headquarter      <> 'Polska'
     AND Tax_paid                    IS FALSE
   GROUP BY
+    Project_id,
     EXTRACT(YEAR FROM Date_sell),
     Rodzaj_transakcji,
     Kategoria
@@ -110,6 +113,7 @@ Akcje_zagraniczne_transakcje_poza_GPW AS (
     AND Instrument_headquarter      <> 'Polska'
     AND Tax_paid                    IS FALSE
   GROUP BY
+    Project_id,
     EXTRACT(YEAR FROM Date_sell),
     Rodzaj_transakcji,
     Kategoria
@@ -138,6 +142,7 @@ Akcje_polskie_dywidendy_gpw AS (
     AND Instrument_headquarter      <> 'Polska'
     AND Tax_paid                    IS FALSE
   GROUP BY
+    Project_id,
     EXTRACT(YEAR FROM Date_sell),
     Rodzaj_transakcji,
     Kategoria
@@ -166,6 +171,7 @@ ETF_zagraniczne_dywidendy_poza_GPW AS (
     AND Instrument_headquarter      <> 'Polska'
     AND Tax_paid                    IS FALSE
   GROUP BY
+    Project_id,
     EXTRACT(YEAR FROM Date_sell),
     Rodzaj_transakcji,
     Kategoria
@@ -181,7 +187,7 @@ Obligacje_korporacyjne_odsetki AS (
     Project_id                                AS ID_Projektu,
     EXTRACT(YEAR FROM Date_sell)              AS Rok_podatkowy,
     'Odsetki na GPW - obligacje korporacyjne' AS Rodzaj_transakcji,
-    'Odsetki polskie'                         AS Kategoria,            
+    'Odsetki polskie'                         AS Kategoria,
     0                                         AS Koszt_uzyskania_przychodu,
     ROUND(SUM(Income), 2)                     AS Przychod,
     ROUND(SUM(Profit), 2)                     AS Zysk
@@ -194,6 +200,7 @@ Obligacje_korporacyjne_odsetki AS (
     AND Instrument_headquarter      = 'Polska'
     AND Tax_paid                    IS FALSE
   GROUP BY
+    Project_id,
     EXTRACT(YEAR FROM Date_sell),
     Rodzaj_transakcji,
     Kategoria
@@ -267,9 +274,11 @@ SELECT
   ROUND(SUM(Zysk) * 0.19, 2)                AS Podatek_do_zaplaty
 FROM data_all_unioned_ordered
 GROUP BY
+  ID_Projektu,
   Rok_podatkowy,
   Kategoria
 ORDER BY
+  ID_Projektu,
   Rok_podatkowy DESC,
   Kategoria DESC;
 
