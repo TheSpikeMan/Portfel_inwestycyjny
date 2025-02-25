@@ -179,11 +179,9 @@ def daily_webscraping_plus_currencies(cloud_event):
             """
             
             query_3 = f"""
-            SELECT
-                *
+            SELECT *
             FROM  {destination_table_3}
-            WHERE
-                TRUE
+            WHERE TRUE
             """
         
             client = bigquery.Client()
