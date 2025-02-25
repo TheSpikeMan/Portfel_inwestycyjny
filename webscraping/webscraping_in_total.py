@@ -210,16 +210,17 @@ def daily_webscraping_plus_currencies(cloud_event):
             
             print("Oceniam obecność wartość obligacji skarbowych.")
             dane_inflacyjne.columns = ['Inflacja', 'Początek miesiąca']
-            dane_do_analizy = dane_transakcyjne.merge(right=dane_marz, 
-                                            how='inner', 
-                                            on = 'Ticker')
+            dane_do_analizy = dane_transakcyjne.merge(right=dane_marz,
+                                                      how='inner',
+                                                      on = 'Ticker')
             result_df = pd.DataFrame(columns=['Ticker', 'Date', 'Current Value'])
             for dane in dane_do_analizy.iterrows():
-                ticker             = dane[1].iloc[0]
-                data_zakupu        = dane[1].iloc[1]
-                wolumen            = dane[1].iloc[2]
-                marza_pierwszy_rok = dane[1].iloc[3]
-                marza_kolejne_lata = dane[1].iloc[4]
+                project_id         = dane[1].iloc[0]
+                ticker             = dane[1].iloc[1]
+                data_zakupu        = dane[1].iloc[2]
+                wolumen            = dane[1].iloc[3]
+                marza_pierwszy_rok = dane[1].iloc[4]
+                marza_kolejne_lata = dane[1].iloc[5]
                 
                 wolumen_jednostkowy = 100
                 
@@ -257,18 +258,20 @@ def daily_webscraping_plus_currencies(cloud_event):
                         n = n + 1 
                 
                 result_df = pd.concat([result_df, \
-                                    pd.DataFrame(data=[[ticker, data_zakupu, \
-                                                        round(current_value, 2)]], \
-                                                    columns=['Ticker', 'Date', 'Current Value'])])
+                                    pd.DataFrame(data=[[project_id,
+                                                        ticker,
+                                                        data_zakupu,
+                                                        round(current_value, 2)]],
+                                                 columns=['Project_id', 'Ticker', 'Date', 'Current Value'])])
                 data_to_export = result_df.merge(right=dane_do_analizy, 
                                 how='inner',
-                                left_on=['Ticker', 'Date'],
-                                right_on= ['Ticker', 'Transaction_date'])
+                                left_on=['Project_id', 'Ticker', 'Date'],
+                                right_on= ['Project_id', 'Ticker', 'Transaction_date'])
         
                 data_to_export['Date'] = current_date
                 data_to_export['Close'] = (data_to_export['Current Value']/data_to_export['Transaction_amount'])
 
-                data_to_export_obligacje = data_to_export.groupby(['Ticker', 'Date']).\
+                data_to_export_obligacje = data_to_export.groupby(['Project_id', 'Ticker', 'Date']).\
                     apply(lambda x: np.average(x['Close'], \
                     weights=x['Transaction_amount']))\
                     .reset_index(name='Close').\
