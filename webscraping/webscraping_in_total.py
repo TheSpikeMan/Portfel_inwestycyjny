@@ -63,30 +63,27 @@ def daily_webscraping_plus_currencies(cloud_event):
 
             print("Pobieram aktualne instrumenty w ramach ETF zagranicznych.")
             query_1 = f"""
-            SELECT
-            Ticker,
-            Market,
-            Currency,
-            Instrument_type
+            SELECT DISTINCT
+                Ticker,
+                Market,
+                Currency,
+                Instrument_type
             FROM `{self.project_id}.{self.dataset_instruments}.{self.table_instruments}` AS inst
             LEFT JOIN `{self.project_id}.{self.dataset_instruments}.{self.table_instruments_types}` AS inst_typ
-            ON inst.Instrument_type_id = inst_typ.Instrument_type_id
-            WHERE Status = 1
-            AND Instrument_type IN ('ETF zagraniczne')
+                ON inst.Instrument_type_id = inst_typ.Instrument_type_id
+                AND Instrument_type = 'ETF zagraniczne'
             """
 
             print("Pobieram aktualne instrumenty w ramach akcji polskich, ETF polskich oraz obligacji korporacyjnych")
             query_2 = f"""
-            SELECT
-            Ticker,
-            Status
+            SELECT DISTINCT
+                Ticker
             FROM `{self.project_id}.{self.dataset_instruments}.{self.table_instruments}` AS inst
             LEFT JOIN `{self.project_id}.{self.dataset_instruments}.{self.table_instruments_types}` AS inst_typ
-            ON inst.Instrument_type_id = inst_typ.Instrument_type_id
-            WHERE Status = 1
-            AND Instrument_type IN ('Akcje polskie',
-                                    'ETF polskie',
-                                    'Obligacje korporacyjne')
+                ON inst.Instrument_type_id = inst_typ.Instrument_type_id
+                AND Instrument_type IN ('Akcje polskie',
+                                        'ETF polskie',
+                                        'Obligacje korporacyjne')
             """
 
             client = bigquery.Client()
