@@ -9,15 +9,8 @@ dataset = 'Transactions'
 table = 'Transactions_view'
 
 query = f"""
-WITH
-Transactions_view AS (
-  SELECT
-    *,
-  FROM `{project}.{dataset}.{table}`
-  ORDER BY Transaction_id ASC
-)
 
-SELECT * FROM Transactions_view
+SELECT * FROM {project}.{dataset}.{table}
 
 """
 query_job = client.query(query=query)
