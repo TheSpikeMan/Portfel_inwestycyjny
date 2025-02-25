@@ -158,6 +158,7 @@ def daily_webscraping_plus_currencies(cloud_event):
 
             query_2 = f"""
             SELECT
+                Project_id,
                 Ticker,
                 MAX(Transaction_date)                                            AS Transaction_date,   
                 SUM(Transaction_amount) - MAX(cumulative_sell_amount_per_ticker) AS Transaction_amount
@@ -165,13 +166,15 @@ def daily_webscraping_plus_currencies(cloud_event):
             WHERE TRUE
                 AND instrument_type_id = 5        --> Obligacje skarbowe
                 AND Transaction_type   <> "Sell"  --> Tylko transakcje zakupowe
-            GROUP BY Ticker
+            GROUP BY ALL
             WINDOW
                 Ticker_last_amount AS (
                 PARTITION BY
+                    Project_id,
                     Ticker
                 ORDER BY
-                    Transaction_date DESC
+                    Transaction_date DESC,
+                    Transaction_id DESC
                 )
             """
             
