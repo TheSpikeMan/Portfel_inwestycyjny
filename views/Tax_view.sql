@@ -309,7 +309,7 @@ SELECT
   ROUND(SUM(Przychod) - SUM(Koszt_uzyskania_przychodu), 2)  AS Dochod,
   ROUND(SUM(Zysk), 2)                                       AS Zysk,
   CASE
-    WHEN Kategoria = "Dywidendy zagraniczne"
+    WHEN Kategoria IN ("Dywidendy zagraniczne", "Odsetki polskie")
     THEN ROUND(SUM(Zysk) * 0.19, 0)                         --> Podatek od dywidend zaokrąglam do pełnych wartości
     ELSE ROUND(SUM(Zysk) * 0.19, 2)  
   END                                                       AS Podatek_do_zaplaty
