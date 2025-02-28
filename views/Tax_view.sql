@@ -29,6 +29,33 @@ Akcje_polskie_transakcje_GPW AS (
     Kategoria
 ),
 
+/*
+ETF_polskie_GPW
+Widok przedstawia wszystkie transakcje realizowane w ramach ETF polskich, za pomocą polskiego maklera, wobec instrumentów mających swoją siedzibę w Polsce.
+Dane pogrupowane są wg roku wynikającego z daty sprzedaży instrumentu.
+*/
+
+ETF_polskie_GPW AS (
+  SELECT
+    EXTRACT(YEAR FROM Date_sell)              AS Rok_podatkowy,
+    'Transakcje polskich instrumentów na GPW' AS Rodzaj_transakcji,
+    'Transakcje PIT8C'                        AS Kategoria,
+    ROUND(SUM(Tax_deductible_expenses), 2)    AS Koszt_uzyskania_przychodu,
+    ROUND(SUM(Income), 2)                     AS Przychod,
+    ROUND(SUM(Profit), 2)                     AS Zysk
+  FROM Tax_calculations
+  WHERE
+    TRUE
+    AND Transaction_type            = 'Sell'
+    AND Currency                    = 'PLN'
+    AND Instrument_type             = 'ETF polskie'
+    AND Instrument_headquarter      = 'Polska'
+    AND Tax_paid                    IS FALSE
+  GROUP BY
+    EXTRACT(YEAR FROM Date_sell),
+    Rodzaj_transakcji,
+    Kategoria
+),
 
 /*
 Obligacje_korporacyjne_transakcje
@@ -201,6 +228,11 @@ Widok zawiera wszystkie częściowe rozliczenia.
 data_all_unioned AS (
   SELECT *
   FROM Akcje_polskie_transakcje_GPW
+
+  UNION ALL
+
+  SELECT *
+  FROM ETF_polskie_GPW
 
   UNION ALL
 
