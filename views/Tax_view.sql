@@ -122,15 +122,16 @@ Akcje_zagraniczne_transakcje_GPW AS (
 ),
 
 /*
-Akcje_zagraniczne_transakcje_poza_GPW
-Widok zawiera wszystkie nieopodatkowane transakcje, w obcej walucie, realizowane na obcej giełdzie.
+ETF_zagraniczne_transakcje_poza_GPW
+Widok zawiera wszystkie nieopodatkowane transakcje, w obcej walucie, realizowane na obcej giełdzie. Transakcje realizowane są u polskiego maklera, więc rozliczone w ramach PIT8C.
 */
-Akcje_zagraniczne_transakcje_poza_GPW AS (
+
+ETF_zagraniczne_transakcje_poza_GPW AS (
   SELECT
     Project_id                                AS ID_Projektu,
     EXTRACT(YEAR FROM Date_sell)              AS Rok_podatkowy,
     'Transakcje zagr. instrumentów poza GPW'  AS Rodzaj_transakcji,
-    'Transakcje poza PIT 8C'                  AS Kategoria,
+    'Transakcje PIT8C'                        AS Kategoria,
     ROUND(SUM(Tax_deductible_expenses), 2)    AS Koszt_uzyskania_przychodu,
     ROUND(SUM(Income), 2)                     AS Przychod,
     ROUND(SUM(Profit), 2)                     AS Zysk
@@ -264,7 +265,7 @@ data_all_unioned AS (
   UNION ALL
   
   SELECT *
-  FROM Akcje_zagraniczne_transakcje_poza_GPW
+  FROM ETF_zagraniczne_transakcje_poza_GPW
 
   UNION ALL
 
