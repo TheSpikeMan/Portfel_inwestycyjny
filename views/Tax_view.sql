@@ -282,12 +282,17 @@ data_all_unioned_ordered AS (
 
 --- FINALNY RAPORT ---
 SELECT
-  Rok_podatkowy,
-  Kategoria,
-  ROUND(SUM(Koszt_uzyskania_przychodu), 2)  AS Koszt_uzyskania_przychodow,
-  ROUND(SUM(Przychod), 2)                   AS Przychod,
-  ROUND(SUM(Zysk), 2)                       AS Zysk,
-  ROUND(SUM(Zysk) * 0.19, 2)                AS Podatek_do_zaplaty
+  Rok_podatkowy                                             AS Rok_podatkowy,
+  Kategoria                                                 AS Kategoria,
+  ROUND(SUM(Przychod), 2)                                   AS Przychod,
+  ROUND(SUM(Koszt_uzyskania_przychodu), 2)                  AS Koszt_uzyskania_przychodow,
+  ROUND(SUM(Przychod) - SUM(Koszt_uzyskania_przychodu), 2)  AS Dochod,
+  ROUND(SUM(Zysk), 2)                                       AS Zysk,
+  CASE
+    WHEN Kategoria = "Dywidendy zagraniczne"
+    THEN ROUND(SUM(Zysk) * 0.19, 0)                         --> Podatek od dywidend zaokrąglam do pełnych wartości
+    ELSE ROUND(SUM(Zysk) * 0.19, 2)  
+  END                                                       AS Podatek_do_zaplaty
 FROM data_all_unioned_ordered
 GROUP BY
   Rok_podatkowy,
