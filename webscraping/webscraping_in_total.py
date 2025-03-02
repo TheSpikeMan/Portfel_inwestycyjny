@@ -213,7 +213,7 @@ def daily_webscraping_plus_currencies(cloud_event):
             dane_do_analizy = dane_transakcyjne.merge(right=dane_marz,
                                                       how='inner',
                                                       on = 'Ticker')
-            result_df = pd.DataFrame(columns=['Ticker', 'Date', 'Current Value'])
+            result_df = pd.DataFrame(columns=['Project_id', 'Ticker', 'Date', 'Current Value'])
             for dane in dane_do_analizy.iterrows():
                 project_id         = dane[1].iloc[0]
                 ticker             = dane[1].iloc[1]
