@@ -316,7 +316,7 @@ def daily_webscraping_plus_currencies(cloud_event):
             data_to_export = data_to_export.merge(present_currencies,
                                                 how = 'inner',
                                                 on = 'Currency')
-            data_to_export['Project_id'] = None
+            data_to_export['Project_id'] = np.nan
             data_to_export['Close'] = (data_to_export['Close'] * \
                                     data_to_export['Currency_close']).\
                                     round(decimals = 2)
@@ -330,6 +330,7 @@ def daily_webscraping_plus_currencies(cloud_event):
                                                         'Close',
                                                         'Turnover',
                                                         'Volume']]
+            
             
             print("Webscraping z 'markets.ft.com' zakończony powodzeniem.")
 
