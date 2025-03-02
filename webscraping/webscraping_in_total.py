@@ -392,10 +392,12 @@ def daily_webscraping_plus_currencies(cloud_event):
                             print(f"Błąd podczas parsowania wiersza: {e}")
                             continue
 
-                    result_data['Project_id'] = None
 
                     # Przekształcenie wyników na DataFrame
                     result_df = pd.DataFrame(result_data, columns=['Project_id', 'Ticker', 'Date', 'Close', 'Volume', 'Turnover'])
+
+                    # Zdefiniowanie nowej kolumny o nazwie 'Project_id i dodanie jej na początku DataFrame
+                    result_df.insert(0, 'Project_id', np.nan)
                     print("Pobieranie danych z biznesradar zakończone powodzeniem.")
 
             except requests.exceptions.Timeout:
