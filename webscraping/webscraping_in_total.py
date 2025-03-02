@@ -64,12 +64,13 @@ def daily_webscraping_plus_currencies(cloud_event):
             print("Pobieram aktualne instrumenty w ramach ETF zagranicznych.")
             query_1 = f"""
             SELECT DISTINCT
+                Project_id,
                 Ticker,
                 Market,
                 Currency,
                 Instrument_type
             FROM `{self.project_id}.{self.dataset_instruments}.{self.table_instruments}` AS inst
-            LEFT JOIN `{self.project_id}.{self.dataset_instruments}.{self.table_instruments_types}` AS inst_typ
+            INNER JOIN `{self.project_id}.{self.dataset_instruments}.{self.table_instruments_types}` AS inst_typ
                 ON inst.Instrument_type_id = inst_typ.Instrument_type_id
                 AND Instrument_type = 'ETF zagraniczne'
             """
@@ -77,9 +78,10 @@ def daily_webscraping_plus_currencies(cloud_event):
             print("Pobieram aktualne instrumenty w ramach akcji polskich, ETF polskich oraz obligacji korporacyjnych")
             query_2 = f"""
             SELECT DISTINCT
+                Project_id,
                 Ticker
             FROM `{self.project_id}.{self.dataset_instruments}.{self.table_instruments}` AS inst
-            LEFT JOIN `{self.project_id}.{self.dataset_instruments}.{self.table_instruments_types}` AS inst_typ
+            INNER JOIN `{self.project_id}.{self.dataset_instruments}.{self.table_instruments_types}` AS inst_typ
                 ON inst.Instrument_type_id = inst_typ.Instrument_type_id
                 AND Instrument_type IN ('Akcje polskie',
                                         'ETF polskie',
