@@ -55,10 +55,7 @@ ETF_polskie_GPW AS (
     AND Instrument_type             = 'ETF polskie'
     AND Instrument_headquarter      = 'Polska'
     AND Tax_paid                    IS FALSE
-  GROUP BY
-    EXTRACT(YEAR FROM Date_sell),
-    Rodzaj_transakcji,
-    Kategoria
+  GROUP BY ALL
 ),
 
 
