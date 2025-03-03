@@ -18,7 +18,7 @@ Oprócz tego dołożone jest połączenie danych dywidend z danymi danych giełd
 
 preliminary_aggregation AS (
 SELECT
-  Project_id                                AS Project_id,
+  Transactions_view.Project_id              AS Project_id,
   Transactions_view.Ticker                  AS Ticker,
   EXTRACT(YEAR FROM `Transaction_date`)     AS year,
   EXTRACT(MONTH FROM `Transaction_date`)    AS month,
