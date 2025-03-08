@@ -867,7 +867,7 @@ class DodajTransakcje(QWidget):
                                   ]
         
         columns                = ["Project_id",
-,                                 "Transaction_id",
+                                  "Transaction_id",
                                   "Transaction_date",
                                   "Transaction_type",
                                   "Currency",
