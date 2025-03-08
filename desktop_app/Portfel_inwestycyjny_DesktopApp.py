@@ -852,7 +852,8 @@ class DodajTransakcje(QWidget):
         #        (self.transactionsDataFrame.query(f"Ticker== '{self.instrumentComboBox.currentText()}'")['Amount'].iloc[0])/ \
         #        (self.currentCurrency)
 
-        transaction_parameters = [self.Transaction_id,
+        transaction_parameters = [1,                        # W domyśle obsługa projektu o Project_id = 1
+                                  self.Transaction_id,
                                   self.Transaction_date,
                                   self.Transaction_type,
                                   self.Currency,
@@ -865,7 +866,8 @@ class DodajTransakcje(QWidget):
                                   self.Tax_value
                                   ]
         
-        columns                = ["Transaction_id",
+        columns                = ["Project_id",
+,                                 "Transaction_id",
                                   "Transaction_date",
                                   "Transaction_type",
                                   "Currency",
