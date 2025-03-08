@@ -60,8 +60,9 @@ Wyznaczenie wskaźników:
 
 data_aggregated AS (
   SELECT 
-    * EXCEPT (Instrument_id, Currency, Instrument_type_id, Ticker, Currency_date, last_currency_close, Currency_close,
-    `Date`), 
+    * EXCEPT (Project_id, Instrument_id, Currency, Instrument_type_id, Ticker, Currency_date, last_currency_close, Currency_close,
+    `Date`),
+    transactions_data.Project_id                             AS Project_id,
     instruments_data.Instrument_id                           AS Instrument_id,                       
     instruments_data.Ticker                                  AS Ticker,
     transactions_data.Currency                               AS Currency,
@@ -97,6 +98,7 @@ data_aggregated AS (
   -- Połączenie z danymi instrumentów
   LEFT JOIN instruments_data
   ON transactions_data.Instrument_id      = instruments_data.Instrument_id
+  AND transactions_data.Project_id        = instruments_data.Project_id
   -- Połączenie z danymi typów instrumentów
   LEFT JOIN instruments_types
   ON instruments_data.Instrument_type_id  = instruments_types.Instrument_type_id
@@ -145,20 +147,20 @@ data_aggregated_with_windows AS (
     data_aggregated
   WINDOW
     transaction_amount_until_transaction_date AS (
-      PARTITION BY Ticker 
-      ORDER BY Transaction_date 
+      PARTITION BY Project_id, Ticker 
+      ORDER BY Transaction_date, Transaction_id DESC
       ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
     ),
 
     transaction_amount_with_type_until_transaction_date AS (
-      PARTITION BY Ticker, Transaction_type_group 
-     ORDER BY Transaction_date 
+      PARTITION BY Project_id, Ticker, Transaction_type_group 
+      ORDER BY Transaction_date, Transaction_id DESC
       ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
     ),
 
     transaction_sell_amount_window AS (
-      PARTITION BY Ticker, Transaction_type_group 
-      ORDER BY Transaction_date 
+      PARTITION BY Project_id, Ticker, Transaction_type_group 
+      ORDER BY Transaction_date, Transaction_id DESC
       ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
     )
 ),
@@ -185,21 +187,20 @@ final_aggregation AS (
       MAX(cumulative_sell_amount_per_ticker) OVER instrument_window,
       0
     )                                                                                           AS cumulative_sell_amount_per_ticker
-  FROM
-    data_aggregated_with_windows
+  FROM data_aggregated_with_windows
   WINDOW
     instrument_type_window_until_transaction_day_window AS (
-      PARTITION BY Instrument_type_id
+      PARTITION BY Project_id, Instrument_type_id
       ORDER BY Transaction_date
       ROWS BETWEEN CURRENT ROW AND CURRENT ROW
     ),
     instrument_window AS (
-      PARTITION BY Ticker
+      PARTITION BY Project_id, Ticker
     )
 )
 
 SELECT
   *
 FROM final_aggregation 
-ORDER BY Transaction_date 
+ORDER BY Project_id, Transaction_date 
 

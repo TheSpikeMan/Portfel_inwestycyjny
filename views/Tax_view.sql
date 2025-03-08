@@ -9,6 +9,7 @@ Dane pogrupowane są wg roku wynikającego z daty sprzedaży instrumentu.
 
 Akcje_polskie_transakcje_GPW AS (
   SELECT
+    Project_id                                AS ID_Projektu,
     EXTRACT(YEAR FROM Date_sell)              AS Rok_podatkowy,
     'Transakcje polskich instrumentów na GPW' AS Rodzaj_transakcji,
     'Transakcje PIT8C'                        AS Kategoria,
@@ -24,6 +25,7 @@ Akcje_polskie_transakcje_GPW AS (
     AND Instrument_headquarter      = 'Polska'
     AND Tax_paid                    IS FALSE
   GROUP BY
+    Project_id,
     EXTRACT(YEAR FROM Date_sell),
     Rodzaj_transakcji,
     Kategoria
@@ -58,6 +60,33 @@ ETF_polskie_GPW AS (
 ),
 
 /*
+ETF_polskie_GPW
+Widok przedstawia wszystkie transakcje realizowane w ramach ETF polskich, za pomocą polskiego maklera, wobec instrumentów mających swoją siedzibę w Polsce.
+Dane pogrupowane są wg roku wynikającego z daty sprzedaży instrumentu.
+*/
+
+ETF_polskie_GPW AS (
+  SELECT
+    Project_id                                AS ID_Projektu,
+    EXTRACT(YEAR FROM Date_sell)              AS Rok_podatkowy,
+    'Transakcje polskich instrumentów na GPW' AS Rodzaj_transakcji,
+    'Transakcje PIT8C'                        AS Kategoria,
+    ROUND(SUM(Tax_deductible_expenses), 2)    AS Koszt_uzyskania_przychodu,
+    ROUND(SUM(Income), 2)                     AS Przychod,
+    ROUND(SUM(Profit), 2)                     AS Zysk
+  FROM Tax_calculations
+  WHERE
+    TRUE
+    AND Transaction_type            = 'Sell'
+    AND Currency                    = 'PLN'
+    AND Instrument_type             = 'ETF polskie'
+    AND Instrument_headquarter      = 'Polska'
+    AND Tax_paid                    IS FALSE
+  GROUP BY ALL
+),
+
+
+/*
 Obligacje_korporacyjne_transakcje
 Widok przedstawia wszystkie transakcje realizowane w ramach obligacji korporacyjnych, za pomocą polskiego maklera, wobec instrumentów mających swoją siedzibę w Polsce.
 Dane pogrupowane są wg roku wynikającego z daty sprzedaży instrumentu.
@@ -65,6 +94,7 @@ Dane pogrupowane są wg roku wynikającego z daty sprzedaży instrumentu.
 
 Obligacje_korporacyjne_transakcje AS (
   SELECT
+    Project_id                                AS ID_Projektu,
     EXTRACT(YEAR FROM Date_sell)              AS Rok_podatkowy,
     'Transakcje polskich instrumentów na GPW' AS Rodzaj_transakcji,
     'Transakcje PIT8C'                        AS Kategoria,
@@ -80,6 +110,7 @@ Obligacje_korporacyjne_transakcje AS (
     AND Instrument_headquarter      = 'Polska'
     AND Tax_paid                    IS FALSE
   GROUP BY
+    Project_id,
     EXTRACT(YEAR FROM Date_sell),
     Rodzaj_transakcji,
     Kategoria
@@ -92,6 +123,7 @@ Widok zawiera wszystkie transakcje realizowane na polskiej giełdzie, w polskiej
 
 Akcje_zagraniczne_transakcje_GPW AS (
   SELECT
+    Project_id                                AS ID_Projektu,
     EXTRACT(YEAR FROM Date_sell)              AS Rok_podatkowy,
     'Transakcje zagr. instrumentów na GPW'    AS Rodzaj_transakcji,
     'Transakcje poza PIT 8C'                  AS Kategoria,
@@ -107,6 +139,7 @@ Akcje_zagraniczne_transakcje_GPW AS (
     AND Instrument_headquarter      <> 'Polska'
     AND Tax_paid                    IS FALSE
   GROUP BY
+    Project_id,
     EXTRACT(YEAR FROM Date_sell),
     Rodzaj_transakcji,
     Kategoria
@@ -114,10 +147,12 @@ Akcje_zagraniczne_transakcje_GPW AS (
 
 /*
 ETF_zagraniczne_transakcje_poza_GPW
-Widok zawiera wszystkie nieopodatkowane transakcje, w obcej walucie, realizowane na obcej giełdzie.
+Widok zawiera wszystkie nieopodatkowane transakcje, w obcej walucie, realizowane na obcej giełdzie. Transakcje realizowane są u polskiego maklera, więc rozliczone w ramach PIT8C.
 */
-ETF_zagraniczne_transakcje_poza_GPW  AS (
+
+ETF_zagraniczne_transakcje_poza_GPW AS (
   SELECT
+    Project_id                                AS ID_Projektu,
     EXTRACT(YEAR FROM Date_sell)              AS Rok_podatkowy,
     'Transakcje zagr. instrumentów poza GPW'  AS Rodzaj_transakcji,
     'Transakcje PIT8C'                        AS Kategoria,
@@ -133,6 +168,7 @@ ETF_zagraniczne_transakcje_poza_GPW  AS (
     AND Instrument_headquarter      <> 'Polska'
     AND Tax_paid                    IS FALSE
   GROUP BY
+    Project_id,
     EXTRACT(YEAR FROM Date_sell),
     Rodzaj_transakcji,
     Kategoria
@@ -145,6 +181,7 @@ Widok zawiera wszystkie dywidendy wypłacone na polskiej giełdzie, w obcej walu
 
 Akcje_polskie_dywidendy_gpw AS (
   SELECT
+    Project_id                                AS ID_Projektu,
     EXTRACT(YEAR FROM Date_sell)              AS Rok_podatkowy,
     'Nierozliczone dywidendy na GPW'          AS Rodzaj_transakcji,
     'Dywidendy zagraniczne'                   AS Kategoria,
@@ -160,6 +197,7 @@ Akcje_polskie_dywidendy_gpw AS (
     AND Instrument_headquarter      <> 'Polska'
     AND Tax_paid                    IS FALSE
   GROUP BY
+    Project_id,
     EXTRACT(YEAR FROM Date_sell),
     Rodzaj_transakcji,
     Kategoria
@@ -172,6 +210,7 @@ Widok zawiera wszystkie dywidendy wypłacone na zagranicznej giełdzie, w obcej 
 
 ETF_zagraniczne_dywidendy_poza_GPW AS (
   SELECT
+    Project_id                                AS ID_Projektu,
     EXTRACT(YEAR FROM Date_sell)              AS Rok_podatkowy,
     'Dywidendy poza GPW'                      AS Rodzaj_transakcji,
     'Dywidendy zagraniczne'                   AS Kategoria,
@@ -187,6 +226,7 @@ ETF_zagraniczne_dywidendy_poza_GPW AS (
     AND Instrument_headquarter      <> 'Polska'
     AND Tax_paid                    IS FALSE
   GROUP BY
+    Project_id,
     EXTRACT(YEAR FROM Date_sell),
     Rodzaj_transakcji,
     Kategoria
@@ -199,9 +239,10 @@ Widok zawiera wszystkie odsetki wypłacone na polskiej giełdzie, ale nierozlicz
 
 Obligacje_korporacyjne_odsetki AS (
   SELECT
+    Project_id                                AS ID_Projektu,
     EXTRACT(YEAR FROM Date_sell)              AS Rok_podatkowy,
     'Odsetki na GPW - obligacje korporacyjne' AS Rodzaj_transakcji,
-    'Odsetki polskie'                         AS Kategoria,            
+    'Odsetki polskie'                         AS Kategoria,
     0                                         AS Koszt_uzyskania_przychodu,
     ROUND(SUM(Income), 2)                     AS Przychod,
     ROUND(SUM(Profit), 2)                     AS Zysk
@@ -214,6 +255,7 @@ Obligacje_korporacyjne_odsetki AS (
     AND Instrument_headquarter      = 'Polska'
     AND Tax_paid                    IS FALSE
   GROUP BY
+    Project_id,
     EXTRACT(YEAR FROM Date_sell),
     Rodzaj_transakcji,
     Kategoria
@@ -275,6 +317,7 @@ data_all_unioned_ordered AS (
   SELECT *
   FROM data_all_unioned
   ORDER BY
+    ID_Projektu,
     Rok_podatkowy DESC,
     Rodzaj_transakcji
 )
@@ -295,9 +338,11 @@ SELECT
   END                                                       AS Podatek_do_zaplaty
 FROM data_all_unioned_ordered
 GROUP BY
+  ID_Projektu,
   Rok_podatkowy,
   Kategoria
 ORDER BY
+  ID_Projektu,
   Rok_podatkowy DESC,
   Kategoria DESC;
 

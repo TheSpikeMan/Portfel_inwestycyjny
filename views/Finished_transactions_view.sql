@@ -14,6 +14,7 @@ Dywidendy i odsetki nieobecne.
 
 transactions_view AS (
   SELECT
+    Project_id                    AS Project_id,
     Transaction_date              AS Transaction_date,
     Ticker                        AS Ticker,
     Transaction_type_group        AS Transaction_type_group,
@@ -43,6 +44,7 @@ transactions_view AS (
   WINDOW
     last_ticker_transaction_window AS (
       PARTITION BY
+        Project_id,
         Ticker
       ORDER BY
         Transaction_date,
@@ -57,6 +59,7 @@ W widoku tym wyciągane są wszystkie tranakcje i dywidendy, które zrealizowane
 
 all_finished_transactions AS (
   SELECT 
+    transactions_view.Project_id                     AS Project_id,
     Ticker                                           AS Ticker,
     Transaction_date                                 AS Transaction_date,
     COALESCE(
@@ -84,6 +87,7 @@ W tym kroku wyciągane są:
 */
 
 SELECT
+  Project_id                                      AS Project_id,                   
   Ticker                                          AS Ticker,
   MAX(Transaction_date)                           AS Last_transaction_date,
   ROUND(SUM(COALESCE(Buy_amount, 0)), 2)          AS Cumulative_buy_value,
@@ -96,6 +100,7 @@ SELECT
 FROM all_finished_transactions
 GROUP BY ALL
 ORDER BY
+  Project_id,
   profit_percentage DESC
 
 

@@ -12,6 +12,99 @@ from flask import Flask, request
 
 @functions_framework.cloud_event
 def daily_webscraping_plus_currencies(cloud_event):
+
+    class BigQueryExporter():
+
+        def __init__(self,
+                        project_to_export,
+                        dataset_to_export_daily,
+                        dataset_to_export_currencies,
+                        table_to_export_daily,
+                        table_to_export_currencies):
+            
+            """
+            
+            Utworzenie obiektu, który umożliwi późniejszy eksport danych do tabel w BigQuery.
+            
+            """
+            
+            self.project_to_export            = project_to_export
+            self.dataset_to_export_daily      = dataset_to_export_daily
+            self.dataset_to_export_currencies = dataset_to_export_currencies
+            self.table_to_export_daily        = table_to_export_daily
+            self.table_to_export_currencies   = table_to_export_currencies
+        
+        def exportDataToBigQueryDailyTable(self, data_to_export):
+            
+
+            """
+            
+            Eksport danych do tabeli `Daily`.
+            
+            """
+            
+            print("Eksportuję dane giełdowe do BigQuery..")
+            client = bigquery.Client()
+            destination_table = f"{self.project_to_export}.{self.dataset_to_export_daily}.{self.table_to_export_daily}"
+            
+            schema = [
+                    bigquery.SchemaField(name='Project_id', field_type="INTEGER", \
+                                        mode="REQUIRED"),
+                    bigquery.SchemaField(name = 'Ticker', field_type = "STRING", \
+                                        mode = "REQUIRED"),
+                    bigquery.SchemaField(name = 'Date', field_type = "DATE",\
+                                        mode = "REQUIRED"),
+                    bigquery.SchemaField(name = 'Close', field_type = "FLOAT",\
+                                        mode = "REQUIRED"),
+                    bigquery.SchemaField(name = 'Volume', field_type = "INTEGER",\
+                                        mode = "REQUIRED"),
+                    bigquery.SchemaField(name = 'Turnover', field_type = "INTEGER",\
+                                        mode = "NULLABLE")]
+            
+            job_config = bigquery.LoadJobConfig(schema = schema,
+                                                write_disposition = "WRITE_APPEND")
+
+            try:
+                job = client.load_table_from_dataframe(data_to_export, 
+                                                        destination_table,
+                                                        job_config = job_config)
+                job.result()
+                print("Dane giełdowe zostały wyeksportowane do tabeli BigQuery.")
+            except Exception as e:
+                print(f"Error uploading data to BigQuery: {str(e)}")
+
+        def exportDatatoBigQueryCurrencyTable(self,
+                                                currencies_to_export):
+            
+
+            """
+            Eksport danych do tabeli Currency.
+            """
+            
+            print("Eksportuję dane walutowe do BigQuery..")
+            client = bigquery.Client()
+            destination_table = f"{self.project_to_export}.{self.dataset_to_export_currencies}.{self.table_to_export_currencies}"
+            
+            schema = [bigquery.SchemaField(name = 'Currency_date', field_type = "DATE", \
+                                        mode = "NULLABLE"),
+                    bigquery.SchemaField(name = 'Currency', field_type = "STRING",\
+                                        mode = "NULLABLE"),
+                    bigquery.SchemaField(name = 'Currency_close', field_type = "FLOAT",\
+                                        mode = "NULLABLE"),
+                                        ]
+            
+            job_config = bigquery.LoadJobConfig(schema = schema,
+                                                write_disposition = "WRITE_APPEND")
+
+            try:
+                job = client.load_table_from_dataframe(currencies_to_export,
+                                                        destination_table,
+                                                        job_config = job_config)
+                job.result()
+                print("Dane walutowe zostały wyeksportowane do tabeli BigQuery.")
+            except Exception as e:
+                print(f"Error uploading data to BigQuery: {str(e)}")
+
     class Scraper(): 
         def __init__(self,
                     project_id,
@@ -61,31 +154,29 @@ def daily_webscraping_plus_currencies(cloud_event):
             Pobranie listy aktualnych instrumentów akcji polskich, ETF polskich, obligacji korporacyjnych - query_job_2.to_dataframe()
             """
 
-            print("Pobieram aktualne instrumenty w ramach ETF, polskich akcji oraz obligacji korporacyjnych.")
+            print("Pobieram aktualne instrumenty w ramach ETF zagranicznych.")
             query_1 = f"""
-            SELECT
-            Ticker,
-            Market,
-            Currency,
-            Instrument_type
+            SELECT DISTINCT
+                Ticker,
+                Market,
+                Currency,
+                Instrument_type
             FROM `{self.project_id}.{self.dataset_instruments}.{self.table_instruments}` AS inst
-            LEFT JOIN `{self.project_id}.{self.dataset_instruments}.{self.table_instruments_types}` AS inst_typ
-            ON inst.Instrument_type_id = inst_typ.Instrument_type_id
-            WHERE Status = 1
-            AND Instrument_type IN ('ETF zagraniczne')
+            INNER JOIN `{self.project_id}.{self.dataset_instruments}.{self.table_instruments_types}` AS inst_typ
+                ON inst.Instrument_type_id = inst_typ.Instrument_type_id
+                AND Instrument_type = 'ETF zagraniczne'
             """
 
+            print("Pobieram aktualne instrumenty w ramach akcji polskich, ETF polskich oraz obligacji korporacyjnych")
             query_2 = f"""
-            SELECT
-            Ticker,
-            Status
+            SELECT DISTINCT
+                Ticker
             FROM `{self.project_id}.{self.dataset_instruments}.{self.table_instruments}` AS inst
-            LEFT JOIN `{self.project_id}.{self.dataset_instruments}.{self.table_instruments_types}` AS inst_typ
-            ON inst.Instrument_type_id = inst_typ.Instrument_type_id
-            WHERE Status = 1
-            AND Instrument_type IN ('Akcje polskie',
-                                    'ETF polskie',
-                                    'Obligacje korporacyjne')
+            INNER JOIN `{self.project_id}.{self.dataset_instruments}.{self.table_instruments_types}` AS inst_typ
+                ON inst.Instrument_type_id = inst_typ.Instrument_type_id
+                AND Instrument_type IN ('Akcje polskie',
+                                        'ETF polskie',
+                                        'Obligacje korporacyjne')
             """
 
             client = bigquery.Client()
@@ -139,16 +230,16 @@ def daily_webscraping_plus_currencies(cloud_event):
 
             Funkcja zwraca trzy rezultaty swojego działania:
             - query_job_1.to_dataframe() - DataFrame z danymi inflacyjnymi.
-            - query_job_2.to_dataframe() - DataFrame z danymi wszystkich tranakcji na obligacjach skarbowych.
+            - query_job_2.to_dataframe() - DataFrame z danymi wszystkich transakcji na obligacjach skarbowych.
             - query_job_3.to_dataframe() - DataFrame z danymi marży zarobku dla obligacji skarbowych, na których
                 następowały transakcje.
             
             """
 
             print("Pobieram aktualne dane inflacyjne.")
-            destination_table_1 = f"`{project_id}.{dataset_inflation}.{table_inflation}`"
-            destination_table_2 = f"`{project_id}.{dataset_transactions}.{view_transactions}`"
-            destination_table_3 = f"`{project_id}.{dataset_instruments}.{table_treasury_bonds}`"
+            destination_table_1 = f"`{self.project_id}.{self.dataset_inflation}.{self.table_inflation}`"
+            destination_table_2 = f"`{self.project_id}.{self.dataset_transactions}.{self.view_transactions}`"
+            destination_table_3 = f"`{self.project_id}.{self.dataset_instruments}.{self.table_treasury_bonds}`"
 
             query_1 = f"""
             SELECT
@@ -160,6 +251,7 @@ def daily_webscraping_plus_currencies(cloud_event):
 
             query_2 = f"""
             SELECT
+                Project_id,
                 Ticker,
                 MAX(Transaction_date)                                            AS Transaction_date,   
                 SUM(Transaction_amount) - MAX(cumulative_sell_amount_per_ticker) AS Transaction_amount
@@ -167,22 +259,22 @@ def daily_webscraping_plus_currencies(cloud_event):
             WHERE TRUE
                 AND instrument_type_id = 5        --> Obligacje skarbowe
                 AND Transaction_type   <> "Sell"  --> Tylko transakcje zakupowe
-            GROUP BY Ticker
+            GROUP BY ALL
             WINDOW
                 Ticker_last_amount AS (
                 PARTITION BY
+                    Project_id,
                     Ticker
                 ORDER BY
-                    Transaction_date DESC
+                    Transaction_date DESC,
+                    Transaction_id DESC
                 )
             """
             
             query_3 = f"""
-            SELECT
-                *
+            SELECT *
             FROM  {destination_table_3}
-            WHERE
-                TRUE
+            WHERE TRUE
             """
         
             client = bigquery.Client()
@@ -211,16 +303,17 @@ def daily_webscraping_plus_currencies(cloud_event):
             
             print("Oceniam obecność wartość obligacji skarbowych.")
             dane_inflacyjne.columns = ['Inflacja', 'Początek miesiąca']
-            dane_do_analizy = dane_transakcyjne.merge(right=dane_marz, 
-                                            how='inner', 
-                                            on = 'Ticker')
-            result_df = pd.DataFrame(columns=['Ticker', 'Date', 'Current Value'])
+            dane_do_analizy = dane_transakcyjne.merge(right=dane_marz,
+                                                        how='inner',
+                                                        on = 'Ticker')
+            result_df = pd.DataFrame(columns=['Project_id', 'Ticker', 'Date', 'Current Value'])
             for dane in dane_do_analizy.iterrows():
-                ticker             = dane[1].iloc[0]
-                data_zakupu        = dane[1].iloc[1]
-                wolumen            = dane[1].iloc[2]
-                marza_pierwszy_rok = dane[1].iloc[3]
-                marza_kolejne_lata = dane[1].iloc[4]
+                project_id         = dane[1].iloc[0]
+                ticker             = dane[1].iloc[1]
+                data_zakupu        = dane[1].iloc[2]
+                wolumen            = dane[1].iloc[3]
+                marza_pierwszy_rok = dane[1].iloc[4]
+                marza_kolejne_lata = dane[1].iloc[5]
                 
                 wolumen_jednostkowy = 100
                 
@@ -258,18 +351,20 @@ def daily_webscraping_plus_currencies(cloud_event):
                         n = n + 1 
                 
                 result_df = pd.concat([result_df, \
-                                    pd.DataFrame(data=[[ticker, data_zakupu, \
-                                                        round(current_value, 2)]], \
-                                                    columns=['Ticker', 'Date', 'Current Value'])])
+                                    pd.DataFrame(data=[[project_id,
+                                                        ticker,
+                                                        data_zakupu,
+                                                        round(current_value, 2)]],
+                                                    columns=['Project_id', 'Ticker', 'Date', 'Current Value'])])
                 data_to_export = result_df.merge(right=dane_do_analizy, 
                                 how='inner',
-                                left_on=['Ticker', 'Date'],
-                                right_on= ['Ticker', 'Transaction_date'])
+                                left_on=['Project_id', 'Ticker', 'Date'],
+                                right_on= ['Project_id', 'Ticker', 'Transaction_date'])
         
                 data_to_export['Date'] = current_date
                 data_to_export['Close'] = (data_to_export['Current Value']/data_to_export['Transaction_amount'])
 
-                data_to_export_obligacje = data_to_export.groupby(['Ticker', 'Date']).\
+                data_to_export_obligacje = data_to_export.groupby(['Project_id', 'Ticker', 'Date']).\
                     apply(lambda x: np.average(x['Close'], \
                     weights=x['Transaction_amount']))\
                     .reset_index(name='Close').\
@@ -314,6 +409,7 @@ def daily_webscraping_plus_currencies(cloud_event):
             data_to_export = data_to_export.merge(present_currencies,
                                                 how = 'inner',
                                                 on = 'Currency')
+            data_to_export['Project_id'] = np.nan
             data_to_export['Close'] = (data_to_export['Close'] * \
                                     data_to_export['Currency_close']).\
                                     round(decimals = 2)
@@ -321,11 +417,13 @@ def daily_webscraping_plus_currencies(cloud_event):
             data_to_export['Volume'] = 0 
             data_to_export['Turnover'] = 0 
 
-            data_to_export_ETFs = data_to_export.loc[:,['Ticker', 
-                                                'Date', 
-                                                'Close', 
-                                                'Turnover', 
-                                                'Volume']]
+            data_to_export_ETFs = data_to_export.loc[:,['Project_id',
+                                                        'Ticker',
+                                                        'Date',
+                                                        'Close',
+                                                        'Turnover',
+                                                        'Volume']]
+            
             
             print("Webscraping z 'markets.ft.com' zakończony powodzeniem.")
 
@@ -353,6 +451,7 @@ def daily_webscraping_plus_currencies(cloud_event):
 
                     # Parsowanie HTML
                     soup = BeautifulSoup(r1.text, 'html.parser')
+
                     for row in soup.find_all('tr', class_='hot-row'):
                         try:
                             Ticker = row.find('a').text.split()[0].strip()
@@ -360,7 +459,7 @@ def daily_webscraping_plus_currencies(cloud_event):
                                 Close = row.find('span', {'data-push-type': 'QuoteClose'})
                                 Volume = row.find('span', {'data-push-type': 'QuoteVolume'})
                                 Turnover = row.find('span', {'data-push-type': 'QuoteMarketCap'})
-
+                                
                                 # Upewniamy się, że elementy istnieją przed pobraniem tekstu
                                 Close_value = Close.text.strip() if Close else None
                                 Volume_value = Volume.text.strip() if Volume else None
@@ -388,8 +487,12 @@ def daily_webscraping_plus_currencies(cloud_event):
                             print(f"Błąd podczas parsowania wiersza: {e}")
                             continue
 
+
                     # Przekształcenie wyników na DataFrame
                     result_df = pd.DataFrame(result_data, columns=['Ticker', 'Date', 'Close', 'Volume', 'Turnover'])
+
+                    # Zdefiniowanie nowej kolumny o nazwie 'Project_id i dodanie jej na początku DataFrame
+                    result_df.insert(0, 'Project_id', np.nan)
                     print("Pobieranie danych z biznesradar zakończone powodzeniem.")
 
             except requests.exceptions.Timeout:
@@ -415,6 +518,7 @@ def daily_webscraping_plus_currencies(cloud_event):
             - W siódmym kroku dokonywany jest eksport danych walutowych do tabeli w BigQuery.
             """
 
+            
             present_instruments_ETF, present_instruments_biznesradar = self.pobierz_aktualne_instrumenty()
             dane_inflacyjne, dane_transakcyjne, dane_marz            = self.zbadaj_dane_inflacyjne()
             present_currencies                                       = self.znajdz_kursy_walut()
@@ -424,122 +528,34 @@ def daily_webscraping_plus_currencies(cloud_event):
                                                                                                     present_instruments_ETF,
                                                                                                     present_currencies)
             #data_to_export_catalyst = self.webscraping_biznesradar(website_catalyst, present_instruments_biznesradar) DO POPRAWKI
+            
             data_to_export_obligacje                                 = self.obligacje_skarbowe(dane_inflacyjne,
-                                                                                               dane_transakcyjne,
-                                                                                               dane_marz)
+                                                                                                dane_transakcyjne,
+                                                                                                dane_marz)
             data_to_export_etfs_pl                                   = self.webscraping_biznesradar(
-                                                                                               website_etfs_pl, 
-                                                                                               present_instruments_biznesradar)
+                                                                                                website_etfs_pl, 
+                                                                                                present_instruments_biznesradar)
+            
             data_to_export = pd.concat([data_to_export_ETFs, 
                                         data_to_export_akcje,
                                         #data_to_export_catalyst, 
                                         data_to_export_etfs_pl,
                                         data_to_export_obligacje],
                                         ignore_index = True)
-            
-            exporterObject = BigQueryExporter(project_to_export=project_id,
-                                                dataset_to_export_daily=dataset_instruments,
-                                                dataset_to_export_currencies= dataset_currencies,
-                                                table_to_export_daily=table_daily,
-                                                table_to_export_currencies=table_currencies
+                
+            exporterObject = BigQueryExporter(project_to_export=self.project_id,
+                                                dataset_to_export_daily=self.dataset_instruments,
+                                                dataset_to_export_currencies= self.dataset_currencies,
+                                                table_to_export_daily=self.table_daily,
+                                                table_to_export_currencies=self.table_currencies
                                                 )
             
             exporterObject.exportDataToBigQueryDailyTable(data_to_export = data_to_export)
 
             exporterObject.exportDatatoBigQueryCurrencyTable(currencies_to_export = present_currencies)
-
-
-    class BigQueryExporter():
-
-        def __init__(self,
-                        project_to_export,
-                        dataset_to_export_daily,
-                        dataset_to_export_currencies,
-                        table_to_export_daily,
-                        table_to_export_currencies):
             
-            """
             
-            Utworzenie obiektu, który umożliwi późniejszy eksport danych do tabel w BigQuery.
             
-            """
-            
-            self.project_to_export            = project_to_export
-            self.dataset_to_export_daily      = dataset_to_export_daily
-            self.dataset_to_export_currencies = dataset_to_export_currencies
-            self.table_to_export_daily        = table_to_export_daily
-            self.table_to_export_currencies   = table_to_export_currencies
-        
-        def exportDataToBigQueryDailyTable(self, data_to_export):
-            
-
-            """
-            
-            Eksport danych do tabeli `Daily`.
-            
-            """
-            
-            print("Eksportuję dane giełdowe do BigQuery..")
-            client = bigquery.Client()
-            destination_table = f"{self.project_to_export}.{self.dataset_to_export_daily}.{self.table_to_export_daily}"
-            
-            schema = [bigquery.SchemaField(name = 'Ticker', field_type = "STRING", \
-                                        mode = "REQUIRED"),
-                    bigquery.SchemaField(name = 'Date', field_type = "DATE",\
-                                        mode = "REQUIRED"),
-                    bigquery.SchemaField(name = 'Close', field_type = "FLOAT",\
-                                        mode = "REQUIRED"),
-                    bigquery.SchemaField(name = 'Volume', field_type = "INTEGER",\
-                                        mode = "REQUIRED"),
-                    bigquery.SchemaField(name = 'Turnover', field_type = "INTEGER",\
-                                        mode = "NULLABLE")]
-            
-            job_config = bigquery.LoadJobConfig(schema = schema,
-                                                write_disposition = "WRITE_APPEND")
-
-            try:
-                job = client.load_table_from_dataframe(data_to_export, 
-                                                       destination_table,
-                                                       job_config = job_config)
-                job.result()
-                print("Dane giełdowe zostały wyeksportowane do tabeli BigQuery.")
-            except Exception as e:
-                print(f"Error uploading data to BigQuery: {str(e)}")
-
-        def exportDatatoBigQueryCurrencyTable(self,
-                                                currencies_to_export):
-            
-
-            """
-            Eksport danych do tabeli Currency.
-            """
-            
-            print("Eksportuję dane walutowe do BigQuery..")
-            client = bigquery.Client()
-            destination_table = f"{self.project_to_export}.{self.dataset_to_export_currencies}.{self.table_to_export_currencies}"
-            
-            schema = [bigquery.SchemaField(name = 'Currency_date', field_type = "DATE", \
-                                        mode = "NULLABLE"),
-                    bigquery.SchemaField(name = 'Currency', field_type = "STRING",\
-                                        mode = "NULLABLE"),
-                    bigquery.SchemaField(name = 'Currency_close', field_type = "FLOAT",\
-                                        mode = "NULLABLE"),
-                                        ]
-            
-            job_config = bigquery.LoadJobConfig(schema = schema,
-                                                write_disposition = "WRITE_APPEND")
-
-            try:
-                job = client.load_table_from_dataframe(currencies_to_export,
-                                                       destination_table,
-                                                       job_config = job_config)
-                job.result()
-                print("Dane walutowe zostały wyeksportowane do tabeli BigQuery.")
-            except Exception as e:
-                print(f"Error uploading data to BigQuery: {str(e)}")
-
-        
-
     # Definiowanie nazwy projektu
     project_id              = 'projekt-inwestycyjny'
 
@@ -587,29 +603,29 @@ def daily_webscraping_plus_currencies(cloud_event):
     scraper.run_scraper()
 
 
-""""
-Konfiguracja:
-    Region: europe-central2 
-    Typ aktywatora: Pub/Sub
-    Pamięć przydzielona: 512 MiB
-    CPU: 0.333
-    Przekroczony limit czasu: 60
-    Maksymalna liczba żądań na instancję: 1
-    Minimalna liczba instancji: 0
-    Maksymalna liczba instancji: 1
-    Konto usługi srodowiska wykonawczego:
-        compute@developer.gserviceaccount.com 
-    
-Punkt wejscia:
-    daily_webscraping_plus_currencies
+    """"
+    Konfiguracja:
+        Region: europe-central2 
+        Typ aktywatora: Pub/Sub
+        Pamięć przydzielona: 512 MiB
+        CPU: 0.333
+        Przekroczony limit czasu: 60
+        Maksymalna liczba żądań na instancję: 1
+        Minimalna liczba instancji: 0
+        Maksymalna liczba instancji: 1
+        Konto usługi srodowiska wykonawczego:
+            compute@developer.gserviceaccount.com 
+        
+    Punkt wejscia:
+        daily_webscraping_plus_currencies
 
-Requirements:
-    functions-framework==3.*
-    bs4
-    requests
-    datetime
-    numpy
-    pandas
-    pandas_gbq
-    google.cloud
-"""
+    Requirements:
+        functions-framework==3.*
+        bs4
+        requests
+        datetime
+        numpy
+        pandas
+        pandas_gbq
+        google.cloud
+    """

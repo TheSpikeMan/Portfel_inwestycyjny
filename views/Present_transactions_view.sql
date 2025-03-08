@@ -19,13 +19,13 @@ instrument_types          AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumen
 transaction_view AS (
   SELECT *
   FROM transaction_view_raw
-  WHERE TRUE
 ),
 
 -- Amount left per ticker --
 --> Wyznaczenie obecnego wolumenu dla wszystkich posiadanych instrumentów
 amount_left_per_ticker     AS (
   SELECT
+    Project_id                                                                                          AS Project_id,
     Instrument_id                                                                                       AS instrument_id,
     --> Wyznaczamy pozostałą ilość danego instrumentu na podstawie okna analitycznego (maksymalna wartość różnicy między dwoma poniższymi wskaźnikami)
     MAX(transaction_date_buy_ticker_amount - cumulative_sell_amount_per_ticker) OVER last_transaction   AS amount_left_per_ticker
@@ -38,6 +38,7 @@ amount_left_per_ticker     AS (
   WINDOW
     last_transaction AS (
       PARTITION BY
+        Project_id,
         Instrument_id,
         Transaction_type_group
       ORDER BY
@@ -65,10 +66,12 @@ amount_left_per_transaction AS (
       END                           AS amount_left
   FROM transaction_view             AS tvr
   LEFT JOIN amount_left_per_ticker  AS alpt
-  ON tvr.instrument_id              = alpt.instrument_id
+  ON tvr.Project_id                 = alpt.Project_id
+  AND tvr.instrument_id             = alpt.instrument_id
   WINDOW
     sum_last_amount AS (
       PARTITION BY
+        tvr.Project_id,
         tvr.Instrument_id,
         Transaction_type_group
       ORDER BY
@@ -91,6 +94,7 @@ amount_left_per_transaction_corrected AS (
   WINDOW
     sum_last_amount AS (
       PARTITION BY
+        Project_id,
         Instrument_id,
         Transaction_type_group
       ORDER BY
@@ -111,6 +115,7 @@ corrected_again AS (
   WINDOW
     sum_last_amount AS (
       PARTITION BY
+        Project_id,
         Instrument_id,
         Transaction_type_group
       ORDER BY
@@ -132,6 +137,7 @@ Dodatkowo wyznaczane są następujące parametry:
 
 present_instruments_view AS (
   SELECT
+    Project_id                                                  AS Project_id,
     Ticker                                                      AS Ticker,
     Name                                                        AS Name,
     Currency                                                    AS currency_exposure,
@@ -146,12 +152,9 @@ present_instruments_view AS (
       2)                                                        AS ticker_average_close,
     MIN(Transaction_date)                                       AS minimum_buy_date
   FROM corrected_again
-  WHERE
-    transaction_amount_left <> 0 
-  GROUP BY
-    Ticker,
-    Name,
-    Currency
+  WHERE TRUE
+    AND transaction_amount_left <> 0 
+  GROUP BY ALL
 ),
 
 -- DAILY DATA --
@@ -187,7 +190,8 @@ instrumentu, na moment wypłaty dywidendy).
 
 dividend_selection AS (
   SELECT
-    transaction_view.* EXCEPT (Ticker, Close),
+    transaction_view.* EXCEPT (Ticker, Close, Project_id),
+    transaction_view.Project_id                           AS Project_id,
     transaction_view.Ticker                               AS Ticker,
     COALESCE(transaction_view.Close, 0)                   AS Close,
     COALESCE(
@@ -201,19 +205,23 @@ dividend_selection AS (
     COUNT(Transaction_id)      OVER ticker_year_window    AS dividend_frequency
   FROM transaction_view
   LEFT JOIN present_instruments_view
-  ON transaction_view.Ticker = present_instruments_view.Ticker
+    ON transaction_view.Project_id = present_instruments_view.Project_id
+    AND transaction_view.Ticker = present_instruments_view.Ticker
   LEFT JOIN daily
-  ON transaction_view.Ticker = daily.Ticker
-  AND transaction_view.Transaction_date = daily.`Date`
+    ON transaction_view.Ticker = daily.Ticker
+    AND transaction_view.Transaction_date = daily.`Date`
   WHERE TRUE
     AND Transaction_type_group = 'Div_related_amount'
     AND present_instruments_view.minimum_buy_date < transaction_view.Transaction_date
   WINDOW
     ticker_window AS (
-      PARTITION BY transaction_view.Ticker
+      PARTITION BY 
+        transaction_view.Project_id,
+        transaction_view.Ticker
     ),
     ticker_year_window AS (
       PARTITION BY 
+        transaction_view.Project_id,
         transaction_view.Ticker,
         EXTRACT(YEAR FROM Transaction_date)
     )
@@ -227,13 +235,13 @@ W widoku wzięta jest pod uwagę częstotliwość wypłaty dywidendy - wskaźnik
 
 dividend_sum AS (
   SELECT
+    dividend_selection.Project_id                   AS Project_id,
     dividend_selection.Ticker                       AS Ticker,
     ROUND(SUM(Transaction_value_pln), 2)            AS dividend_sum,
     ROUND(AVG(dividend_ratio_pct) * 
           MAX(dividend_frequency), 2)               AS avg_dividend_ratio_per_ticker_pct
   FROM dividend_selection
-  GROUP BY
-    Ticker
+  GROUP BY ALL
   ),
 
 --- FINALNA AGREGACJA I PREZENTACJA DANYCH ---
@@ -259,6 +267,7 @@ W tym kroku połączone są dane portfelowe z danymi giełdowymi oraz danymi ins
 
 present_instruments_plus_present_indicators AS (
   SELECT
+    piv.Project_id                                        AS Project_id,
     inst.Ticker                                           AS Ticker,
     inst_typ.Instrument_type                              AS instrument_class,
     currency_exposure                                     AS currency_exposure,
@@ -311,9 +320,11 @@ present_instruments_plus_present_indicators AS (
   LEFT JOIN Daily_data AS daily
   ON piv.Ticker = daily.Ticker
   INNER JOIN instruments AS inst
-  ON piv.Ticker = inst.Ticker
+  ON piv.Project_id = inst.Project_id
+  AND piv.Ticker = inst.Ticker
   LEFT JOIN dividend_sum AS div_sum
-  ON piv.Ticker = div_sum.Ticker
+  ON piv.Project_id = div_sum.Project_id
+  AND piv.Ticker = div_sum.Ticker
   LEFT JOIN instrument_types AS inst_typ
   ON inst.Instrument_type_id  = inst_typ.Instrument_type_id
 )
@@ -322,4 +333,4 @@ present_instruments_plus_present_indicators AS (
 SELECT * 
 FROM present_instruments_plus_present_indicators
 WHERE TRUE
-ORDER BY Ticker;
+ORDER BY Project_id, Ticker;

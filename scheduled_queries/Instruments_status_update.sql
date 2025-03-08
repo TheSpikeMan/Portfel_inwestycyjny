@@ -1,21 +1,27 @@
 -- Update statusów instrumentów --
 -- Zapytanie aktualizuje kolumnę 'Status' W tabeli 'Instruments' --
 
-UPDATE `projekt-inwestycyjny.Dane_instrumentow.Instruments`
+UPDATE `projekt-inwestycyjny.Dane_instrumentow.Instruments` AS instruments
 SET Status = 1
-WHERE
-Ticker IN (
-  SELECT
-  DISTINCT Ticker FROM `projekt-inwestycyjny.Transactions.Present_transactions_view`
-);
+WHERE EXISTS
+(
+    SELECT 1
+    FROM `projekt-inwestycyjny.Transactions.Present_transactions_view` AS present_transactions
+    WHERE TRUE
+      AND instruments.Ticker = present_transactions.Ticker
+      AND instruments.Project_id = present_transactions.Project_id
+  );
 
-UPDATE `projekt-inwestycyjny.Dane_instrumentow.Instruments`
+UPDATE `projekt-inwestycyjny.Dane_instrumentow.Instruments` AS instruments
 SET Status = 0
-WHERE
-Ticker NOT IN (
-  SELECT
-  DISTINCT Ticker FROM `projekt-inwestycyjny.Transactions.Present_transactions_view`
-);
+WHERE NOT EXISTS
+(
+    SELECT 1
+    FROM `projekt-inwestycyjny.Transactions.Present_transactions_view` AS present_transactions
+    WHERE TRUE
+      AND instruments.Ticker = present_transactions.Ticker
+      AND instruments.Project_id = present_transactions.Project_id
+  );
 
 
 

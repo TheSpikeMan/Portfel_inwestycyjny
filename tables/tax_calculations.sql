@@ -1,5 +1,6 @@
 CREATE TABLE `projekt-inwestycyjny.Transactions.Tax_calculations`
 (
+  Project_id              INT64 NOT NULL,
   Date_sell               DATE NOT NULL,
   Date_buy                DATE,
   Investment_period       INT64,
