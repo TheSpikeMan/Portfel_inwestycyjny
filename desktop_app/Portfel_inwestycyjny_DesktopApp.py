@@ -174,6 +174,7 @@ class BigQueryReaderAndExporter():
         instrument_types              AS (SELECT * FROM `{self.project}.{self.dataSetDaneIntrumentow}.{self.tableInstrumentTypes}`)
 
         SELECT
+            instruments.Project_id            AS Project_id,
             instruments.Instrument_id         AS Instrument_id,
             instruments.Ticker                AS Ticker,
             instruments.Status                AS Status,
@@ -559,7 +560,10 @@ class DodajTransakcje(QWidget):
 
         # Dodanie ComboBoxa do wyboru instrumentu finansowego
         self.instrumentComboBox = QComboBox()
-        self.instrumentComboBox.addItems(self.instrumentsDataFrame['Ticker'].to_list())
+        self.instrumentComboBox.addItems(self.instrumentsDataFrame.loc[
+            self.instrumentsDataFrame['Project_id'] == self.project_ID,   # Pobierz dane dla danego Project_ID
+            'Ticker'                                                      # Interesują mnie wyłącznie dane z kolumny Ticker
+        ].tolist())
         self.layout.addWidget(self.instrumentComboBox, 4, 1)
 
         # Dodanie QLabel do opisu ilości instrumentu podlegającego transakcji
