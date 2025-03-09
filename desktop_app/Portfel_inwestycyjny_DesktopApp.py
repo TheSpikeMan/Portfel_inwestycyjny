@@ -563,7 +563,7 @@ class DodajTransakcje(QWidget):
         self.instrumentComboBox.addItems(self.instrumentsDataFrame.loc[
             self.instrumentsDataFrame['Project_id'] == self.project_ID,   # Pobierz dane dla danego Project_ID
             'Ticker'                                                      # Interesują mnie wyłącznie dane z kolumny Ticker
-        ].tolist())
+        ].to_list())
         self.layout.addWidget(self.instrumentComboBox, 4, 1)
 
         # Dodanie QLabel do opisu ilości instrumentu podlegającego transakcji
@@ -723,7 +723,11 @@ class DodajTransakcje(QWidget):
     def instrumentTypeChanged(self):
         self.informationTextEdit.append("Zmieniono typ instrumentu.")
         self.instrumentComboBox.clear()
-        self.instrumentComboBox.addItems(self.instrumentsDataFrame.query(f"Instrument_type == '{self.instrumentTypeComboBox.currentText()}'")['Ticker'].to_list())
+        self.instrumentComboBox.addItems(
+            self.instrumentsDataFrame.query(f"Instrument_type == '{self.instrumentTypeComboBox.currentText()}' \
+                                            and Project_id == {self.project_ID}")
+                                            ['Ticker'].dropna().to_list() 
+        )
 
     # Metoda sprawdza aktualny stan ComboBoxa i w zależności od niego definiuje widoczność lub nie pola 'self.taxValueLineEdit'
     def taxStateChosen(self, currentTextChanged):
