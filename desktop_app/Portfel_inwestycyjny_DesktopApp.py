@@ -148,21 +148,6 @@ class BigQueryReaderAndExporter():
         self.maxTransactionId = query_job_max_transaction_id.to_dataframe()
 
         return self.maxTransactionId
-
-    def downloadLastInstrumentId(self):
-        client = bigquery.Client(project=self.project,
-                                 location=self.location)
-
-        # Download last transaction id from BigQuery
-        queryMaxInstrumentId = f"""
-        SELECT
-            MAX(Instrument_id)  AS Max_instrument_id
-        FROM `{self.project}.{self.dataSetDaneIntrumentow}.{self.tableInstruments}`
-        """
-        query_job_max_instrument_id = client.query(query=queryMaxInstrumentId)
-        self.maxInstrument_id = query_job_max_instrument_id.to_dataframe()
-
-        return self.maxInstrument_id
     
     def downloadDataFromBigQuery(self):
 
