@@ -299,6 +299,7 @@ class DodajInstrumentDoSlownika(QWidget):
 
     def __init__(self,
                  project_name,
+                 project_ID,
                  bqrae,
                  instrumentsDataFrame,
                  instrumentsTypesDataFrame,
@@ -316,6 +317,7 @@ class DodajInstrumentDoSlownika(QWidget):
 
         # Pobranie obiektu klasy BigQueryProject i nazwy projektu
         self.project = project_name
+        self.project_ID = int(project_ID.text())
         self.bqrae = bqrae
 
         # Ustawienie docelowego miejsca eksportu danych
@@ -449,6 +451,7 @@ class DodajInstrumentDoSlownika(QWidget):
         self.maxInstrument_id = self.maxInstrument_id.iloc[0, 0]
         try:
             self.list_to_export = [
+                self.project_ID,
                 int(self.maxInstrument_id) + 1,
                 self.tickerLineEdit.text(),
                 self.instrumentNameLineEdit.text(),
@@ -483,6 +486,7 @@ class DodajTransakcje(QWidget):
 
     def __init__(self,
                  project_name,
+                 project_ID,
                  bqrae,
                  currenciesDataFrame,
                  instrumentsDataFrame,
@@ -499,6 +503,7 @@ class DodajTransakcje(QWidget):
 
         # Pobranie obiektu klasy BigQueryProject i nazwy projektu
         self.project                    = project_name
+        self.project_ID                 = int(project_ID.text())
         self.bqrae                      = bqrae
 
         # Konwersja typu DataFrame na float
@@ -852,7 +857,7 @@ class DodajTransakcje(QWidget):
         #        (self.transactionsDataFrame.query(f"Ticker== '{self.instrumentComboBox.currentText()}'")['Amount'].iloc[0])/ \
         #        (self.currentCurrency)
 
-        transaction_parameters = [1,                        # W domyśle obsługa projektu o Project_id = 1
+        transaction_parameters = [int(self.project_ID),
                                   self.Transaction_id,
                                   self.Transaction_date,
                                   self.Transaction_type,
@@ -927,10 +932,28 @@ class MainWindow(QMainWindow):
         self.projectLineEdit            = QLineEdit()
         layout.addWidget(self.projectLineEdit, 0, 1)
 
+        # Dodanie etykiety pola odpowiedzialnego za definicję project_id
+        self.projectIdLabel = QLabel()
+        self.projectIdLabel.setText("ID Projektu: ")
+        layout.addWidget(self.projectIdLabel, 1, 0)
+
+        # Dodanie pola odpowiedzialnego za pobranie Id projektu
+        self.projectIdLineEdit = QLineEdit()
+        layout.addWidget(self.projectIdLineEdit, 1, 1)
+
+        # Dodanie etykiety pola odpowiedzialnego za pobranie hasła od użytkownika
+        self.projectIdPasswordLabel = QLabel()
+        self.projectIdPasswordLabel.setText("Hasło: ")
+        layout.addWidget(self.projectIdPasswordLabel, 2, 0)
+
+        # Dodanie pola odpowiedzialnego za pobranie hasła do projektu
+        self.projectIdPasswordLineEdit = QLineEdit()
+        layout.addWidget(self.projectIdPasswordLineEdit, 2, 1)
+
         # Dodanie przycisku do zatwierdzenia nazwy projektu
         self.projectPushButton          = QPushButton("Zatwierdź")
         self.projectPushButton.clicked.connect(self.changeButtonState)
-        layout.addWidget(self.projectPushButton, 0, 2)
+        layout.addWidget(self.projectPushButton, 2, 2)
 
         # Dodanie przycisku odpowiedzialnego za autoryzację
         self.authorizeButton = QPushButton("Autoryzuj")
@@ -943,19 +966,19 @@ class MainWindow(QMainWindow):
         self.addTransaction.setProperty("id", "addTransaction")
         self.addTransaction.clicked.connect(lambda: self.addTransactionOrInstrument(self.addTransaction.property("id")))
         self.addTransaction.setVisible(False)
-        layout.addWidget(self.addTransaction, 2, 0, 1, 3)
+        layout.addWidget(self.addTransaction, 3, 0, 1, 3)
 
         # Dodanie przycisku odpowiedzialnego za dodanie nowego instrumentu do słownika
         self.addInstr = QPushButton("Dodaj nowy instrument do słownika")
         self.addInstr.setProperty("id", "addInstr")
         self.addInstr.clicked.connect(lambda: self.addTransactionOrInstrument(self.addInstr.property("id")))
         self.addInstr.setVisible(False)
-        layout.addWidget(self.addInstr, 3, 0, 1, 3)
+        layout.addWidget(self.addInstr, 4, 0, 1, 3)
 
         # Dodanie przycisku odpowiedzialnego za zamknięcie okna głównego
         self.closeWindow = QPushButton("Zamknij")
         self.closeWindow.clicked.connect(self.close)
-        layout.addWidget(self.closeWindow, 4, 0, 1, 3)
+        layout.addWidget(self.closeWindow, 5, 0, 1, 3)
 
         layout.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignHCenter)
         layout.setSpacing(10)
@@ -1039,6 +1062,7 @@ class MainWindow(QMainWindow):
                 if id == "addTransaction":
                     self.maxTransactionId = self.bqrae.downloadLastTransactionId()
                     self.dodajTransakcje = DodajTransakcje(self.projectLineEdit.text(),
+                                                           self.projectIdLineEdit,
                                                            self.bqrae,
                                                            self.currenciesDataFrame,
                                                            self.instrumentsDataFrame,
@@ -1049,6 +1073,7 @@ class MainWindow(QMainWindow):
                 elif id == "addInstr":
                     self.maxInstrument_id = self.bqrae.downloadLastInstrumentId()
                     self.addInstrument = DodajInstrumentDoSlownika(self.projectLineEdit.text(),
+                                                                   self.projectIdLineEdit,
                                                                    self.bqrae,
                                                                    self.instrumentsDataFrame,
                                                                    self.instrumentTypesDataFrame,
