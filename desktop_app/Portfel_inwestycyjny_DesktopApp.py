@@ -133,6 +133,8 @@ class BigQueryReaderAndExporter():
         self.viewTransactionsView   = bigQueryProjectObject.viewTransactionsView
         self.viewCurrencies         = bigQueryProjectObject.viewCurrencies
 
+        print("Pomyślnie utworzono obiekt klasy 'BigQueryReaderAndExporter'.")
+
     
     def downloadLastTransactionId(self):
         client = bigquery.Client(project=self.project,
@@ -148,6 +150,23 @@ class BigQueryReaderAndExporter():
         self.maxTransactionId = query_job_max_transaction_id.to_dataframe()
 
         return self.maxTransactionId
+    
+    def downloadLastInstrumentId(self):
+ 
+        client = bigquery.Client(project=self.project,
+                                 location=self.location)
+
+        # Download last transaction id from BigQuery
+ 
+        queryMaxInstrumentId = f"""
+        SELECT
+            MAX(Instrument_id)  AS Max_instrument_id
+        FROM `{self.project}.{self.dataSetDaneIntrumentow}.{self.tableInstruments}`
+        """
+
+        query_job_max_instrument_id = client.query(query=queryMaxInstrumentId)
+        self.maxInstrument_id = query_job_max_instrument_id.to_dataframe()
+        return self.maxInstrument_id
     
     def downloadDataFromBigQuery(self):
 
@@ -290,6 +309,7 @@ class DodajInstrumentDoSlownika(QWidget):
                  instrumentsDataFrame,
                  instrumentsTypesDataFrame,
                  maxInstrument_id):
+        
         super().__init__()
         self.instrumentsDataFrame = instrumentsDataFrame
         self.instrumentsTypesDataFrame = instrumentsTypesDataFrame
@@ -957,6 +977,7 @@ class MainWindow(QMainWindow):
         # Dodanie przycisku odpowiedzialnego za dodanie transakcji
         self.addTransaction = QPushButton("Dodaj transakcję")
         self.addTransaction.setProperty("id", "addTransaction")
+        print("Property wynosi :", self.addTransaction.property("id"))
         self.addTransaction.clicked.connect(lambda: self.addTransactionOrInstrument(self.addTransaction.property("id")))
         self.addTransaction.setVisible(False)
         layout.addWidget(self.addTransaction, 3, 0, 1, 3)
@@ -964,6 +985,7 @@ class MainWindow(QMainWindow):
         # Dodanie przycisku odpowiedzialnego za dodanie nowego instrumentu do słownika
         self.addInstr = QPushButton("Dodaj nowy instrument do słownika")
         self.addInstr.setProperty("id", "addInstr")
+        print("Property wynosi :", self.addInstr.property("id"))
         self.addInstr.clicked.connect(lambda: self.addTransactionOrInstrument(self.addInstr.property("id")))
         self.addInstr.setVisible(False)
         layout.addWidget(self.addInstr, 4, 0, 1, 3)
@@ -1053,7 +1075,7 @@ class MainWindow(QMainWindow):
         if self.checkProjectLineEdit():
             try:
                 if id == "addTransaction":
-                    self.maxTransactionId = self.bqrae.downloadLastTransactionId()
+                    self.maxTransactionId = self.bqrae.downloadLastTransactionId()                  
                     self.dodajTransakcje = DodajTransakcje(self.projectLineEdit.text(),
                                                            self.projectIdLineEdit,
                                                            self.bqrae,
@@ -1070,7 +1092,7 @@ class MainWindow(QMainWindow):
                                                                    self.bqrae,
                                                                    self.instrumentsDataFrame,
                                                                    self.instrumentTypesDataFrame,
-                                                                   self.maxInstrument_id)
+                                                                   self.maxInstrument_id)                                                             
                     self.addInstrument.show()
             except:
                 print("Projekt nie istnieje. Proszę wybrać inny!")
