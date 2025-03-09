@@ -133,6 +133,8 @@ class BigQueryReaderAndExporter():
         self.viewTransactionsView   = bigQueryProjectObject.viewTransactionsView
         self.viewCurrencies         = bigQueryProjectObject.viewCurrencies
 
+        print("Pomyślnie utworzono obiekt klasy 'BigQueryReaderAndExporter'.")
+
     
     def downloadLastTransactionId(self):
         client = bigquery.Client(project=self.project,
@@ -148,20 +150,22 @@ class BigQueryReaderAndExporter():
         self.maxTransactionId = query_job_max_transaction_id.to_dataframe()
 
         return self.maxTransactionId
-
+    
     def downloadLastInstrumentId(self):
+ 
         client = bigquery.Client(project=self.project,
                                  location=self.location)
 
         # Download last transaction id from BigQuery
+ 
         queryMaxInstrumentId = f"""
         SELECT
             MAX(Instrument_id)  AS Max_instrument_id
         FROM `{self.project}.{self.dataSetDaneIntrumentow}.{self.tableInstruments}`
         """
+
         query_job_max_instrument_id = client.query(query=queryMaxInstrumentId)
         self.maxInstrument_id = query_job_max_instrument_id.to_dataframe()
-
         return self.maxInstrument_id
     
     def downloadDataFromBigQuery(self):
@@ -189,6 +193,7 @@ class BigQueryReaderAndExporter():
         instrument_types              AS (SELECT * FROM `{self.project}.{self.dataSetDaneIntrumentow}.{self.tableInstrumentTypes}`)
 
         SELECT
+            instruments.Project_id            AS Project_id,
             instruments.Instrument_id         AS Instrument_id,
             instruments.Ticker                AS Ticker,
             instruments.Status                AS Status,
@@ -299,10 +304,12 @@ class DodajInstrumentDoSlownika(QWidget):
 
     def __init__(self,
                  project_name,
+                 project_ID,
                  bqrae,
                  instrumentsDataFrame,
                  instrumentsTypesDataFrame,
                  maxInstrument_id):
+        
         super().__init__()
         self.instrumentsDataFrame = instrumentsDataFrame
         self.instrumentsTypesDataFrame = instrumentsTypesDataFrame
@@ -316,6 +323,7 @@ class DodajInstrumentDoSlownika(QWidget):
 
         # Pobranie obiektu klasy BigQueryProject i nazwy projektu
         self.project = project_name
+        self.project_ID = int(project_ID.text())
         self.bqrae = bqrae
 
         # Ustawienie docelowego miejsca eksportu danych
@@ -449,6 +457,7 @@ class DodajInstrumentDoSlownika(QWidget):
         self.maxInstrument_id = self.maxInstrument_id.iloc[0, 0]
         try:
             self.list_to_export = [
+                self.project_ID,
                 int(self.maxInstrument_id) + 1,
                 self.tickerLineEdit.text(),
                 self.instrumentNameLineEdit.text(),
@@ -483,6 +492,7 @@ class DodajTransakcje(QWidget):
 
     def __init__(self,
                  project_name,
+                 project_ID,
                  bqrae,
                  currenciesDataFrame,
                  instrumentsDataFrame,
@@ -499,6 +509,7 @@ class DodajTransakcje(QWidget):
 
         # Pobranie obiektu klasy BigQueryProject i nazwy projektu
         self.project                    = project_name
+        self.project_ID                 = int(project_ID.text())
         self.bqrae                      = bqrae
 
         # Konwersja typu DataFrame na float
@@ -569,7 +580,10 @@ class DodajTransakcje(QWidget):
 
         # Dodanie ComboBoxa do wyboru instrumentu finansowego
         self.instrumentComboBox = QComboBox()
-        self.instrumentComboBox.addItems(self.instrumentsDataFrame['Ticker'].to_list())
+        self.instrumentComboBox.addItems(self.instrumentsDataFrame.loc[
+            self.instrumentsDataFrame['Project_id'] == self.project_ID,   # Pobierz dane dla danego Project_ID
+            'Ticker'                                                      # Interesują mnie wyłącznie dane z kolumny Ticker
+        ].to_list())
         self.layout.addWidget(self.instrumentComboBox, 4, 1)
 
         # Dodanie QLabel do opisu ilości instrumentu podlegającego transakcji
@@ -729,7 +743,11 @@ class DodajTransakcje(QWidget):
     def instrumentTypeChanged(self):
         self.informationTextEdit.append("Zmieniono typ instrumentu.")
         self.instrumentComboBox.clear()
-        self.instrumentComboBox.addItems(self.instrumentsDataFrame.query(f"Instrument_type == '{self.instrumentTypeComboBox.currentText()}'")['Ticker'].to_list())
+        self.instrumentComboBox.addItems(
+            self.instrumentsDataFrame.query(f"Instrument_type == '{self.instrumentTypeComboBox.currentText()}' \
+                                            and Project_id == {self.project_ID}")
+                                            ['Ticker'].dropna().to_list() 
+        )
 
     # Metoda sprawdza aktualny stan ComboBoxa i w zależności od niego definiuje widoczność lub nie pola 'self.taxValueLineEdit'
     def taxStateChosen(self, currentTextChanged):
@@ -852,7 +870,7 @@ class DodajTransakcje(QWidget):
         #        (self.transactionsDataFrame.query(f"Ticker== '{self.instrumentComboBox.currentText()}'")['Amount'].iloc[0])/ \
         #        (self.currentCurrency)
 
-        transaction_parameters = [1,                        # W domyśle obsługa projektu o Project_id = 1
+        transaction_parameters = [int(self.project_ID),
                                   self.Transaction_id,
                                   self.Transaction_date,
                                   self.Transaction_type,
@@ -924,13 +942,31 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.projectLabel, 0, 0)
 
         # Dodanie pola odpowiedzialnego za pobranie nazwy projektu
-        self.projectLineEdit            = QLineEdit()
+        self.projectLineEdit = QLineEdit()
         layout.addWidget(self.projectLineEdit, 0, 1)
 
+        # Dodanie etykiety pola odpowiedzialnego za definicję project_id
+        self.projectIdLabel = QLabel()
+        self.projectIdLabel.setText("ID Projektu: ")
+        layout.addWidget(self.projectIdLabel, 1, 0)
+
+        # Dodanie pola odpowiedzialnego za pobranie Id projektu
+        self.projectIdLineEdit = QLineEdit()
+        layout.addWidget(self.projectIdLineEdit, 1, 1)
+
+        # Dodanie etykiety pola odpowiedzialnego za pobranie hasła od użytkownika
+        self.projectIdPasswordLabel = QLabel()
+        self.projectIdPasswordLabel.setText("Hasło: ")
+        layout.addWidget(self.projectIdPasswordLabel, 2, 0)
+
+        # Dodanie pola odpowiedzialnego za pobranie hasła do projektu
+        self.projectIdPasswordLineEdit = QLineEdit()
+        layout.addWidget(self.projectIdPasswordLineEdit, 2, 1)
+
         # Dodanie przycisku do zatwierdzenia nazwy projektu
-        self.projectPushButton          = QPushButton("Zatwierdź")
+        self.projectPushButton = QPushButton("Zatwierdź")
         self.projectPushButton.clicked.connect(self.changeButtonState)
-        layout.addWidget(self.projectPushButton, 0, 2)
+        layout.addWidget(self.projectPushButton, 2, 2)
 
         # Dodanie przycisku odpowiedzialnego za autoryzację
         self.authorizeButton = QPushButton("Autoryzuj")
@@ -941,21 +977,23 @@ class MainWindow(QMainWindow):
         # Dodanie przycisku odpowiedzialnego za dodanie transakcji
         self.addTransaction = QPushButton("Dodaj transakcję")
         self.addTransaction.setProperty("id", "addTransaction")
+        print("Property wynosi :", self.addTransaction.property("id"))
         self.addTransaction.clicked.connect(lambda: self.addTransactionOrInstrument(self.addTransaction.property("id")))
         self.addTransaction.setVisible(False)
-        layout.addWidget(self.addTransaction, 2, 0, 1, 3)
+        layout.addWidget(self.addTransaction, 3, 0, 1, 3)
 
         # Dodanie przycisku odpowiedzialnego za dodanie nowego instrumentu do słownika
         self.addInstr = QPushButton("Dodaj nowy instrument do słownika")
         self.addInstr.setProperty("id", "addInstr")
+        print("Property wynosi :", self.addInstr.property("id"))
         self.addInstr.clicked.connect(lambda: self.addTransactionOrInstrument(self.addInstr.property("id")))
         self.addInstr.setVisible(False)
-        layout.addWidget(self.addInstr, 3, 0, 1, 3)
+        layout.addWidget(self.addInstr, 4, 0, 1, 3)
 
         # Dodanie przycisku odpowiedzialnego za zamknięcie okna głównego
         self.closeWindow = QPushButton("Zamknij")
         self.closeWindow.clicked.connect(self.close)
-        layout.addWidget(self.closeWindow, 4, 0, 1, 3)
+        layout.addWidget(self.closeWindow, 5, 0, 1, 3)
 
         layout.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignHCenter)
         layout.setSpacing(10)
@@ -1037,8 +1075,9 @@ class MainWindow(QMainWindow):
         if self.checkProjectLineEdit():
             try:
                 if id == "addTransaction":
-                    self.maxTransactionId = self.bqrae.downloadLastTransactionId()
+                    self.maxTransactionId = self.bqrae.downloadLastTransactionId()                  
                     self.dodajTransakcje = DodajTransakcje(self.projectLineEdit.text(),
+                                                           self.projectIdLineEdit,
                                                            self.bqrae,
                                                            self.currenciesDataFrame,
                                                            self.instrumentsDataFrame,
@@ -1049,10 +1088,11 @@ class MainWindow(QMainWindow):
                 elif id == "addInstr":
                     self.maxInstrument_id = self.bqrae.downloadLastInstrumentId()
                     self.addInstrument = DodajInstrumentDoSlownika(self.projectLineEdit.text(),
+                                                                   self.projectIdLineEdit,
                                                                    self.bqrae,
                                                                    self.instrumentsDataFrame,
                                                                    self.instrumentTypesDataFrame,
-                                                                   self.maxInstrument_id)
+                                                                   self.maxInstrument_id)                                                             
                     self.addInstrument.show()
             except:
                 print("Projekt nie istnieje. Proszę wybrać inny!")
