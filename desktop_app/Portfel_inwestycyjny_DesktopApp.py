@@ -914,7 +914,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.projectLabel, 0, 0)
 
         # Dodanie pola odpowiedzialnego za pobranie nazwy projektu
-        self.projectLineEdit            = QLineEdit()
+        self.projectLineEdit = QLineEdit()
         layout.addWidget(self.projectLineEdit, 0, 1)
 
         # Dodanie etykiety pola odpowiedzialnego za definicję project_id
@@ -936,7 +936,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.projectIdPasswordLineEdit, 2, 1)
 
         # Dodanie przycisku do zatwierdzenia nazwy projektu
-        self.projectPushButton          = QPushButton("Zatwierdź")
+        self.projectPushButton = QPushButton("Zatwierdź")
         self.projectPushButton.clicked.connect(self.changeButtonState)
         layout.addWidget(self.projectPushButton, 2, 2)
 
