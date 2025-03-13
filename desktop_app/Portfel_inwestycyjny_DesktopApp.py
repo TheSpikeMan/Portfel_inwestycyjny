@@ -470,7 +470,7 @@ class DodajInstrumentDoSlownika(QWidget):
                 self.instrumentHeadquarterLineEdit.text(),
                 1
             ]
-            self.column_names   = ['Instrument_id', 'Ticker', 'Name', 'Unit', 'Country', 'Market', 'Currency',
+            self.column_names   = ['Project_id', 'Instrument_id', 'Ticker', 'Name', 'Unit', 'Country', 'Market', 'Currency',
                                    'Distribution_policy', 'Instrument_type_id', 'Instrument_headquarter', 'Status']
             self.data_to_export = pd.DataFrame([self.list_to_export], columns= self.column_names)
         except Exception as e:
