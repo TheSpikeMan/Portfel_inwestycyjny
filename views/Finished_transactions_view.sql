@@ -29,8 +29,12 @@ transactions_view AS (
       -- Przypadek częściowej sprzedaży danej transakcji zakupowej
       WHEN Transaction_type_group = "Buy_amount"
       AND transaction_date_buy_ticker_amount - cumulative_sell_amount_per_ticker > 0
-      AND ROW_NUMBER() OVER last_ticker_transaction_window = 1
-      THEN cumulative_sell_amount_per_ticker
+      AND 
+        (
+          ROW_NUMBER() OVER first_ticker_transaction_window = 1
+          OR LAG(Transaction_date_buy_ticker_amount) OVER first_ticker_transaction_window < cumulative_sell_amount_per_ticker
+        )
+      THEN COALESCE(cumulative_sell_amount_per_ticker - SUM(Transaction_amount) OVER last_ticker_transaction_window, cumulative_sell_amount_per_ticker) 
 
       -- Rozważam wszystkie przypadki sprzedaży
       WHEN Transaction_type_group = "Sell_amount"
@@ -45,7 +49,18 @@ transactions_view AS (
     last_ticker_transaction_window AS (
       PARTITION BY
         Project_id,
-        Ticker
+        Ticker,
+        Transaction_type_group
+      ORDER BY
+        Transaction_date,
+        Transaction_id
+      ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+    ),
+    first_ticker_transaction_window AS (
+      PARTITION BY
+        Project_id,
+        Ticker,
+        Transaction_type_group
       ORDER BY
         Transaction_date,
         Transaction_id
