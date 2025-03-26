@@ -95,12 +95,10 @@ SELECT
   ROUND(SUM(COALESCE(Div_related_amount, 0)), 2)  AS Cumulative_dividend_value,
   ROUND(SUM(COALESCE(Sell_amount, 0)) - SUM(COALESCE(Buy_amount, 0)) + SUM(COALESCE(Div_related_amount, 0)), 2) 
                                                   AS profit_including_dividend,
-  ROUND(100 * (SUM(COALESCE(Sell_amount, 0)) - SUM(COALESCE(Buy_amount, 0)) + SUM(COALESCE(Div_related_amount, 0)))/(SUM(COALESCE(Buy_amount, 0))), 2) 
+  ROUND(100 * SAFE_DIVIDE(SUM(COALESCE(Sell_amount, 0)) - SUM(COALESCE(Buy_amount, 0)) + SUM(COALESCE(Div_related_amount, 0)), (SUM(COALESCE(Buy_amount, 0)))), 2) 
                                                   AS profit_percentage
 FROM all_finished_transactions
 GROUP BY ALL
 ORDER BY
   Project_id,
   profit_percentage DESC
-
-
