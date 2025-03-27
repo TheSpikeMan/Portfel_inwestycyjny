@@ -330,7 +330,9 @@ present_instruments_plus_present_indicators AS (
 )
 
 
-SELECT * 
+SELECT
+  *,
+  ROUND((share_of_portfolio * yearly_rate_of_return_incl_div/100), 2) AS yearly_rate_of_return_incl_div_weighted
 FROM present_instruments_plus_present_indicators
 WHERE TRUE
 ORDER BY Project_id, Ticker;
