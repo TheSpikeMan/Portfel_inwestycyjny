@@ -291,6 +291,14 @@ present_instruments_plus_present_indicators AS (
       2) 
                                                           AS share_of_portfolio,
     ROUND(100 * 
+        (piv.ticker_present_amount 
+        * daily.Close 
+        * inst.unit)/
+          SUM(piv.ticker_present_amount * daily.Close * inst.unit) 
+          OVER instrument_class_window, 
+      2) 
+                                                          AS share_of_portfolio_per_instrument_class,
+    ROUND(100 * 
       ((piv.ticker_present_amount * daily.Close * inst.unit) /
         piv.ticker_buy_value) - 100, 
       2) 
@@ -327,12 +335,25 @@ present_instruments_plus_present_indicators AS (
   AND piv.Ticker = div_sum.Ticker
   LEFT JOIN instrument_types AS inst_typ
   ON inst.Instrument_type_id  = inst_typ.Instrument_type_id
+  WINDOW
+    instrument_class_window AS (
+      PARTITION BY
+        piv.Project_id,
+        inst_typ.Instrument_type
+    )
 )
 
 
 SELECT
   *,
-  ROUND((share_of_portfolio * yearly_rate_of_return_incl_div/100), 2) AS yearly_rate_of_return_incl_div_weighted
+  share_of_portfolio_per_instrument_class,
+  ROUND(
+    (share_of_portfolio * yearly_rate_of_return_incl_div/100), 
+    2) AS yearly_rate_of_return_incl_div_weighted,
+  ROUND(
+    (share_of_portfolio_per_instrument_class * yearly_rate_of_return_incl_div/100), 
+    2) AS yearly_rate_of_return_incl_div_weighted_per_instrument_class                                             
 FROM present_instruments_plus_present_indicators
 WHERE TRUE
+
 ORDER BY Project_id, Ticker;
