@@ -346,7 +346,6 @@ present_instruments_plus_present_indicators AS (
 
 SELECT
   *,
-  share_of_portfolio_per_instrument_class,
   ROUND(
     (share_of_portfolio * yearly_rate_of_return_incl_div/100), 
     2) AS yearly_rate_of_return_incl_div_weighted,
