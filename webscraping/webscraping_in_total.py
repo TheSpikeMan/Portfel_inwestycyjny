@@ -250,27 +250,32 @@ def daily_webscraping_plus_currencies(cloud_event):
             """
 
             query_2 = f"""
+            WITH treasury_bonds AS (
             SELECT
-                Project_id,
-                Ticker,
+                Project_id                                                       AS Project_id,
+                Ticker                                                           AS Ticker,
                 MAX(Transaction_date)                                            AS Transaction_date,   
-                SUM(Transaction_amount) - MAX(cumulative_sell_amount_per_ticker) AS Transaction_amount
+                CAST(
+                    SUM(Transaction_amount) - MAX(cumulative_sell_amount_per_ticker)
+                    AS INT64)                                                    AS Transaction_amount
             FROM {destination_table_2} 
             WHERE TRUE
                 AND instrument_type_id = 5        --> Obligacje skarbowe
                 AND Transaction_type   <> "Sell"  --> Tylko transakcje zakupowe
             GROUP BY ALL
-            WINDOW
-                Ticker_last_amount AS (
-                PARTITION BY
-                    Project_id,
-                    Ticker
-                ORDER BY
-                    Transaction_date DESC,
-                    Transaction_id DESC
-                )
+            )
+
+            SELECT 
+                Project_id,
+                Ticker,
+                Transaction_date,
+                Transaction_amount
+            FROM treasury_bonds
+            WHERE TRUE
+                AND Transaction_amount <> 0
+                AND Transaction_amount IS NOT NULL
             """
-            
+
             query_3 = f"""
             SELECT *
             FROM  {destination_table_3}
