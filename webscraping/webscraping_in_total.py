@@ -157,10 +157,10 @@ def daily_webscraping_plus_currencies(cloud_event):
             print("Pobieram aktualne instrumenty w ramach ETF zagranicznych.")
             query_1 = f"""
             SELECT DISTINCT
-                Ticker,
-                Market,
-                Currency,
-                Instrument_type
+                ticker,
+                market,
+                market_currency,
+                instrument_type
             FROM `{self.project_id}.{self.dataset_instruments}.{self.table_instruments}` AS inst
             INNER JOIN `{self.project_id}.{self.dataset_instruments}.{self.table_instruments_types}` AS inst_typ
                 ON inst.Instrument_type_id = inst_typ.Instrument_type_id
@@ -170,7 +170,7 @@ def daily_webscraping_plus_currencies(cloud_event):
             print("Pobieram aktualne instrumenty w ramach akcji polskich, ETF polskich oraz obligacji korporacyjnych")
             query_2 = f"""
             SELECT DISTINCT
-                Ticker
+                ticker
             FROM `{self.project_id}.{self.dataset_instruments}.{self.table_instruments}` AS inst
             INNER JOIN `{self.project_id}.{self.dataset_instruments}.{self.table_instruments_types}` AS inst_typ
                 ON inst.Instrument_type_id = inst_typ.Instrument_type_id
@@ -395,25 +395,27 @@ def daily_webscraping_plus_currencies(cloud_event):
             for instrument in present_instruments_ETF.iterrows():
 
                 url = "https://markets.ft.com/data/etfs/tearsheet/summary?s=" + \
-                        f"{instrument[1]['Ticker']}:" + \
-                        f"{instrument[1]['Market']}:" + \
-                        f"{instrument[1]['Currency']}"
+                        f"{instrument[1]['ticker']}:" + \
+                        f"{instrument[1]['market']}:" + \
+                        f"{instrument[1]['market_currency']}"
                         
                 with requests.get(url=url, timeout=10) as r:                    
                     soup = BeautifulSoup(r.text, 'html.parser')
                     close = soup.find_all('span', class_ = 'mod-ui-data-list__value')
                     close = float(close[0].text)
                     result_df = pd.concat([result_df, 
-                                        pd.DataFrame([[instrument[1]['Ticker'], close]])],
+                                        pd.DataFrame([[instrument[1]['ticker'], close]])],
                                         axis = 0)
                     
             result_df.columns = ['Ticker', 'Close']
             data_to_export = present_instruments_ETF.merge(result_df,
                                                     how = 'inner',
-                                                    on = 'Ticker')
+                                                    left_on = 'ticker'
+                                                    right_on = 'Ticker')
             data_to_export = data_to_export.merge(present_currencies,
                                                 how = 'inner',
-                                                on = 'Currency')
+                                                left_on = 'market_currency'
+                                                right_on = 'Currency')
             data_to_export['Project_id'] = np.nan
             data_to_export['Close'] = (data_to_export['Close'] * \
                                     data_to_export['Currency_close']).\
@@ -443,7 +445,7 @@ def daily_webscraping_plus_currencies(cloud_event):
             Funkcja wyznacza aktualną wartość instrumentów finansowych z portalu biznesradar.
             """
 
-            present_instruments = present_instruments_biznesradar['Ticker'].tolist()
+            present_instruments = present_instruments_biznesradar['ticker'].tolist()
 
             current_date = date.today()
             result_data = []  # Lista na dane do późniejszej konwersji do DataFrame
