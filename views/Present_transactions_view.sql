@@ -270,7 +270,7 @@ present_instruments_plus_present_indicators AS (
     piv.Project_id                                        AS Project_id,
     inst.Ticker                                           AS Ticker,
     inst_typ.Instrument_type                              AS instrument_class,
-    currency_exposure                                     AS currency_exposure,
+    inst.ticker_currency                                  AS currency_exposure,
     inst.Name                                             AS Name,
     piv.ticker_present_amount                             AS ticker_present_amount,
     piv.ticker_average_close                              AS ticker_average_close,
