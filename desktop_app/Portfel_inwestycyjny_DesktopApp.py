@@ -479,19 +479,22 @@ class DodajInstrumentDoSlownika(QWidget):
             self.list_to_export = [
                 self.project_ID,
                 int(self.maxInstrument_id) + 1,
+                self.tickerISINLineEdit.text(),
                 self.tickerLineEdit.text(),
                 self.instrumentNameLineEdit.text(),
                 int(self.instrumentUnitComboBox.currentText()),
                 self.countryLineEdit.text(),
                 self.marketLineEdit.text(),
                 self.currencyComboBox.currentText(),
+                self.basecurrencyComboBox.currentText(),
                 self.distributionPolicyCombobox.currentText(),
                 self.instrumentsTypesDataFrame.loc[self.selected_instrument_type, 'Instrument_type_id'],
                 self.instrumentHeadquarterLineEdit.text(),
                 1
             ]
-            self.column_names   = ['Project_id', 'Instrument_id', 'Ticker', 'Name', 'Unit', 'Country', 'Market', 'Currency',
-                                   'Distribution_policy', 'Instrument_type_id', 'Instrument_headquarter', 'Status']
+            self.column_names   = ['project_id', 'instrument_id', 'ISIN', 'ticker', 'name', 'unit', 'country', 'market', 
+                                   'market_currency', 'ticker_currency', 'distribution_policy', 'instrument_type_id', 
+                                   'instrument_headquarter', 'status']
             self.data_to_export = pd.DataFrame([self.list_to_export], columns= self.column_names)
         except Exception as e:
             print(f"Błąd w PrepareDataForBigQueryExport: {e}")
