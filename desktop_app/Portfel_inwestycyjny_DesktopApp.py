@@ -416,7 +416,17 @@ class DodajInstrumentDoSlownika(QWidget):
         # Dodanie QComboBoc do wprowadzenia waluty w jakiej notowany jest dany instrument
         self.currencyComboBox = QComboBox()
         self.currencyComboBox.addItems(["USD", "EUR", "GBP", "CHF", "PLN"])
-        self.layout.addWidget(self.currencyComboBox, 8, 1)
+        self.layout.addWidget(self.currencyComboBox, 9, 1)
+
+        # Dodanie QLabel wskazującego na walutę, w jakiej rozliczany jest dany instrument
+        self.basecurrencyLabel = QLabel()
+        self.basecurrencyLabel .setText("Waluta bazowa (rozliczeniowa)")
+        self.layout.addWidget(self.basecurrencyLabel, 10, 0)
+
+        # Dodanie QComboBoc do wprowadzenia waluty, w jakiej rozliczany jest dany instrument
+        self.basecurrencyComboBox = QComboBox()
+        self.basecurrencyComboBox.addItems(["USD", "EUR", "GBP", "CHF", "PLN"])
+        self.layout.addWidget(self.basecurrencyComboBox, 10, 1)
 
         # Dodanie QLabel wskazującego na politykę dystrybucji danego instrumentu
         self.distributionPolicyLabel = QLabel()
