@@ -431,34 +431,34 @@ class DodajInstrumentDoSlownika(QWidget):
         # Dodanie QLabel wskazującego na politykę dystrybucji danego instrumentu
         self.distributionPolicyLabel = QLabel()
         self.distributionPolicyLabel.setText("Polityka dystrybucji")
-        self.layout.addWidget(self.distributionPolicyLabel, 9, 0)
+        self.layout.addWidget(self.distributionPolicyLabel, 11, 0)
 
         # Dodanie QComboBox do wprowadzenia polityki dystrybucji danego instrumentu
         self.distributionPolicyCombobox = QComboBox()
         self.distributionPolicyCombobox.addItems(["Distributing", "Accumulating"])
-        self.layout.addWidget(self.distributionPolicyCombobox, 9, 1)
+        self.layout.addWidget(self.distributionPolicyCombobox, 11, 1)
 
         # Dodanie QLabel wskazującego na siedzibę danego instrumentu
         self.instrumentHeadquarterLabel = QLabel()
         self.instrumentHeadquarterLabel.setText("Siedziba")
-        self.layout.addWidget(self.instrumentHeadquarterLabel, 10, 0)
+        self.layout.addWidget(self.instrumentHeadquarterLabel, 12, 0)
 
         # Dodanie QLineEdit do wprowadzenia siedziby danego instrumentu
         self.instrumentHeadquarterLineEdit = QLineEdit()
-        self.layout.addWidget(self.instrumentHeadquarterLineEdit, 10, 1)
+        self.layout.addWidget(self.instrumentHeadquarterLineEdit, 12, 1)
 
         # Dodanie przycisku do wysłania danych do BigQuery
         sendDataPushButton       = QPushButton()
         sendDataPushButton.setText("Wyślij dane do bazy")
         sendDataPushButton.pressed.connect(self.sendDataToBigQuery)
         sendDataPushButton.clicked.connect(self.close)
-        self.layout.addWidget(sendDataPushButton, 11, 1)
+        self.layout.addWidget(sendDataPushButton, 13, 1)
 
         # Wyjście do poprzedniego okna
         returnButton = QPushButton()
         returnButton.setText("Powrót")
         returnButton.pressed.connect(self.close)
-        self.layout.addWidget(returnButton, 12, 1)
+        self.layout.addWidget(returnButton, 14, 1)
 
         self.layout.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignHCenter)
         self.layout.setSpacing(10)
