@@ -361,6 +361,16 @@ class DodajInstrumentDoSlownika(QWidget):
         # self.quantityLineEdit.installEventFilter(self) --> Do wprowadzenia
         self.layout.addWidget(self.tickerLineEdit, 3, 1)
 
+        # Dodanie QLabel wskazującego na konkretny numeru ISIN
+        self.instrumentISINLabel = QLabel()
+        self.instrumentISINLabel.setText("ISIN")
+        self.layout.addWidget(self.instrumentISINLabel, 4, 0)
+
+        # Dodanie QLineEdit do wprowadzenia numeru ISIN
+        self.tickerISINLineEdit = QLineEdit()
+        # self.quantityLineEdit.installEventFilter(self) --> Do wprowadzenia
+        self.layout.addWidget(self.tickerISINLineEdit, 4, 1)
+
         # Dodanie QLabel wskazującego na konkretną nazwę instrumentu
         self.instrumentNameLabel = QLabel()
         self.instrumentNameLabel.setText("Pełna nazwa instrumentu")
