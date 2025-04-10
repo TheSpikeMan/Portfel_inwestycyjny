@@ -410,8 +410,8 @@ class DodajInstrumentDoSlownika(QWidget):
 
         # Dodanie QLabel wskazującego na walutę w jakiej notowany jest dany instrument
         self.currencyLabel = QLabel()
-        self.currencyLabel .setText("Waluta")
-        self.layout.addWidget(self.currencyLabel, 8, 0)
+        self.currencyLabel .setText("Waluta instrumentu na rynku")
+        self.layout.addWidget(self.currencyLabel, 9, 0)
 
         # Dodanie QComboBoc do wprowadzenia waluty w jakiej notowany jest dany instrument
         self.currencyComboBox = QComboBox()
