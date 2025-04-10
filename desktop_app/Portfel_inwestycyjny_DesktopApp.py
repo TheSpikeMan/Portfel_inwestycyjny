@@ -374,39 +374,39 @@ class DodajInstrumentDoSlownika(QWidget):
         # Dodanie QLabel wskazującego na konkretną nazwę instrumentu
         self.instrumentNameLabel = QLabel()
         self.instrumentNameLabel.setText("Pełna nazwa instrumentu")
-        self.layout.addWidget(self.instrumentNameLabel, 4, 0)
+        self.layout.addWidget(self.instrumentNameLabel, 5, 0)
 
         # Dodanie QLineEdit do wprowadzenia nazwy instrumentu
         self.instrumentNameLineEdit = QLineEdit()
-        self.layout.addWidget(self.instrumentNameLineEdit, 4, 1)
+        self.layout.addWidget(self.instrumentNameLineEdit, 5, 1)
 
         # Dodanie QLabel wskazującego na konkretną jednostkę danego instrumentu
         self.instrumentUnitLabel = QLabel()
         self.instrumentUnitLabel.setText("Jednostka")
-        self.layout.addWidget(self.instrumentUnitLabel, 5, 0)
+        self.layout.addWidget(self.instrumentUnitLabel, 6, 0)
 
         # Dodanie QComboBox do wprowadzenia jednostki instrumentu
         self.instrumentUnitComboBox = QComboBox()
         self.instrumentUnitComboBox.addItems(["1", "10", "100", "1000", "10000"])
-        self.layout.addWidget(self.instrumentUnitComboBox, 5, 1)
+        self.layout.addWidget(self.instrumentUnitComboBox, 6, 1)
 
         # Dodanie QLabel wskazującego na kraj notowania danego instrumentu
         self.countryLabel = QLabel()
         self.countryLabel.setText("Kraj notowania (skrót)")
-        self.layout.addWidget(self.countryLabel, 6, 0)
+        self.layout.addWidget(self.countryLabel, 7, 0)
 
         # Dodanie QLineEdit do wprowadzenia kraju notowania danego instrumentu
         self.countryLineEdit = QLineEdit()
-        self.layout.addWidget(self.countryLineEdit, 6, 1)
+        self.layout.addWidget(self.countryLineEdit, 7, 1)
 
         # Dodanie QLabel wskazującego na identyfikator rynku danego instrumentu
         self.marketLabel = QLabel()
         self.marketLabel .setText("Identyfiktor giełdy (skrót)")
-        self.layout.addWidget(self.marketLabel, 7, 0)
+        self.layout.addWidget(self.marketLabel, 8, 0)
 
         # Dodanie QLineEdit do wprowadzenia identyfikatora rynku danego instrumentu
         self.marketLineEdit = QLineEdit()
-        self.layout.addWidget(self.marketLineEdit, 7, 1)
+        self.layout.addWidget(self.marketLineEdit, 8, 1)
 
         # Dodanie QLabel wskazującego na walutę w jakiej notowany jest dany instrument
         self.currencyLabel = QLabel()
