@@ -361,84 +361,104 @@ class DodajInstrumentDoSlownika(QWidget):
         # self.quantityLineEdit.installEventFilter(self) --> Do wprowadzenia
         self.layout.addWidget(self.tickerLineEdit, 3, 1)
 
+        # Dodanie QLabel wskazującego na konkretny numeru ISIN
+        self.instrumentISINLabel = QLabel()
+        self.instrumentISINLabel.setText("ISIN")
+        self.layout.addWidget(self.instrumentISINLabel, 4, 0)
+
+        # Dodanie QLineEdit do wprowadzenia numeru ISIN
+        self.tickerISINLineEdit = QLineEdit()
+        # self.quantityLineEdit.installEventFilter(self) --> Do wprowadzenia
+        self.layout.addWidget(self.tickerISINLineEdit, 4, 1)
+
         # Dodanie QLabel wskazującego na konkretną nazwę instrumentu
         self.instrumentNameLabel = QLabel()
         self.instrumentNameLabel.setText("Pełna nazwa instrumentu")
-        self.layout.addWidget(self.instrumentNameLabel, 4, 0)
+        self.layout.addWidget(self.instrumentNameLabel, 5, 0)
 
         # Dodanie QLineEdit do wprowadzenia nazwy instrumentu
         self.instrumentNameLineEdit = QLineEdit()
-        self.layout.addWidget(self.instrumentNameLineEdit, 4, 1)
+        self.layout.addWidget(self.instrumentNameLineEdit, 5, 1)
 
         # Dodanie QLabel wskazującego na konkretną jednostkę danego instrumentu
         self.instrumentUnitLabel = QLabel()
         self.instrumentUnitLabel.setText("Jednostka")
-        self.layout.addWidget(self.instrumentUnitLabel, 5, 0)
+        self.layout.addWidget(self.instrumentUnitLabel, 6, 0)
 
         # Dodanie QComboBox do wprowadzenia jednostki instrumentu
         self.instrumentUnitComboBox = QComboBox()
         self.instrumentUnitComboBox.addItems(["1", "10", "100", "1000", "10000"])
-        self.layout.addWidget(self.instrumentUnitComboBox, 5, 1)
+        self.layout.addWidget(self.instrumentUnitComboBox, 6, 1)
 
         # Dodanie QLabel wskazującego na kraj notowania danego instrumentu
         self.countryLabel = QLabel()
         self.countryLabel.setText("Kraj notowania (skrót)")
-        self.layout.addWidget(self.countryLabel, 6, 0)
+        self.layout.addWidget(self.countryLabel, 7, 0)
 
         # Dodanie QLineEdit do wprowadzenia kraju notowania danego instrumentu
         self.countryLineEdit = QLineEdit()
-        self.layout.addWidget(self.countryLineEdit, 6, 1)
+        self.layout.addWidget(self.countryLineEdit, 7, 1)
 
         # Dodanie QLabel wskazującego na identyfikator rynku danego instrumentu
         self.marketLabel = QLabel()
         self.marketLabel .setText("Identyfiktor giełdy (skrót)")
-        self.layout.addWidget(self.marketLabel, 7, 0)
+        self.layout.addWidget(self.marketLabel, 8, 0)
 
         # Dodanie QLineEdit do wprowadzenia identyfikatora rynku danego instrumentu
         self.marketLineEdit = QLineEdit()
-        self.layout.addWidget(self.marketLineEdit, 7, 1)
+        self.layout.addWidget(self.marketLineEdit, 8, 1)
 
         # Dodanie QLabel wskazującego na walutę w jakiej notowany jest dany instrument
         self.currencyLabel = QLabel()
-        self.currencyLabel .setText("Waluta")
-        self.layout.addWidget(self.currencyLabel, 8, 0)
+        self.currencyLabel .setText("Waluta instrumentu na rynku")
+        self.layout.addWidget(self.currencyLabel, 9, 0)
 
         # Dodanie QComboBoc do wprowadzenia waluty w jakiej notowany jest dany instrument
         self.currencyComboBox = QComboBox()
         self.currencyComboBox.addItems(["USD", "EUR", "GBP", "CHF", "PLN"])
-        self.layout.addWidget(self.currencyComboBox, 8, 1)
+        self.layout.addWidget(self.currencyComboBox, 9, 1)
+
+        # Dodanie QLabel wskazującego na walutę, w jakiej rozliczany jest dany instrument
+        self.basecurrencyLabel = QLabel()
+        self.basecurrencyLabel .setText("Waluta bazowa (rozliczeniowa)")
+        self.layout.addWidget(self.basecurrencyLabel, 10, 0)
+
+        # Dodanie QComboBoc do wprowadzenia waluty, w jakiej rozliczany jest dany instrument
+        self.basecurrencyComboBox = QComboBox()
+        self.basecurrencyComboBox.addItems(["USD", "EUR", "GBP", "CHF", "PLN"])
+        self.layout.addWidget(self.basecurrencyComboBox, 10, 1)
 
         # Dodanie QLabel wskazującego na politykę dystrybucji danego instrumentu
         self.distributionPolicyLabel = QLabel()
         self.distributionPolicyLabel.setText("Polityka dystrybucji")
-        self.layout.addWidget(self.distributionPolicyLabel, 9, 0)
+        self.layout.addWidget(self.distributionPolicyLabel, 11, 0)
 
         # Dodanie QComboBox do wprowadzenia polityki dystrybucji danego instrumentu
         self.distributionPolicyCombobox = QComboBox()
         self.distributionPolicyCombobox.addItems(["Distributing", "Accumulating"])
-        self.layout.addWidget(self.distributionPolicyCombobox, 9, 1)
+        self.layout.addWidget(self.distributionPolicyCombobox, 11, 1)
 
         # Dodanie QLabel wskazującego na siedzibę danego instrumentu
         self.instrumentHeadquarterLabel = QLabel()
         self.instrumentHeadquarterLabel.setText("Siedziba")
-        self.layout.addWidget(self.instrumentHeadquarterLabel, 10, 0)
+        self.layout.addWidget(self.instrumentHeadquarterLabel, 12, 0)
 
         # Dodanie QLineEdit do wprowadzenia siedziby danego instrumentu
         self.instrumentHeadquarterLineEdit = QLineEdit()
-        self.layout.addWidget(self.instrumentHeadquarterLineEdit, 10, 1)
+        self.layout.addWidget(self.instrumentHeadquarterLineEdit, 12, 1)
 
         # Dodanie przycisku do wysłania danych do BigQuery
         sendDataPushButton       = QPushButton()
         sendDataPushButton.setText("Wyślij dane do bazy")
         sendDataPushButton.pressed.connect(self.sendDataToBigQuery)
         sendDataPushButton.clicked.connect(self.close)
-        self.layout.addWidget(sendDataPushButton, 11, 1)
+        self.layout.addWidget(sendDataPushButton, 13, 1)
 
         # Wyjście do poprzedniego okna
         returnButton = QPushButton()
         returnButton.setText("Powrót")
         returnButton.pressed.connect(self.close)
-        self.layout.addWidget(returnButton, 12, 1)
+        self.layout.addWidget(returnButton, 14, 1)
 
         self.layout.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignHCenter)
         self.layout.setSpacing(10)
@@ -459,19 +479,22 @@ class DodajInstrumentDoSlownika(QWidget):
             self.list_to_export = [
                 self.project_ID,
                 int(self.maxInstrument_id) + 1,
+                self.tickerISINLineEdit.text(),
                 self.tickerLineEdit.text(),
                 self.instrumentNameLineEdit.text(),
                 int(self.instrumentUnitComboBox.currentText()),
                 self.countryLineEdit.text(),
                 self.marketLineEdit.text(),
                 self.currencyComboBox.currentText(),
+                self.basecurrencyComboBox.currentText(),
                 self.distributionPolicyCombobox.currentText(),
                 self.instrumentsTypesDataFrame.loc[self.selected_instrument_type, 'Instrument_type_id'],
                 self.instrumentHeadquarterLineEdit.text(),
                 1
             ]
-            self.column_names   = ['Project_id', 'Instrument_id', 'Ticker', 'Name', 'Unit', 'Country', 'Market', 'Currency',
-                                   'Distribution_policy', 'Instrument_type_id', 'Instrument_headquarter', 'Status']
+            self.column_names   = ['project_id', 'instrument_id', 'ISIN', 'ticker', 'name', 'unit', 'country', 'market', 
+                                   'market_currency', 'ticker_currency', 'distribution_policy', 'instrument_type_id', 
+                                   'instrument_headquarter', 'status']
             self.data_to_export = pd.DataFrame([self.list_to_export], columns= self.column_names)
         except Exception as e:
             print(f"Błąd w PrepareDataForBigQueryExport: {e}")

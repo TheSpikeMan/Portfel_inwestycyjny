@@ -8,8 +8,8 @@ WHERE EXISTS
     SELECT 1
     FROM `projekt-inwestycyjny.Transactions.Present_transactions_view` AS present_transactions
     WHERE TRUE
-      AND instruments.Ticker = present_transactions.Ticker
-      AND instruments.Project_id = present_transactions.Project_id
+      AND instruments.ticker = present_transactions.Ticker
+      AND instruments.project_id = present_transactions.Project_id
   );
 
 UPDATE `projekt-inwestycyjny.Dane_instrumentow.Instruments` AS instruments
@@ -19,8 +19,8 @@ WHERE NOT EXISTS
     SELECT 1
     FROM `projekt-inwestycyjny.Transactions.Present_transactions_view` AS present_transactions
     WHERE TRUE
-      AND instruments.Ticker = present_transactions.Ticker
-      AND instruments.Project_id = present_transactions.Project_id
+      AND instruments.ticker = present_transactions.Ticker
+      AND instruments.project_id = present_transactions.Project_id
   );
 
 
