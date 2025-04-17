@@ -410,11 +410,11 @@ def daily_webscraping_plus_currencies(cloud_event):
             result_df.columns = ['Ticker', 'Close']
             data_to_export = present_instruments_ETF.merge(result_df,
                                                     how = 'inner',
-                                                    left_on = 'ticker'
+                                                    left_on = 'ticker',
                                                     right_on = 'Ticker')
             data_to_export = data_to_export.merge(present_currencies,
                                                 how = 'inner',
-                                                left_on = 'market_currency'
+                                                left_on = 'market_currency',
                                                 right_on = 'Currency')
             data_to_export['Project_id'] = np.nan
             data_to_export['Close'] = (data_to_export['Close'] * \
