@@ -62,8 +62,8 @@ for index, transaction in enumerate(transactions_df.iterrows()):
             currency_sold       = transaction[1]['last_currency_close']
             commision_sold      = transaction[1]['Commision_id']
             instrument_type     = transaction[1]['Instrument_type']
-            country             = transaction[1]['Country']
-            instrument_headquarter = transaction[1]['Instrument_headquarter']
+            country             = transaction[1]['country']
+            instrument_headquarter = transaction[1]['instrument_headquarter']
             
 
             # 10. Szukaj takiego rekordu, dla którego znajdziesz transakcję
@@ -160,8 +160,8 @@ for index, transaction in enumerate(transactions_df.iterrows()):
             tax_value                        = transaction[1]['Tax_value']
             transaction_type                 = transaction[1]['Transaction_type']
             instrument_type                  = transaction[1]['Instrument_type']
-            country                          = transaction[1]['Country']
-            instrument_headquarter           = transaction[1]['Instrument_headquarter']
+            country                          = transaction[1]['country']
+            instrument_headquarter           = transaction[1]['instrument_headquarter']
 
             # 19. Zbierz wszystkie dane dywidend do tablicy.
 
