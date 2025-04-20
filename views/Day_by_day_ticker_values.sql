@@ -1,10 +1,10 @@
 WITH
 transaction_view               AS (SELECT * FROM `projekt-inwestycyjny.Transactions.Transactions_view` WHERE Transaction_type <> "Dywidenda"),
 instrument_types               AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instrument_types`),
-present_instruments            AS (SELECT DISTINCT Project_id, Ticker FROM `projekt-inwestycyjny.Transactions.Present_transactions_view`),
+instruments                    AS (SELECT DISTINCT Project_id, Ticker FROM `projekt-inwestycyjny.Dane_instrumentow.Instruments`),
 daily_raw                      AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Daily`),
 calendar                       AS (SELECT dates FROM UNNEST(GENERATE_DATE_ARRAY('2020-01-01', CURRENT_DATE(), INTERVAL 1 DAY)) AS dates),
-calendar_present_instruments   AS (SELECT * FROM calendar CROSS JOIN present_instruments),
+calendar_instruments           AS (SELECT * FROM calendar CROSS JOIN instruments),
 
 -- TICKER DATE AMOUNT VALUE --
 /*
@@ -32,9 +32,9 @@ daily AS (
 
 ticker_date_amount_value AS (
 SELECT
-  calendar_present_instruments.Project_id                                                              AS Project_id,
+  calendar_instruments.Project_id                                                              AS Project_id,
   dates                                                                                                AS `Date`,
-  calendar_present_instruments.Ticker                                                                  AS Ticker,
+  calendar_instruments.Ticker                                                                  AS Ticker,
   COALESCE(instrument_types.Instrument_type, 
     LAST_VALUE(instrument_types.Instrument_type IGNORE NULLS) OVER window_transactions_by_ticker)      AS Instrument_type,
   COALESCE(transaction_date_ticker_amount,
@@ -44,22 +44,23 @@ SELECT
   ROUND(COALESCE(transaction_date_ticker_amount,
     LAST_VALUE(transaction_date_ticker_amount IGNORE NULLS) OVER window_transactions_by_ticker) * 
     COALESCE(daily.Close, LAST_VALUE(daily.Close IGNORE NULLS) OVER window_transactions_by_ticker), 2) AS ticker_date_value
-FROM calendar_present_instruments
+FROM calendar_instruments
 LEFT JOIN transaction_view
-  ON calendar_present_instruments.dates = transaction_view.Transaction_date
-  AND calendar_present_instruments.Ticker = transaction_view.Ticker
-  AND calendar_present_instruments.Project_id = transaction_view.Project_id
+  ON calendar_instruments.dates = transaction_view.Transaction_date
+  AND calendar_instruments.Ticker = transaction_view.Ticker
+  AND calendar_instruments.Project_id = transaction_view.Project_id
 LEFT JOIN daily
-  ON calendar_present_instruments.dates = daily.`Date`
-  AND calendar_present_instruments.Ticker = daily.Ticker
+  ON calendar_instruments.dates = daily.`Date`
+  AND calendar_instruments.Ticker = daily.Ticker
 LEFT JOIN instrument_types
   ON transaction_view.Instrument_type_id = instrument_types.Instrument_type_id
+WHERE TRUE
 QUALIFY TRUE
 WINDOW
   window_transactions_by_ticker AS (
     PARTITION BY 
-      calendar_present_instruments.Project_id, 
-      calendar_present_instruments.Ticker 
+      calendar_instruments.Project_id, 
+      calendar_instruments.Ticker 
     ORDER BY dates ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
 ),
 
