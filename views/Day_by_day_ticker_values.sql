@@ -1,5 +1,5 @@
 WITH
-transaction_view               AS (SELECT * FROM `projekt-inwestycyjny.Transactions.Transactions_view` WHERE Transaction_type <> "Dywidenda"),
+transaction_view_raw           AS (SELECT * FROM `projekt-inwestycyjny.Transactions.Transactions_view`),
 instrument_types               AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instrument_types`),
 instruments                    AS (SELECT DISTINCT Project_id, Ticker FROM `projekt-inwestycyjny.Dane_instrumentow.Instruments`),
 daily_raw                      AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Daily`),
@@ -17,6 +17,23 @@ W zapytaniu realizowane są następujące obliczenia:
 Podobny mechanizm zastosowany jest do wyciągnięcia ceny zamknięcia.
 - jako podsumowanie wyznaczana jest wartość instrumentu na każdy kolejny dzień
 */
+
+transaction_view                AS (
+  SELECT *
+  FROM transaction_view_raw
+  WHERE TRUE
+    AND Transaction_type <> "Dywidenda"
+  QUALIFY TRUE
+    AND ROW_NUMBER() OVER last_transaction_per_ticker = 1
+  WINDOW
+    last_transaction_per_ticker AS (
+      PARTITION BY
+        Ticker,
+        Transaction_date
+      ORDER BY
+        Transaction_id DESC
+    )
+),
 
 daily AS (
   SELECT *
@@ -81,3 +98,4 @@ share_of_portfolio_included AS (
 
 SELECT * 
 FROM share_of_portfolio_included
+WHERE TRUE
