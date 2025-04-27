@@ -59,8 +59,9 @@ CREATE OR REPLACE TABLE `projekt-inwestycyjny.Dane_instrumentow.Instruments` (
 -- Tabela przechowująca typy instrumentów -- 
 CREATE TABLE IF NOT EXISTS `projekt-inwestycyjny.Dane_instrumentow.Instrument_types` 
 (
-  Instrument_type_id INT64 NOT NULL  OPTIONS(description="ID typu instrumentu finansowego - indeks"),
-  Instrument_type    STRING NOT NULL OPTIONS(description="Nazwa typu instrumentu finansowego")
+  Instrument_type_id   INT64 NOT NULL  OPTIONS(description="ID typu instrumentu finansowego - indeks"),
+  Instrument_type      STRING NOT NULL OPTIONS(description="Nazwa typu instrumentu finansowego"),
+  Instrument_type_main STRING NOT NULL OPTIONS(description="Nazwa typu głównego instrumentu finansowego")
 );
 
 -- Uzupełenie tabeli typami danych --
