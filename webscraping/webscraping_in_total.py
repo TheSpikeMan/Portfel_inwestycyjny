@@ -164,7 +164,7 @@ def daily_webscraping_plus_currencies(cloud_event):
             FROM `{self.project_id}.{self.dataset_instruments}.{self.table_instruments}` AS inst
             INNER JOIN `{self.project_id}.{self.dataset_instruments}.{self.table_instruments_types}` AS inst_typ
                 ON inst.Instrument_type_id = inst_typ.Instrument_type_id
-                AND Instrument_type = 'ETF zagraniczne'
+                AND Instrument_type = 'ETF akcyjne zagraniczne'
             """
 
             print("Pobieram aktualne instrumenty w ramach akcji polskich, ETF polskich oraz obligacji korporacyjnych")
@@ -175,7 +175,7 @@ def daily_webscraping_plus_currencies(cloud_event):
             INNER JOIN `{self.project_id}.{self.dataset_instruments}.{self.table_instruments_types}` AS inst_typ
                 ON inst.Instrument_type_id = inst_typ.Instrument_type_id
                 AND Instrument_type IN ('Akcje polskie',
-                                        'ETF polskie',
+                                        'ETF obligacyjne polskie',
                                         'Obligacje korporacyjne')
             """
 

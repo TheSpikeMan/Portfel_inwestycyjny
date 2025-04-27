@@ -52,7 +52,7 @@ ETF_polskie_GPW AS (
     TRUE
     AND Transaction_type            = 'Sell'
     AND Currency                    = 'PLN'
-    AND Instrument_type             = 'ETF polskie'
+    AND Instrument_type             = 'ETF obligacyjne polskie'
     AND Instrument_headquarter      = 'Polska'
     AND Tax_paid                    IS FALSE
   GROUP BY ALL
@@ -137,7 +137,7 @@ ETF_zagraniczne_transakcje_poza_GPW AS (
     TRUE
     AND Transaction_type            = 'Sell'
     AND Currency                    <> 'PLN'
-    AND Instrument_type             = 'ETF zagraniczne'
+    AND Instrument_type             = 'ETF akcyjne zagraniczne'
     AND Instrument_headquarter      <> 'Polska'
     AND Tax_paid                    IS FALSE
   GROUP BY
@@ -195,7 +195,7 @@ ETF_zagraniczne_dywidendy_poza_GPW AS (
     TRUE
     AND Transaction_type            = 'Dywidenda'
     AND Currency                    <> 'PLN'
-    AND Instrument_type             = 'ETF zagraniczne'
+    AND Instrument_type             = 'ETF akcyjne zagraniczne'
     AND Instrument_headquarter      <> 'Polska'
     AND Tax_paid                    IS FALSE
   GROUP BY

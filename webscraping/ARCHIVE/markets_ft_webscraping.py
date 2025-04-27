@@ -84,7 +84,7 @@ class ETFScraper():
         LEFT JOIN `{self.project}.{self.dataset_instruments}.{self.table_instruments_types}` AS inst_typ
         ON inst.Instrument_type_id = inst_typ.Instrument_type_id
         WHERE Status = 1
-        AND Instrument_type = 'ETF zagraniczne'
+        AND Instrument_type = 'ETF akcyjne zagraniczne'
         """
         client = bigquery.Client()
         query_job_2  = client.query(query = query_2)
