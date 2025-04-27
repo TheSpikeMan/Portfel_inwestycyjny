@@ -269,7 +269,7 @@ present_instruments_plus_present_indicators AS (
   SELECT
     piv.Project_id                                        AS Project_id,
     inst.Ticker                                           AS Ticker,
-    inst_typ.Instrument_type                              AS instrument_class,
+    inst_typ.Instrument_type                              AS Instrument_type,
     inst.ticker_currency                                  AS currency_exposure,
     inst.Name                                             AS Name,
     piv.ticker_present_amount                             AS ticker_present_amount,
@@ -295,9 +295,9 @@ present_instruments_plus_present_indicators AS (
         * daily.Close 
         * inst.unit)/
           SUM(piv.ticker_present_amount * daily.Close * inst.unit) 
-          OVER instrument_class_window, 
+          OVER instrument_type_window, 
       2) 
-                                                          AS share_of_portfolio_per_instrument_class,
+                                                          AS share_of_portfolio_per_instrument_type,
     ROUND(100 * 
       ((piv.ticker_present_amount * daily.Close * inst.unit) /
         piv.ticker_buy_value) - 100, 
@@ -336,7 +336,7 @@ present_instruments_plus_present_indicators AS (
   LEFT JOIN instrument_types AS inst_typ
   ON inst.Instrument_type_id  = inst_typ.Instrument_type_id
   WINDOW
-    instrument_class_window AS (
+    instrument_type_window AS (
       PARTITION BY
         piv.Project_id,
         inst_typ.Instrument_type
@@ -350,8 +350,8 @@ SELECT
     (share_of_portfolio * yearly_rate_of_return_incl_div/100), 
     2) AS yearly_rate_of_return_incl_div_weighted,
   ROUND(
-    (share_of_portfolio_per_instrument_class * yearly_rate_of_return_incl_div/100), 
-    2) AS yearly_rate_of_return_incl_div_weighted_per_instrument_class                                             
+    (share_of_portfolio_per_instrument_type * yearly_rate_of_return_incl_div/100), 
+    2) AS yearly_rate_of_return_incl_div_weighted_per_instrument_type                                             
 FROM present_instruments_plus_present_indicators
 WHERE TRUE
 
