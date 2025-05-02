@@ -20,7 +20,7 @@ def Treasury_bonds(cloud_event):
     dataset_id_2 = 'Dane_instrumentow'
     table_id_2 = 'Treasury_Bonds'
     destination_table_2 = f"{project_id_2}.{dataset_id_2}.{table_id_2}"
-    
+
     # 2. Zdefiniowanie kwerendy wyciągającej wyłącznie dane transakcyjne obligacji.
     query = f"""
         SELECT
@@ -29,13 +29,13 @@ def Treasury_bonds(cloud_event):
         WHERE
             Instrument_type_id = 5
             """
-    
+
     # 3. Utworzenie obiektu Client w ramach biblioteki bigquery, a następnie
     # wyodrębnienie z obiektu QueryJob obiektu do DataFrame.
     client = bigquery.Client()
     query_job = client.query(query)
     dane_transakcyjne = query_job.to_dataframe()
-    
+
     # 4. Zestawienie wszystkich instrumentów obligacji, na których dokonywane były
     # transakcje.
     ticker_list = list(set(dane_transakcyjne['Ticker'].to_list()))
@@ -43,65 +43,63 @@ def Treasury_bonds(cloud_event):
 
     # 5. Dla każdego instrumentu obligacji skarbowych.
     for ticker in ticker_list:
-        ticker_obligacji = ticker
-        
-        # 6. Jeżeli analizujemy wyłącznie obligacje EDO (inne nie są obsługiwane)
-        if ticker_obligacji.startswith("EDO"):    
+
+        # 6. Jeżeli analizujemy obligacje EDO
+        if ticker.startswith("EDO"):
             website = "https://www.obligacjeskarbowe.pl/oferta-obligacji/obligacje-10-letnie-edo/" +\
-                ticker_obligacji + "/"
-                
-            with requests.get(website) as r:
-            # 7. Jeżeli udało się podłączyć do strony.
+                ticker + "/"
+        elif ticker.startswith("TOS"):
+            website = "https://www.obligacjeskarbowe.pl/oferta-obligacji/obligacje-3-letnie-tos/" + \
+                      ticker + "/"
 
-                if r.status_code == 200:
-                    raw_data = r.text
-                    soup = BeautifulSoup(raw_data, 'html.parser')
-                    
-                    # 8. Schemat to obiekt, który zczyna się od znaku dziesiętnego,
-                    # następnie zawiera przecinek, dwa znaki dziesiętne, dokładnie
-                    # jeden znak '%', a następnie dowolną liczba dowolnych znaków.
-                    pattern = re.compile(r'\d,\d{2}%{1}.*')
-                
-                    # 9. Przeszukiwane konkretnego elementu strony.
-                    result_set = soup.find_all('span', class_='product-details__list-value')
-                    raw_string = result_set[1].text
-                    
-                    # 10. Rozdzielenie całego tekstu do pojedynczych słów/
-                    string_modified = raw_string.split()
-                    for word in string_modified:
-                        # 11. Jeżeli znajdziesz słowo, które spełnia pattern
-                        if re.search(pattern, word):
-                            oprocentowanie_zmienne = (word[:4].replace(",", "."))
-                            oprocentowanie_zmienne = float(oprocentowanie_zmienne)
-                    
-                    # 12. Szukanie oprocentowania obligacji w pierwszym roku.
-                    # Wykorzystanie w tym celu obiektu o zadanych niżej parametrach.
-                    result_set_2= soup.find_all('figure', class_ = 'hero__image')
-                    oprocentowanie_pierwszy_rok = result_set_2[0].text.strip()[:4].\
-                        replace(",", ".")
-                    oprocentowanie_pierwszy_rok = float(oprocentowanie_pierwszy_rok)
+        with requests.get(website) as r:
+        # 7. Jeżeli udało się podłączyć do strony.
+            if r.status_code == 200:
+                raw_data = r.text
+                soup = BeautifulSoup(raw_data, 'html.parser')
 
-                    # 13. Przypisanie wszystkich elementów do listy.
-                    tablica_oprocentowania_tickera = [ticker_obligacji,
-                    oprocentowanie_pierwszy_rok,
-                    oprocentowanie_zmienne]
-                else:
-                    pass
+                # 8. Schemat to obiekt, który zczyna się od znaku dziesiętnego,
+                # następnie zawiera przecinek, dwa znaki dziesiętne, dokładnie
+                # jeden znak '%', a następnie dowolną liczba dowolnych znaków.
+                pattern = re.compile(r'\d,\d{2}%{1}.*')
 
-            # 14. Połączenie obecnych danych w DataFrame (pierwszy element) z
-            # dokładanymi elementami (pd.DataFrame(tablica_(...)))
-            tablica_oprocentowania = pd.concat([tablica_oprocentowania, 
-                                                pd.DataFrame([tablica_oprocentowania_tickera])],
-                                               axis = 0)
-    
-        else:
-            print("Brak scrapingu dla obligacji z poza katalogu obligacji 10-letnich.")
-    
+                # 9. Przeszukiwane konkretnego elementu strony.
+                result_set = soup.find_all('span', class_='product-details__list-value')
+                raw_string = result_set[1].text
+
+                # 10. Rozdzielenie całego tekstu do pojedynczych słów/
+                string_modified = raw_string.split()
+                for word in string_modified:
+                    # 11. Jeżeli znajdziesz słowo, które spełnia pattern
+                    if re.search(pattern, word):
+                        oprocentowanie_zmienne = (word[:4].replace(",", "."))
+                        oprocentowanie_zmienne = float(oprocentowanie_zmienne)
+
+                # 12. Szukanie oprocentowania obligacji w pierwszym roku.
+                # Wykorzystanie w tym celu obiektu o zadanych niżej parametrach.
+                result_set_2= soup.find_all('figure', class_ = 'hero__image')
+                oprocentowanie_pierwszy_rok = result_set_2[0].text.strip()[:4].\
+                    replace(",", ".")
+                oprocentowanie_pierwszy_rok = float(oprocentowanie_pierwszy_rok)
+
+                # 13. Przypisanie wszystkich elementów do listy.
+                tablica_oprocentowania_tickera = [ticker,
+                oprocentowanie_pierwszy_rok,
+                oprocentowanie_zmienne]
+            else:
+                pass
+
+        # 14. Połączenie obecnych danych w DataFrame (pierwszy element) z
+        # dokładanymi elementami (pd.DataFrame(tablica_(...)))
+        tablica_oprocentowania = pd.concat([tablica_oprocentowania,
+                                            pd.DataFrame([tablica_oprocentowania_tickera])],
+                                           axis = 0)
+
     # 15. Zmiana nazewnictwa kolumn.
     tablica_oprocentowania.columns = ['Ticker', 'First_year_interest', 'Regular_interest']
     tablica_oprocentowania.reset_index(drop=True, inplace=True)
-    
-    
+
+
     # 17. Zdefiniowanie schematu danych w BQ
     schema = [bigquery.SchemaField(name = 'Ticker', field_type = "STRING", \
                                    mode = "REQUIRED"),
@@ -110,19 +108,19 @@ def Treasury_bonds(cloud_event):
               bigquery.SchemaField(name = 'Regular_interest', field_type = "FLOAT",\
                                    mode = "REQUIRED")]
 
-    
+
     # 18. Wyznaczenie konfiguracji dla joba i wykonanie joba.
     job_config = bigquery.LoadJobConfig(schema = schema,
                                         write_disposition = "WRITE_TRUNCATE")
     try:
-        job = client.load_table_from_dataframe(tablica_oprocentowania, 
+        job = client.load_table_from_dataframe(tablica_oprocentowania,
                                                destination_table_2,
                                                job_config = job_config)
         job.result()
     except Exception as e:
         print(f"Error uploading data to BigQuery: {str(e)}")
         return "Błąd eksportu danych do BigQuery."
-    
+
     print("Dane obligacji skarbowych zostały przekazane do tabeli BigQuery.")
     return "Program zakończył się pomyślnie."
     
