@@ -303,16 +303,28 @@ def daily_webscraping_plus_currencies(cloud_event):
             
             Funkcja wyznacza aktualną wartość obligacji skarbowych znajdujących się w portfelu na podstawie danych transakcyjnych,
                 danych inflacji oraz danych marży.
-            
+
+            Obsługiwane obligacje skarbowe:
+            - EDO - 10 - letnie skarbowe, indeksowane inflacją, z roczną kapitalizacją
+            - TOS - 3 - letnie skarbowe, o oprocentowaniu stałym, z roczną kapitalizacją
+
             """
             
             print("Oceniam obecność wartość obligacji skarbowych.")
             dane_inflacyjne.columns = ['Inflacja', 'Początek miesiąca']
+
+            # Łączę dane transakcyjne z danymi marż
             dane_do_analizy = dane_transakcyjne.merge(right=dane_marz,
                                                         how='inner',
                                                         on = 'Ticker')
+            
+            # Definiuję docelowy DataFrame z nazewnictwem kolumn
             result_df = pd.DataFrame(columns=['Project_id', 'Ticker', 'Date', 'Current Value'])
+            
+            # Iteruję po instrumentach obligacji skarbowych w ramach wszystkich projektów
             for dane in dane_do_analizy.iterrows():
+
+                # Wyznaczam podstawowe parametry transakcyjne oraz marżowe
                 project_id         = dane[1].iloc[0]
                 ticker             = dane[1].iloc[1]
                 data_zakupu        = dane[1].iloc[2]
@@ -323,60 +335,75 @@ def daily_webscraping_plus_currencies(cloud_event):
                 wolumen_jednostkowy = 100
                 
                 start_value        = wolumen * wolumen_jednostkowy
-            
+
+                # Wyznaczam wszystkie niezbędne daty do wyznaczenia wartości obligacji lub inflacji (jeśli dotyczy)
                 current_date       = date.today()
                 liczba_dni         = (current_date - data_zakupu).days
                 liczba_lat         = int(math.modf(liczba_dni/365)[1])
-            
-                n = 1
                 
-                if liczba_dni < 365:
-                    current_value = start_value + start_value * liczba_dni / 365 * (marza_pierwszy_rok/100)
+                if ticker.startswith("EDO") or ticker.startswith("TOS"):
                 
-                else:
-                    current_value = start_value + start_value * (marza_pierwszy_rok/100)
+                    n = 1
                     
-                    for i in range(liczba_lat, 0, -1):
+                    if liczba_dni < 365:
+                        current_value = start_value + start_value * liczba_dni / 365 * (marza_pierwszy_rok/100)
+                    
+                    else:
+                        current_value = start_value + start_value * (marza_pierwszy_rok/100)
                         
-                        liczba_dni_przesuniecie = timedelta(days= 365 * n - 60)
-                        
-                        data_badania_inflacji = date((data_zakupu + liczba_dni_przesuniecie).year, \
-                                            (data_zakupu + liczba_dni_przesuniecie).month, \
-                                            1)
-                        inflacja = dane_inflacyjne.loc[dane_inflacyjne['Początek miesiąca'] \
-                                                    == str(data_badania_inflacji)].iat[0,0]
-                        
-                        if liczba_dni < 730:
-                            current_value = current_value + current_value * \
-                                (liczba_dni - 365)/365 * (inflacja + marza_kolejne_lata)/ 100
-                        else:
-                            current_value = current_value + current_value * \
-                                (inflacja + marza_kolejne_lata) / 100
-                            liczba_dni = liczba_dni - 365
-                        n = n + 1 
-                
-                result_df = pd.concat([result_df, \
-                                    pd.DataFrame(data=[[project_id,
-                                                        ticker,
-                                                        data_zakupu,
-                                                        round(current_value, 2)]],
-                                                    columns=['Project_id', 'Ticker', 'Date', 'Current Value'])])
-                data_to_export = result_df.merge(right=dane_do_analizy, 
-                                how='inner',
-                                left_on=['Project_id', 'Ticker', 'Date'],
-                                right_on= ['Project_id', 'Ticker', 'Transaction_date'])
-        
-                data_to_export['Date'] = current_date
-                data_to_export['Close'] = (data_to_export['Current Value']/data_to_export['Transaction_amount'])
+                        for i in range(liczba_lat, 0, -1):
+                            
+                            # Wyznaczam liczbę dni do przesunięcia, aby wyznaczyć dzień badania inflacji
+                            liczba_dni_przesuniecie = timedelta(days= 365 * n - 60)
+                            
+                            # Wyznaczam datę badania inflacji
+                            data_badania_inflacji = date(
+                                (data_zakupu + liczba_dni_przesuniecie).year,
+                                (data_zakupu + liczba_dni_przesuniecie).month,
+                                1)
+                            
+                            # Wyznaczam wartość inflacji
+                            inflacja = dane_inflacyjne.loc[dane_inflacyjne['Początek miesiąca']
+                                                           == str(data_badania_inflacji)].iat[0,0]
+                            
+                            # Uwzględniam inflację lub nie w zależności od typu obligacji (uwzględniam dla EDO, dla TOS nie)
+                            uwzgl_infl= inflacja if ticker.startswith("EDO") else 0
+                            
+                            if liczba_dni < 730:
+                                current_value = current_value + current_value * \
+                                (liczba_dni - 365)/365 * \
+                                (uwzgl_infl + marza_kolejne_lata)/ 100
+                            else:
+                                current_value = current_value + current_value * \
+                                    (uwzgl_infl + marza_kolejne_lata) / 100
+                                liczba_dni = liczba_dni - 365
+                            n = n + 1 
+                    
+                    # Przygotowuję końcowe dane do eksportu
+                    result_df = pd.concat([result_df, \
+                                        pd.DataFrame(data=[[project_id,
+                                                            ticker,
+                                                            data_zakupu,
+                                                            round(current_value, 2)]],
+                                                            columns=['Project_id', 'Ticker', 'Date', 'Current Value'])])
+                    data_to_export = result_df.merge(right=dane_do_analizy, 
+                                    how='inner',
+                                    left_on=['Project_id', 'Ticker', 'Date'],
+                                    right_on= ['Project_id', 'Ticker', 'Transaction_date'])
 
-                data_to_export_obligacje = data_to_export.groupby(['Project_id', 'Ticker', 'Date']).\
-                    apply(lambda x: np.average(x['Close'], \
-                    weights=x['Transaction_amount']))\
-                    .reset_index(name='Close').\
-                    round(decimals = 3)
-                data_to_export_obligacje['Volume'] = 0
-                data_to_export_obligacje['Turnover'] = 0
-            
+                    data_to_export['Date'] = current_date
+                    data_to_export['Close'] = data_to_export['Current Value'].div(data_to_export['Transaction_amount'],
+                                                                                  fill_value=pd.NA)
+
+                    # Wyznaczam średnią wartość jednej obligacji, ważąc średnią wolumenem transakcyjnym
+                    data_to_export_obligacje = data_to_export.groupby(['Project_id', 'Ticker', 'Date']).\
+                        apply(lambda x: np.average(x['Close'], \
+                        weights=x['Transaction_amount']))\
+                        .reset_index(name='Close').\
+                        round(decimals = 3)
+                    data_to_export_obligacje['Volume'] = 0
+                    data_to_export_obligacje['Turnover'] = 0
+
             print("Ocena wartości obligacji skarbowych zakończona powodzeniem.")
                 
             return data_to_export_obligacje
