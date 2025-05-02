@@ -303,7 +303,11 @@ def daily_webscraping_plus_currencies(cloud_event):
             
             Funkcja wyznacza aktualną wartość obligacji skarbowych znajdujących się w portfelu na podstawie danych transakcyjnych,
                 danych inflacji oraz danych marży.
-            
+
+            Obsługiwane obligacje skarbowe:
+            - EDO - 10 - letnie skarbowe, indeksowane inflacją, z roczną kapitalizacją
+            - TOS - 3 - letnie skarbowe, o oprocentowaniu stałym, z roczną kapitalizacją
+
             """
             
             print("Oceniam obecność wartość obligacji skarbowych.")
@@ -311,8 +315,14 @@ def daily_webscraping_plus_currencies(cloud_event):
             dane_do_analizy = dane_transakcyjne.merge(right=dane_marz,
                                                         how='inner',
                                                         on = 'Ticker')
+            
+            # Definiuję docelowy DataFrame z nazewnictwem kolumn
             result_df = pd.DataFrame(columns=['Project_id', 'Ticker', 'Date', 'Current Value'])
+            
+            # Iteruję po instrumentach obligacji skarbowych w ramach wszystkich projektów
             for dane in dane_do_analizy.iterrows():
+
+                # Wyznaczam podstawowe parametry transakcyjne oraz marżowe
                 project_id         = dane[1].iloc[0]
                 ticker             = dane[1].iloc[1]
                 data_zakupu        = dane[1].iloc[2]
@@ -323,7 +333,8 @@ def daily_webscraping_plus_currencies(cloud_event):
                 wolumen_jednostkowy = 100
                 
                 start_value        = wolumen * wolumen_jednostkowy
-            
+
+                # Wyznaczam wszystkie niezbędne daty do wyznaczenia wartości obligacji lub inflacji (jeśli dotyczy)
                 current_date       = date.today()
                 liczba_dni         = (current_date - data_zakupu).days
                 liczba_lat         = int(math.modf(liczba_dni/365)[1])
