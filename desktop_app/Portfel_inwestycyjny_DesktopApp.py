@@ -871,10 +871,15 @@ class DodajTransakcje(QWidget):
         if self.quantityLineEdit.text():
             self.Transaction_amount    = float(self.quantityLineEdit.text())
 
-        # Na podstawie Tickera wyznaczam Instrument_id
-        self.Instrument_id         = self.instrumentsDataFrame.query(f"Ticker== '{self.instrumentComboBox.currentText()}'") \
-                                                                                 ['Instrument_id'] .\
-                                                                                 iloc[0]
+        # Na podstawie Tickera oraz ID projektu wyznaczam Instrument_id
+        self.Instrument_id = (
+            self.instrumentsDataFrame.query(
+                f"Project_id == {self.project_ID} and "
+                f"Ticker == '{self.instrumentComboBox.currentText()}'"
+            )['Instrument_id']
+            .iloc[0]
+        )
+        
         if self.commisionLineEdit.text():
             self.Commision_id          = float(self.commisionLineEdit.text())
         # self.Dirty_bond_price
