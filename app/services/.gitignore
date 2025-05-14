@@ -1,0 +1,32 @@
+# === ŚRODOWISKO I KONFIGURACJA ===
+
+# Pliki środowiskowe
+.env
+*.env
+
+# Pliki z poświadczeniami (np. BigQuery)
+credentials.json
+*.json
+
+# === PYTHON ===
+
+# Cache i pliki tymczasowe
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environment
+venv/
+.venv/
+
+# Logi i dane tymczasowe
+*.log
+*.sqlite3
+
+# === IDE / EDYTOR ===
+
+# Visual Studio Code
+.vscode/
+
+# PyCharm / IntelliJ
+.idea/
