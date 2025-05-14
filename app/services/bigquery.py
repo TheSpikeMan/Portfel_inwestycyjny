@@ -17,7 +17,7 @@ DATASET_INSTRUMENTS = os.getenv("BQ_DATASET_INSTRUMENTS")
 TABLE_DAILY = os.getenv("BQ_TABLE_DAILY")
 
 # Pobierz ceny (np. 100 ostatnich rekordów) dla danego instrumentu
-def get_latest_prices(limit=100):
+def get_latest_prices_by_ticker(limit=100):
     query = f"""
         SELECT 
             Date, 
@@ -32,7 +32,7 @@ def get_latest_prices(limit=100):
     return [dict(row) for row in query_job]
 
 # Pobierz ostatni dostępny kurs dla danego instrumentu
-def get_price_by_ticker(ticker: str):
+def get_last_price_by_ticker(ticker: str):
     query = f"""
         SELECT close
         FROM `{PROJECT_ID}.{DATASET_INSTRUMENTS}.{TABLE_DAILY}
