@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfel inwestycyjny</title>
+</head>
+<body>
+    <h1>Kurs firmy</h1>
+    <label for="ticker">Podaj ticker:</label>
+    <input id="ticker" type="text" value="AMB">
+    <br>
+    <button onclick="getPrice()">Pobierz</button>
+
+    <p id="result"></p>
+
+    <script>
+        async function getPrice() {
+            const ticker = document.getElementById('ticker').value;
+            const response = await fetch(`/prices?ticker=${ticker}`);
+            const resultEl = document.getElementById('result');
+
+            if (response.ok) {
+                const data = await response.json();
+                resultEl.textContent = `Cena: ${data.price}`;
+            } else {
+                resultEl.textContent = "Nie znaleziono ceny.";
+            }
+        }
+    </script>
+</body>
+</html>
