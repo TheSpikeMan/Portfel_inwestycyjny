@@ -51,7 +51,7 @@ async def get_last_price_by_ticker(ticker: str):
 
     query = f"""
         SELECT Close
-        FROM `{PROJECT_ID}.{DATASET_INSTRUMENTS}.{TABLE_DAILY}
+        FROM `{PROJECT_ID}.{DATASET_INSTRUMENTS}.{TABLE_DAILY}`
         WHERE TRUE
             AND Ticker = @ticker
         QUALIFY TRUE
