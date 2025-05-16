@@ -3,7 +3,7 @@ from services import bigquery
 
 router = APIRouter()
 
-@router.get("/prices/{ticker}")
+@router.get("/prices")
 async def get_price(ticker: str):
     price = await bigquery.get_last_price_by_ticker(ticker)
     if price is None:
