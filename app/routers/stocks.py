@@ -5,6 +5,8 @@ router = APIRouter()
 
 @router.get("/prices")
 async def get_price(ticker: str):
+    # Wstępne wyczyszczenie pobranego stringa
+    ticker = ticker.upper().strip()
     price = await bigquery.get_last_price_by_ticker(ticker)
     if price is None:
         raise HTTPException(status_code=404, detail="Ticker not found")
