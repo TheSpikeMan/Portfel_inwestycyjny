@@ -7,6 +7,8 @@ import os
 # Inicjalizacja aplikacji FastAPI
 app = FastAPI()
 
+app.include_router(stocks.router)
+
 # Montowanie folderu 'static' na ścieżce '/static'
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
