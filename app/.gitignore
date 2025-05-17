@@ -30,3 +30,6 @@ venv/
 
 # PyCharm / IntelliJ
 .idea/
+
+# SA
+*.json
