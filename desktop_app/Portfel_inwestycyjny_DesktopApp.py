@@ -19,6 +19,9 @@ from google.cloud import bigquery
 import pandas as pd
 import numpy as np
 import time
+from dotenv import load_dotenv
+import os
+from pathlib import Path
 
 class ProgressDialog(QDialog):
     def __init__(self):
@@ -1126,27 +1129,31 @@ class MainWindow(QMainWindow):
                 print("Projekt nie istnieje. Proszę wybrać inny!")
 
 
+# Pobieram zmienne środowiskowe
+env_path = Path(__file__).parent.parent / ".env"
+load_dotenv(dotenv_path=env_path)
+
 # Deklaracja nazw datasetów i tabel
-location               = 'europe-central2'
+location               = os.getenv("BQ_PROJECT_LOCATION")
 
 # Definicje nazw DataSetów
-dataSetDaneIntrumentow = 'Dane_instrumentow'
-dataSetCurrencies      = 'Waluty'
-dataSetTransactions    = 'Transactions'
-dataSetInflation       = 'Inflation'
+dataSetDaneIntrumentow = os.getenv("BQ_DATASET_INSTRUMENTS")
+dataSetCurrencies      = os.getenv("BQ_DATASET_CURRENCIES")
+dataSetTransactions    = os.getenv("BQ_DATASET_TRANSACTIONS")
+dataSetInflation       = os.getenv("BQ_DATASET_INFLATION")
 
 # Definicje nazw tabel
-tableDaily             = 'Daily'
-tableInstrumentTypes   = 'Instrument_types'
-tableInstruments       = 'Instruments'
-tableTreasuryBonds     = 'Treasury_Bonds'
-tableInflation         = 'Inflation'
-tableTransactions      = 'Transactions'
-tableCurrency          = 'Currency'
+tableDaily             = os.getenv("BQ_TABLE_DAILY")
+tableInstrumentTypes   = os.getenv("BQ_TABLE_INSTRUMENT_TYPES")
+tableInstruments       = os.getenv("BQ_TABLE_INSTRUMENTS")
+tableTreasuryBonds     = os.getenv("BQ_TABLE_TREASURY_BONDS")
+tableInflation         = os.getenv("BQ_TABLE_INFLATION")
+tableTransactions      = os.getenv("BQ_TABLE_TRANSACTIONS")
+tableCurrency          = os.getenv("BQ_TABLE_CURRENCY")
 
 # Definicje nazw widoków
-viewTransactionsView   = 'Transactions_view'
-viewCurrencies         = 'Currency_view'
+viewTransactionsView   = os.getenv("BQ_VIEW_TRANSACTIONS_VIEW")
+viewCurrencies         = os.getenv("BQ_VIEW_CURRENCIES")
         
 # Main part of the app
 app = QApplication([]) 
