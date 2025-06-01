@@ -1,4 +1,4 @@
-CREATE TABLE `projekt-inwestycyjny.Transactions.Tax_calculations`
+CREATE OR REPLACE TABLE `projekt-inwestycyjny.Transactions.Tax_calculations`
 (
   Project_id              INT64 NOT NULL,
   Date_sell               DATE NOT NULL,
