@@ -1,6 +1,6 @@
-CREATE TABLE `projekt-inwestycyjny.Transactions.Transactions`
+CREATE OR REPLACE TABLE `projekt-inwestycyjny.Transactions.Transactions`
 (
-  Project_id         INT64   OPTIONS(description="ID portfela inwestycynego"),
+  Project_id         INT64   OPTIONS(description="ID portfela inwestycyjnego"),
   Transaction_id     INT64   OPTIONS(description="ID transakcji - indeks"),
   Transaction_date   DATE    OPTIONS(description="Data transakcji"),
   Transaction_type   STRING  OPTIONS(description="Typ transakcji"),
