@@ -21,7 +21,3 @@ async def get_home():
     except Exception as e:
         print(f"Błąd odczytu pliku: {e}")
         return HTMLResponse("<h1>Nie udało się wczytać strony</h1>", status_code=500)
-
-@app.get("/test")
-async def test():
-    return {"message": "FastAPI działa poprawnie!"}
