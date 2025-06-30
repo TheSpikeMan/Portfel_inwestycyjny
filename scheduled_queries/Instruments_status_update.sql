@@ -28,7 +28,7 @@ WHERE NOT EXISTS
 -- Konfiguracja
 /*
 Źródło: Scheduled Query:
-Harmonogram (UTC): Every day at 22:10
+Harmonogram (UTC): Every day at 22:20
 Data rozpoczęcia: brak
 Data zakończenia: brak
 */
