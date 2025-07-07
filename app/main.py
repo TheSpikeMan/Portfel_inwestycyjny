@@ -16,7 +16,6 @@ async def get_home():
     try:
         with open(path, "r", encoding="utf-8") as f:
             content = f.read()
-        print(f"Długość zawartości: {len(content)}")
         return HTMLResponse(content)
     except Exception as e:
         print(f"Błąd odczytu pliku: {e}")
