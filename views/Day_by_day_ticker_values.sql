@@ -3,8 +3,22 @@ transaction_view_raw           AS (SELECT * FROM `projekt-inwestycyjny.Transacti
 instrument_types               AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instrument_types`),
 instruments                    AS (SELECT DISTINCT Project_id, Ticker FROM `projekt-inwestycyjny.Dane_instrumentow.Instruments`),
 daily_raw                      AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Daily`),
-calendar                       AS (SELECT dates FROM UNNEST(GENERATE_DATE_ARRAY('2020-01-01', CURRENT_DATE(), INTERVAL 1 DAY)) AS dates),
-calendar_instruments           AS (SELECT * FROM calendar CROSS JOIN instruments),
+calendar_raw                   AS (SELECT * FROM `projekt-inwestycyjny.Calendar.Dates`),
+
+-- FILTROWANIE DANYCH
+
+calendar AS (
+  SELECT
+    `date` AS date
+  FROM calendar_raw
+  WHERE TRUE
+    AND `date` <= CURRENT_DATE()
+),
+
+calendar_instruments           AS (
+  SELECT * 
+  FROM calendar 
+  CROSS JOIN instruments),
 
 -- TICKER DATE AMOUNT VALUE --
 /*
@@ -50,7 +64,7 @@ daily AS (
 ticker_date_amount_value AS (
 SELECT
   calendar_instruments.Project_id                                                              AS Project_id,
-  dates                                                                                                AS `Date`,
+  calendar_instruments.date                                                                    AS `Date`,
   calendar_instruments.Ticker                                                                  AS Ticker,
   COALESCE(instrument_types.Instrument_type, 
     LAST_VALUE(instrument_types.Instrument_type IGNORE NULLS) OVER window_transactions_by_ticker)      AS Instrument_type,
@@ -63,11 +77,11 @@ SELECT
     COALESCE(daily.Close, LAST_VALUE(daily.Close IGNORE NULLS) OVER window_transactions_by_ticker), 2) AS ticker_date_value
 FROM calendar_instruments
 LEFT JOIN transaction_view
-  ON calendar_instruments.dates = transaction_view.Transaction_date
+  ON calendar_instruments.date = transaction_view.Transaction_date
   AND calendar_instruments.Ticker = transaction_view.Ticker
   AND calendar_instruments.Project_id = transaction_view.Project_id
 LEFT JOIN daily
-  ON calendar_instruments.dates = daily.`Date`
+  ON calendar_instruments.date = daily.`Date`
   AND calendar_instruments.Ticker = daily.Ticker
 LEFT JOIN instrument_types
   ON transaction_view.Instrument_type_id = instrument_types.Instrument_type_id
@@ -78,7 +92,7 @@ WINDOW
     PARTITION BY 
       calendar_instruments.Project_id, 
       calendar_instruments.Ticker 
-    ORDER BY dates ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
+    ORDER BY calendar_instruments.date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
 ),
 
 share_of_portfolio_included AS (
