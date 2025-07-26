@@ -6,6 +6,7 @@ Pobranie danych z widoku transakcyjnego.
 WITH
 transactions_view AS (SELECT * FROM `projekt-inwestycyjny.Transactions.Transactions_view`),
 daily_data        AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Daily`),
+calendar          AS (SELECT * FROM `projekt-inwestycyjny.Calendar.Dates`),
 
 -- PRELIMINARY AGGREGATION --
 /*
@@ -20,10 +21,10 @@ preliminary_aggregation AS (
   SELECT
     tv.Project_id                             AS project_id,
     tv.Ticker                                 AS ticker,
-    EXTRACT(YEAR FROM tv.Transaction_date)    AS year,
-    EXTRACT(MONTH FROM tv.Transaction_date)   AS month,
-    EXTRACT(DAY FROM tv.Transaction_date)     AS day,
-    Quarter                                   AS quarter,
+    calendar.year                             AS year,
+    calendar.month                            AS month,
+    calendar.day                              AS day,
+    calendar.quarter_text                     AS quarter,
     SAFE_DIVIDE(
       tv.Transaction_value_pln,
       tv.Transaction_amount
@@ -43,6 +44,8 @@ preliminary_aggregation AS (
     AND 
       (tv.Project_id = dd.Project_id
       OR dd.Project_id IS NULL)
+  LEFT JOIN calendar
+    ON tv.Transaction_date = calendar.date
   WHERE TRUE
     AND Transaction_type_group = "Div_related_amount"
   GROUP BY ALL
