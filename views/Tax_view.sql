@@ -1,5 +1,25 @@
 WITH
-Tax_calculations AS (SELECT * FROM `projekt-inwestycyjny.Transactions.Tax_calculations`),
+tax_calculations_raw AS (SELECT * FROM `projekt-inwestycyjny.Transactions.Tax_calculations`),
+
+
+/*
+Filtrowanie danych i wstępne kalkulacje
+*/
+
+tax_calculations AS (
+  SELECT
+    Project_id                                AS ID_projektu,
+    Transaction_type                          AS Typ_transakcji,
+    Instrument_headquarter                    AS Siedziba,
+    Currency                                  AS Waluta,
+    Instrument_type                           AS Typ_instrumentu,
+    Tax_paid                                  AS Zaplacono_podatek,
+    EXTRACT(year FROM Date_sell)              AS Rok_podatkowy,
+    Tax_deductible_expenses                   AS Koszt_uzyskania_przychodu,
+    Income                                    AS Przychod,
+    Profit                                    AS Zysk
+  FROM tax_calculations_raw
+),
 
 /*
 Akcje_polskie_transakcje_GPW
@@ -9,24 +29,24 @@ Dane pogrupowane są wg roku wynikającego z daty sprzedaży instrumentu.
 
 Akcje_polskie_transakcje_GPW AS (
   SELECT
-    Project_id                                AS ID_Projektu,
-    EXTRACT(YEAR FROM Date_sell)              AS Rok_podatkowy,
+    ID_projektu                               AS ID_Projektu,
+    Rok_podatkowy                             AS Rok_podatkowy,
     'Transakcje polskich instrumentów na GPW' AS Rodzaj_transakcji,
     'Transakcje PIT8C'                        AS Kategoria,
-    ROUND(SUM(Tax_deductible_expenses), 2)    AS Koszt_uzyskania_przychodu,
-    ROUND(SUM(Income), 2)                     AS Przychod,
-    ROUND(SUM(Profit), 2)                     AS Zysk
+    SUM(Koszt_uzyskania_przychodu)            AS Koszt_uzyskania_przychodu,
+    SUM(Przychod)                             AS Przychod,
+    SUM(Zysk)                                 AS Zysk
   FROM Tax_calculations
   WHERE
     TRUE
-    AND Transaction_type            = 'Sell'
-    AND Currency                    = 'PLN'
-    AND Instrument_type             = 'Akcje polskie'
-    AND Instrument_headquarter      = 'Polska'
-    AND Tax_paid                    IS FALSE
+    AND Typ_transakcji              = 'Sell'
+    AND Waluta                      = 'PLN'
+    AND Typ_instrumentu             = 'Akcje polskie'
+    AND Siedziba                    = 'Polska'
+    AND Zaplacono_podatek           IS FALSE
   GROUP BY
-    Project_id,
-    EXTRACT(YEAR FROM Date_sell),
+    ID_projektu,
+    Rok_podatkowy,
     Rodzaj_transakcji,
     Kategoria
 ),
@@ -40,21 +60,21 @@ Dane pogrupowane są wg roku wynikającego z daty sprzedaży instrumentu.
 
 ETF_polskie_GPW AS (
   SELECT
-    Project_id                                AS ID_Projektu,
-    EXTRACT(YEAR FROM Date_sell)              AS Rok_podatkowy,
+    ID_projektu                               AS ID_Projektu,
+    Rok_podatkowy                             AS Rok_podatkowy,
     'Transakcje polskich instrumentów na GPW' AS Rodzaj_transakcji,
     'Transakcje PIT8C'                        AS Kategoria,
-    ROUND(SUM(Tax_deductible_expenses), 2)    AS Koszt_uzyskania_przychodu,
-    ROUND(SUM(Income), 2)                     AS Przychod,
-    ROUND(SUM(Profit), 2)                     AS Zysk
+    SUM(Koszt_uzyskania_przychodu)            AS Koszt_uzyskania_przychodu,
+    SUM(Przychod)                             AS Przychod,
+    SUM(Zysk)                                 AS Zysk
   FROM Tax_calculations
   WHERE
     TRUE
-    AND Transaction_type            = 'Sell'
-    AND Currency                    = 'PLN'
-    AND Instrument_type             = 'ETF obligacyjne polskie'
-    AND Instrument_headquarter      = 'Polska'
-    AND Tax_paid                    IS FALSE
+    AND Typ_transakcji              = 'Sell'
+    AND Waluta                      = 'PLN'
+    AND Typ_instrumentu             = 'ETF obligacyjne polskie'
+    AND Siedziba                    = 'Polska'
+    AND Zaplacono_podatek           IS FALSE
   GROUP BY ALL
 ),
 
@@ -67,24 +87,24 @@ Dane pogrupowane są wg roku wynikającego z daty sprzedaży instrumentu.
 
 Obligacje_korporacyjne_transakcje AS (
   SELECT
-    Project_id                                AS ID_Projektu,
-    EXTRACT(YEAR FROM Date_sell)              AS Rok_podatkowy,
+    ID_projektu                               AS ID_Projektu,
+    Rok_podatkowy                             AS Rok_podatkowy,
     'Transakcje polskich instrumentów na GPW' AS Rodzaj_transakcji,
     'Transakcje PIT8C'                        AS Kategoria,
-    ROUND(SUM(Tax_deductible_expenses), 2)    AS Koszt_uzyskania_przychodu,
-    ROUND(SUM(Income), 2)                     AS Przychod,
-    ROUND(SUM(Profit), 2)                     AS Zysk
+    SUM(Koszt_uzyskania_przychodu)            AS Koszt_uzyskania_przychodu,
+    SUM(Przychod)                             AS Przychod,
+    SUM(Zysk)                                 AS Zysk
   FROM Tax_calculations
   WHERE
     TRUE
-    AND Transaction_type            = 'Sell'
-    AND Currency                    = 'PLN'
-    AND Instrument_type             = 'Obligacje korporacyjne'
-    AND Instrument_headquarter      = 'Polska'
-    AND Tax_paid                    IS FALSE
+    AND Typ_transakcji              = 'Sell'
+    AND Waluta                      = 'PLN'
+    AND Typ_instrumentu             = 'Obligacje korporacyjne'
+    AND Siedziba                    = 'Polska'
+    AND Zaplacono_podatek           IS FALSE
   GROUP BY
-    Project_id,
-    EXTRACT(YEAR FROM Date_sell),
+    ID_projektu,
+    Rok_podatkowy,
     Rodzaj_transakcji,
     Kategoria
 ),
@@ -96,24 +116,24 @@ Widok zawiera wszystkie transakcje realizowane na polskiej giełdzie, w polskiej
 
 Akcje_zagraniczne_transakcje_GPW AS (
   SELECT
-    Project_id                                AS ID_Projektu,
-    EXTRACT(YEAR FROM Date_sell)              AS Rok_podatkowy,
+    ID_projektu                               AS ID_Projektu,
+    Rok_podatkowy                             AS Rok_podatkowy,
     'Transakcje zagr. instrumentów na GPW'    AS Rodzaj_transakcji,
     'Transakcje poza PIT 8C'                  AS Kategoria,
-    ROUND(SUM(Tax_deductible_expenses), 2)    AS Koszt_uzyskania_przychodu,
-    ROUND(SUM(Income), 2)                     AS Przychod,
-    ROUND(SUM(Profit), 2)                     AS Zysk,
+    SUM(Koszt_uzyskania_przychodu)            AS Koszt_uzyskania_przychodu,
+    SUM(Przychod)                             AS Przychod,
+    SUM(Zysk)                                 AS Zysk
   FROM Tax_calculations
   WHERE
     TRUE
-    AND Transaction_type            = 'Sell'
-    AND Currency                    = 'PLN'
-    AND Instrument_type             = 'Akcje polskie'
-    AND Instrument_headquarter      <> 'Polska'
-    AND Tax_paid                    IS FALSE
+    AND Typ_transakcji              = 'Sell'
+    AND Waluta                      = 'PLN'
+    AND Typ_instrumentu             = 'Akcje polskie'
+    AND Siedziba                    <> 'Polska'
+    AND Zaplacono_podatek           IS FALSE
   GROUP BY
-    Project_id,
-    EXTRACT(YEAR FROM Date_sell),
+    ID_projektu,
+    Rok_podatkowy,
     Rodzaj_transakcji,
     Kategoria
 ),
@@ -125,24 +145,24 @@ Widok zawiera wszystkie nieopodatkowane transakcje, w obcej walucie, realizowane
 
 ETF_zagraniczne_transakcje_poza_GPW AS (
   SELECT
-    Project_id                                AS ID_Projektu,
-    EXTRACT(YEAR FROM Date_sell)              AS Rok_podatkowy,
+    ID_projektu                               AS ID_Projektu,
+    Rok_podatkowy                             AS Rok_podatkowy,
     'Transakcje zagr. instrumentów poza GPW'  AS Rodzaj_transakcji,
     'Transakcje PIT8C'                        AS Kategoria,
-    ROUND(SUM(Tax_deductible_expenses), 2)    AS Koszt_uzyskania_przychodu,
-    ROUND(SUM(Income), 2)                     AS Przychod,
-    ROUND(SUM(Profit), 2)                     AS Zysk
+    SUM(Koszt_uzyskania_przychodu)            AS Koszt_uzyskania_przychodu,
+    SUM(Przychod)                             AS Przychod,
+    SUM(Zysk)                                 AS Zysk
   FROM Tax_calculations
   WHERE
     TRUE
-    AND Transaction_type            = 'Sell'
-    AND Currency                    <> 'PLN'
-    AND Instrument_type             = 'ETF akcyjne zagraniczne'
-    AND Instrument_headquarter      <> 'Polska'
-    AND Tax_paid                    IS FALSE
+    AND Typ_transakcji              = 'Sell'
+    AND Waluta                      <> 'PLN'
+    AND Typ_instrumentu             = 'ETF akcyjne zagraniczne'
+    AND Siedziba                    <> 'Polska'
+    AND Zaplacono_podatek           IS FALSE
   GROUP BY
-    Project_id,
-    EXTRACT(YEAR FROM Date_sell),
+    ID_projektu,
+    Rok_podatkowy,
     Rodzaj_transakcji,
     Kategoria
 ),
@@ -154,24 +174,24 @@ Widok zawiera wszystkie dywidendy wypłacone na polskiej giełdzie, w obcej walu
 
 Akcje_polskie_dywidendy_gpw AS (
   SELECT
-    Project_id                                AS ID_Projektu,
-    EXTRACT(YEAR FROM Date_sell)              AS Rok_podatkowy,
+    ID_projektu                               AS ID_Projektu,
+    Rok_podatkowy                             AS Rok_podatkowy,
     'Nierozliczone dywidendy na GPW'          AS Rodzaj_transakcji,
     'Dywidendy zagraniczne'                   AS Kategoria,
     0                                         AS Koszt_uzyskania_przychodu,
-    ROUND(SUM(Income), 2)                     AS Przychod,
-    ROUND(SUM(Profit), 2)                     AS Zysk
+    SUM(Przychod)                             AS Przychod,
+    SUM(Zysk)                                 AS Zysk
   FROM Tax_calculations
   WHERE
     TRUE
-    AND Transaction_type            = 'Dywidenda'
-    AND Currency                    <> 'PLN'
-    AND Instrument_type             = 'Akcje polskie'
-    AND Instrument_headquarter      <> 'Polska'
-    AND Tax_paid                    IS FALSE
+    AND Typ_transakcji               = 'Dywidenda'
+    AND Waluta                      <> 'PLN'
+    AND Typ_instrumentu             = 'Akcje polskie'
+    AND Siedziba                    <> 'Polska'
+    AND Zaplacono_podatek           IS FALSE
   GROUP BY
-    Project_id,
-    EXTRACT(YEAR FROM Date_sell),
+    ID_projektu,
+    Rok_podatkowy,
     Rodzaj_transakcji,
     Kategoria
 ),
@@ -183,24 +203,24 @@ Widok zawiera wszystkie dywidendy wypłacone na zagranicznej giełdzie, w obcej 
 
 ETF_zagraniczne_dywidendy_poza_GPW AS (
   SELECT
-    Project_id                                AS ID_Projektu,
-    EXTRACT(YEAR FROM Date_sell)              AS Rok_podatkowy,
+    ID_projektu                               AS ID_Projektu,
+    Rok_podatkowy                             AS Rok_podatkowy,
     'Dywidendy poza GPW'                      AS Rodzaj_transakcji,
     'Dywidendy zagraniczne'                   AS Kategoria,
     0                                         AS Koszt_uzyskania_przychodu,
-    ROUND(SUM(Income), 2)                     AS Przychod,
-    ROUND(SUM(Profit), 2)                     AS Zysk
+    SUM(Przychod)                             AS Przychod,
+    SUM(Zysk)                                 AS Zysk
   FROM Tax_calculations
   WHERE
     TRUE
-    AND Transaction_type            = 'Dywidenda'
-    AND Currency                    <> 'PLN'
-    AND Instrument_type             = 'ETF akcyjne zagraniczne'
-    AND Instrument_headquarter      <> 'Polska'
-    AND Tax_paid                    IS FALSE
+    AND Typ_transakcji               = 'Dywidenda'
+    AND Waluta                      <> 'PLN'
+    AND Typ_instrumentu             = 'ETF akcyjne zagraniczne'
+    AND Siedziba                    <> 'Polska'
+    AND Zaplacono_podatek           IS FALSE
   GROUP BY
-    Project_id,
-    EXTRACT(YEAR FROM Date_sell),
+    ID_projektu,
+    Rok_podatkowy,
     Rodzaj_transakcji,
     Kategoria
 ),
@@ -212,24 +232,24 @@ Widok zawiera wszystkie odsetki wypłacone na polskiej giełdzie, ale nierozlicz
 
 Obligacje_korporacyjne_odsetki AS (
   SELECT
-    Project_id                                AS ID_Projektu,
-    EXTRACT(YEAR FROM Date_sell)              AS Rok_podatkowy,
+    ID_projektu                               AS ID_Projektu,
+    Rok_podatkowy                             AS Rok_podatkowy,
     'Odsetki na GPW - obligacje korporacyjne' AS Rodzaj_transakcji,
     'Odsetki polskie'                         AS Kategoria,
     0                                         AS Koszt_uzyskania_przychodu,
-    ROUND(SUM(Income), 2)                     AS Przychod,
-    ROUND(SUM(Profit), 2)                     AS Zysk
+    SUM(Przychod)                             AS Przychod,
+    SUM(Zysk)                                 AS Zysk
   FROM Tax_calculations
   WHERE
     TRUE
-    AND Transaction_type            = 'Odsetki'
-    AND Currency                    = 'PLN'
-    AND Instrument_type             = 'Obligacje korporacyjne'
-    AND Instrument_headquarter      = 'Polska'
-    AND Tax_paid                    IS FALSE
+    AND Typ_transakcji              = 'Odsetki'
+    AND Waluta                      = 'PLN'
+    AND Typ_instrumentu             = 'Obligacje korporacyjne'
+    AND Siedziba                    = 'Polska'
+    AND Zaplacono_podatek           IS FALSE
   GROUP BY
-    Project_id,
-    EXTRACT(YEAR FROM Date_sell),
+    ID_projektu,
+    Rok_podatkowy,
     Rodzaj_transakcji,
     Kategoria
 ),
@@ -289,10 +309,6 @@ Dane analogiczne do powyższych, jednak pofiltrowane wg roku podatkowego oraz ro
 data_all_unioned_ordered AS (
   SELECT *
   FROM data_all_unioned
-  ORDER BY
-    ID_Projektu,
-    Rok_podatkowy DESC,
-    Rodzaj_transakcji
 )
 
 
