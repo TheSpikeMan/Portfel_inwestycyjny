@@ -19,8 +19,6 @@ instruments_data  AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Inst
 instruments_types AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instrument_types`),
 -- Przechowuje dane giełdowe instrumentów finansowych
 daily_raw         AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Daily`),
--- Przechowuje informacje kalendarzowe
-dates             AS (SELECT * FROM `projekt-inwestycyjny.Calendar.Dates`),
 
 -- CURRENCY_DATA --
 /* Przechowuje informacje o kursach walutowych, wraz z wyznaczeniem kursu walutowego na dzień poprzedni */
@@ -110,9 +108,6 @@ data_aggregated AS (
   LEFT JOIN currency_data
   ON transactions_data.Transaction_date   = currency_data.Currency_date
   AND transactions_data.Currency          = currency_data.Currency
-  -- Połączenie z danymi kalendarza
-  LEFT JOIN dates
-  ON transactions_data.Transaction_date   = dates.Date
 ),
 
 
