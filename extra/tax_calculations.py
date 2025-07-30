@@ -234,49 +234,10 @@ result_df = pd.DataFrame(data=list_to_append, columns=columns)
 destination_table = f"{project}.{dataSetTransactions}.{tableTaxCalculations}"
 
 # 26. Przygotowanie schematu danych.
-schema = [bigquery.SchemaField(name = 'Project_id', field_type = "INTEGER", \
-                                mode = "REQUIRED"),
-          bigquery.SchemaField(name = 'Date_sell', field_type = "DATE", \
-                                mode = "REQUIRED"),
-          bigquery.SchemaField(name = 'Date_buy', field_type = "DATE",\
-                                mode = "NULLABLE"),
-          bigquery.SchemaField(name = 'Investment_period', field_type = "INTEGER",\
-                                mode = "NULLABLE"),
-          bigquery.SchemaField(name = 'Quantity', field_type = "INTEGER",\
-                                mode = "REQUIRED"),
-          bigquery.SchemaField(name = 'Buy_Price', field_type = "FLOAT",\
-                                mode = "NULLABLE"),
-          bigquery.SchemaField(name = 'Sell_Price', field_type = "FLOAT",\
-                                mode = "REQUIRED"),
-          bigquery.SchemaField(name = 'Buy_currency', field_type = "FLOAT",\
-                                mode = "NULLABLE"),
-          bigquery.SchemaField(name = 'Sell_currency', field_type = "FLOAT",\
-                                mode = "REQUIRED"),
-          bigquery.SchemaField(name = 'Currency', field_type = "STRING",\
-                                mode = "NULLABLE"),
-          bigquery.SchemaField(name = 'Transaction_type', field_type = "STRING",\
-                                mode = "REQUIRED"),
-          bigquery.SchemaField(name = 'Instrument_type', field_type = "STRING",\
-                                mode = "REQUIRED"),
-          bigquery.SchemaField(name = 'Country', field_type = "STRING",\
-                                mode = "REQUIRED"),
-          bigquery.SchemaField(name = 'Instrument_headquarter', field_type = "STRING",\
-                                mode = "REQUIRED"),
-          bigquery.SchemaField(name = 'Ticker', field_type = "STRING",\
-                                mode = "REQUIRED"),
-          bigquery.SchemaField(name = 'Ticker_id', field_type = "INTEGER",\
-                                mode = "REQUIRED"),
-          bigquery.SchemaField(name = 'Tax_deductible_expenses', field_type = "FLOAT",\
-                                mode = "NULLABLE"),
-          bigquery.SchemaField(name = 'Income', field_type = "FLOAT",\
-                                mode = "NULLABLE"),
-          bigquery.SchemaField(name = 'Profit', field_type = "FLOAT",\
-                                mode = "NULLABLE"),
-          bigquery.SchemaField(name = 'Tax_paid', field_type = "BOOL",\
-                                mode = "REQUIRED"),
-          bigquery.SchemaField(name = 'Tax_value', field_type = "FLOAT",\
-                                mode = "NULLABLE")
-                                ]
+
+# Pobranie schematu danych z bieżącego widoku tabeli
+tableInstance = client.get_table(destination_table)
+schema = tableInstance.schema
 
 # 27. Zdefiniowanie joba, który wykona operację eksportu.
 job_config = bigquery.LoadJobConfig(schema = schema,
