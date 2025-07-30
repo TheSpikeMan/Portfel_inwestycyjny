@@ -4,13 +4,21 @@ from pathlib import Path
 from dotenv import load_dotenv
 import os
 
-# 1. Pobranie danych transakcyjnych
+# 1. Pobieram dane transakcyjne
 client = bigquery.Client()
 
-project = 'projekt-inwestycyjny'
-dataset = 'Transactions'
-table = 'Transactions_view'
+# Zmienne środowiskowe
+env_path = Path(__file__).parent.parent / ".env"
+load_dotenv(dotenv_path=env_path)
 
+# Definicja nazwy projektu
+project = os.getenv("BQ_PROJECT_ID")
+# Definicje nazw datasetu
+dataSetTransactions = os.getenv("BQ_DATASET_TRANSACTIONS")
+# Definicje nazw widoku
+viewTransactionsView = os.getenv("BQ_VIEW_TRANSACTIONS_VIEW")
+
+# Zapytanie do bazy dnaych
 query = f"""
 
 SELECT * FROM {project}.{dataset}.{table}
