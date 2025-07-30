@@ -22,7 +22,11 @@ viewTransactionsView = os.getenv("BQ_VIEW_TRANSACTIONS_VIEW")
 query = f"""
 SELECT * FROM {project}.{dataSetTransactions}.{viewTransactionsView}
 """
+
+# Utworzenie obiektu klasy QueryJob na podstawie zapytania
 query_job = client.query(query=query)
+
+# Konwersja obiektu QueryJob na DataFrame
 transactions_df = query_job.to_dataframe()
 
 # 2. Zdublowanie kolumny, dla celów dokonywania obliczeń na kolumnie
