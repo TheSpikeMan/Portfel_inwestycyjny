@@ -214,12 +214,17 @@ for index, transaction in enumerate(transactions_df.iterrows()):
             continue
   
 # 23. Zmień nazwy kolumn na odpowiednie, zdefiniowane poniżej.
-    
-columns = ['Project_id', 'Date_sell', 'Date_buy',	'Investment_period',	'Quantity',
-           'Buy_Price', 'Sell_Price', 'Buy_currency',
-           'Sell_currency', 'Currency', 'Transaction_type', 'Instrument_type', 'Country', 
-           'Instrument_headquarter', 'Ticker', 'Ticker_id',
-           'Tax_deductible_expenses',	'Income',	'Profit', 'Tax_paid', 'Tax_value']
+
+query_2 = f"""
+    SELECT STRING_AGG(column_name, ", ") AS column_name
+    FROM `{project}.{dataSetTransactions}.INFORMATION_SCHEMA.COLUMNS`
+    WHERE TRUE
+    AND table_name = {tableTaxCalculations}
+"""
+query_job_2 = client.query(query=query_2)
+
+# Pobieram listę kolumn bezpośrednio z INFORMATION_SCHEMA z BigQuery
+columns = query_job.to_dataframe()['column_name'].to_list()
 
 # 24. Utworzenie Df na podstawie zestawu list.
 result_df = pd.DataFrame(data=list_to_append, columns = columns)
