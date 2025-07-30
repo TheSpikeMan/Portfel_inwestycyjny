@@ -1,5 +1,8 @@
 from google.cloud import bigquery
 import pandas as pd
+from pathlib import Path
+from dotenv import load_dotenv
+import os
 
 # 1. Pobranie danych transakcyjnych
 client = bigquery.Client()
