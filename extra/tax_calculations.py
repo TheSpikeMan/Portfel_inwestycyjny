@@ -244,7 +244,6 @@ job_config = bigquery.LoadJobConfig(schema = schema,
                                     write_disposition = "WRITE_TRUNCATE")
 
 # 28. Wykonanie eksportu danych metodą load_table_from_dataframe na obiekcie client klasy Client.
-
 try:
     job = client.load_table_from_dataframe(dataframe=result_df,
                                            destination=destination_table,
