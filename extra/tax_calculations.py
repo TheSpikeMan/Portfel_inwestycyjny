@@ -219,7 +219,7 @@ query_2 = f"""
     SELECT STRING_AGG(column_name, ", ") AS column_name
     FROM `{project}.{dataSetTransactions}.INFORMATION_SCHEMA.COLUMNS`
     WHERE TRUE
-    AND table_name = {tableTaxCalculations}
+    AND table_name = '{tableTaxCalculations}'
 """
 query_job_2 = client.query(query=query_2)
 
