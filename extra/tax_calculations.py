@@ -246,10 +246,10 @@ job_config = bigquery.LoadJobConfig(schema = schema,
 # 28. Wykonanie eksportu danych metodą load_table_from_dataframe na obiekcie client klasy Client.
 
 try:
-    job = client.load_table_from_dataframe(dataframe=result_df, 
-                                            destination=destination_table,
-                                            num_retries=1,
-                                            job_config=job_config)
+    job = client.load_table_from_dataframe(dataframe=result_df,
+                                           destination=destination_table,
+                                           num_retries=1,
+                                           job_config=job_config)
     job.result()
     print("Success exporting the data to BigQuery.")
 except Exception as e:
