@@ -224,10 +224,11 @@ query_2 = f"""
 query_job_2 = client.query(query=query_2)
 
 # Pobieram listę kolumn bezpośrednio z INFORMATION_SCHEMA z BigQuery
-columns = query_job.to_dataframe()['column_name'].to_list()
+columns_text = query_job_2.to_dataframe()['column_name'][0]
+columns = [col.strip() for col in columns_text.split(',')]
 
 # 24. Utworzenie Df na podstawie zestawu list.
-result_df = pd.DataFrame(data=list_to_append, columns = columns)
+result_df = pd.DataFrame(data=list_to_append, columns=columns)
 
 # 25. Zdefiniownie miejsca eksportu danych.
 destination_table = f"{project}.{dataSetTransactions}.{tableTaxCalculations}"
