@@ -20,13 +20,10 @@ viewTransactionsView = os.getenv("BQ_VIEW_TRANSACTIONS_VIEW")
 
 # Zapytanie do bazy dnaych
 query = f"""
-
-SELECT * FROM {project}.{dataset}.{table}
-
+SELECT * FROM {project}.{dataSetTransactions}.{viewTransactionsView}
 """
 query_job = client.query(query=query)
 transactions_df = query_job.to_dataframe()
-
 
 # 2. Zdublowanie kolumny, dla celów dokonywania obliczeń na kolumnie
 transactions_df['amount_location'] = transactions_df['Transaction_amount']
