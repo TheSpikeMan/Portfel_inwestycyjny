@@ -230,11 +230,7 @@ columns = query_job.to_dataframe()['column_name'].to_list()
 result_df = pd.DataFrame(data=list_to_append, columns = columns)
 
 # 25. Zdefiniownie miejsca eksportu danych.
-
-project_id = 'projekt-inwestycyjny'
-dataset_id = 'Transactions'
-table_id = 'Tax_calculations'
-destination_table = f"{project_id}.{dataset_id}.{table_id}"
+destination_table = f"{project}.{dataSetTransactions}.tableTaxCalculations}"
 
 # 26. Przygotowanie schematu danych.
 schema = [bigquery.SchemaField(name = 'Project_id', field_type = "INTEGER", \
