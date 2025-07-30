@@ -17,6 +17,8 @@ project = os.getenv("BQ_PROJECT_ID")
 dataSetTransactions = os.getenv("BQ_DATASET_TRANSACTIONS")
 # Definicje nazw widoku
 viewTransactionsView = os.getenv("BQ_VIEW_TRANSACTIONS_VIEW")
+# Definicje nazw tabel
+tableTaxCalculations = os.getenv("BQ_TABLE_TAX_CALCULATIONS")
 
 # Zapytanie do bazy dnaych
 query = f"""
