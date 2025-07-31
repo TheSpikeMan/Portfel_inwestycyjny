@@ -31,10 +31,11 @@ def get_gmail_service():
     # Jeżeli token nie istnieje lub jest nieważny odśwież go
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
-            # Odświeżenie tokena
+            # Odświeżenie tokena jeśli jest nieważny.
             creds.refresh(Request())
         else:
             flow = InstalledAppFlow.from_client_secrets_file(credentials, SCOPES)
+            # Autoryzacja w oknie przeglądarki do konkretnego zakresu zdefiniowanego w "SCOPES"
             creds = flow.run_local_server(port=0)
         with open('token.json', 'w') as token:
             # Zapis tokena do pliku .json
