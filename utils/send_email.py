@@ -26,7 +26,7 @@ def get_gmail_service():
     creds = None
     # Jeśli token już istnieje (jestem zalogowany) załaduj token
     if os.path.exists('token.json'):
-        # Ładowanie tokena z pliku
+        # Ładowanie tokena z pliku - tworzy instancję klasy 'Credentials' na bazie pliku z tokenem i zakresu
         creds = Credentials.from_authorized_user_file('token.json', SCOPES)
     # Jeżeli token nie istnieje lub jest nieważny odśwież go
     if not creds or not creds.valid:
