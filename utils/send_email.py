@@ -1,4 +1,6 @@
 import os, base64
+
+# Klasa pythonowa do tworzenia i zarządzania wiadomościami email
 from email.message import EmailMessage
 
 # Biblioteki do autoryzacji OAuth2.0
