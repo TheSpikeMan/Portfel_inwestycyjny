@@ -9,8 +9,8 @@ from googleapiclient.discovery import build
 app = Flask(__name__)
 
 # Ścieżki do plików
-TOKEN_PATH = '/secrets/token.json'
-CREDENTIALS_PATH = '/secrets/credentials.json'
+TOKEN_PATH = '/secrets/Gmail_token.json'
+CREDENTIALS_PATH = '/secrets/OAuth2_Credentials.json'
 SCOPES = ['https://www.googleapis.com/auth/gmail.send']
 
 def load_credentials():
