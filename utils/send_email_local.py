@@ -1,3 +1,13 @@
+"""
+Funkcja wysyłająca email lokalnie
+Rodzaj autoryzacji gmail: OAuth 2.0, przy pomocy autoryzacji w przeglądarce z wykorzystaniem tokena.
+
+- Sposób wysyłki emaila: Gmail API, a potem bibliotek EmailMessage.
+- Token: Token zapisywany jest lokalnie w katalogu roboczym projektu.
+- Autoryzacja konta Google: za pomocą klucza .json, przekazywanego za pomocą zmiennej środowiskowej.
+
+"""
+
 import os, base64
 
 # Klasa pythonowa do tworzenia i zarządzania wiadomościami email
