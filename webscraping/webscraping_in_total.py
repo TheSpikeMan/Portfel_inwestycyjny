@@ -364,6 +364,7 @@ def daily_webscraping_plus_currencies(cloud_event):
 
                             # Uwzględniam inflację lub nie w zależności od typu obligacji (uwzględniam dla EDO, dla TOS nie)
                             uwzgl_infl= inflacja if ticker.startswith("EDO") else 0
+                            if liczba_dni < 730:
                                 current_value = current_value + current_value * \
                                 (liczba_dni - 365)/365 * \
                                 (uwzgl_infl + marza_kolejne_lata)/ 100
@@ -397,7 +398,7 @@ def daily_webscraping_plus_currencies(cloud_event):
             print("Ocena wartości obligacji skarbowych zakończona powodzeniem.")
                 
             return data_to_export_obligacje
-
+        
         def webscraping_markets_ft_webscraping(self,
                                             present_instruments_ETF,
                                             present_currencies):
