@@ -340,9 +340,11 @@ def daily_webscraping_plus_currencies(cloud_event):
                 current_date       = date.today()
                 liczba_dni         = (current_date - data_zakupu).days
                 liczba_lat         = int(math.modf(liczba_dni/365)[1])
+
+                # Wyznaczam słownik dla inflacji
+                inflacja_dict = dict(zip(dane_inflacyjne['Początek miesiąca'], dane_inflacyjne['Inflacja']))
                 
-                if ticker.startswith("EDO") or ticker.startswith("TOS"):
-                
+                if ticker.startswith(("EDO", "TOS")):
                     n = 1
                     
                     if liczba_dni < 365:
@@ -363,9 +365,8 @@ def daily_webscraping_plus_currencies(cloud_event):
                                 1)
                             
                             # Wyznaczam wartość inflacji
-                            inflacja = dane_inflacyjne.loc[dane_inflacyjne['Początek miesiąca']
-                                                           == str(data_badania_inflacji)].iat[0,0]
-                            
+                            inflacja = inflacja_dict.get(str(data_badania_inflacji), 0)
+
                             # Uwzględniam inflację lub nie w zależności od typu obligacji (uwzględniam dla EDO, dla TOS nie)
                             uwzgl_infl= inflacja if ticker.startswith("EDO") else 0
                             
