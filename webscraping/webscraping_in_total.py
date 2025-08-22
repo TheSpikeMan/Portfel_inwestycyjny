@@ -295,10 +295,10 @@ def daily_webscraping_plus_currencies(cloud_event):
             return dane_inflacyjne, dane_transakcyjne, dane_marz
 
         def obligacje_skarbowe(self,
-                            dane_inflacyjne, 
-                            dane_transakcyjne, 
-                            dane_marz):
-            
+                        dane_inflacyjne, 
+                        dane_transakcyjne, 
+                        dane_marz):
+        
             """
             
             Funkcja wyznacza aktualną wartość obligacji skarbowych znajdujących się w portfelu na podstawie danych transakcyjnych,
@@ -332,6 +332,7 @@ def daily_webscraping_plus_currencies(cloud_event):
                 marza_pierwszy_rok = row.First_year_interest
                 marza_kolejne_lata = row.Regular_interest
                 
+                # Wartość początkowa jednej obligacji
                 wolumen_jednostkowy = 100
                 
                 start_value        = wolumen * wolumen_jednostkowy
@@ -346,31 +347,23 @@ def daily_webscraping_plus_currencies(cloud_event):
                 
                 if ticker.startswith(("EDO", "TOS")):
                     n = 1
-                    
                     if liczba_dni < 365:
                         current_value = start_value + start_value * liczba_dni / 365 * (marza_pierwszy_rok/100)
-                    
                     else:
                         current_value = start_value + start_value * (marza_pierwszy_rok/100)
-                        
                         for i in range(liczba_lat, 0, -1):
-                            
                             # Wyznaczam liczbę dni do przesunięcia, aby wyznaczyć dzień badania inflacji
                             liczba_dni_przesuniecie = timedelta(days= 365 * n - 60)
-                            
                             # Wyznaczam datę badania inflacji
                             data_badania_inflacji = date(
                                 (data_zakupu + liczba_dni_przesuniecie).year,
                                 (data_zakupu + liczba_dni_przesuniecie).month,
                                 1)
-                            
                             # Wyznaczam wartość inflacji
                             inflacja = inflacja_dict.get(str(data_badania_inflacji), 0)
 
                             # Uwzględniam inflację lub nie w zależności od typu obligacji (uwzględniam dla EDO, dla TOS nie)
                             uwzgl_infl= inflacja if ticker.startswith("EDO") else 0
-                            
-                            if liczba_dni < 730:
                                 current_value = current_value + current_value * \
                                 (liczba_dni - 365)/365 * \
                                 (uwzgl_infl + marza_kolejne_lata)/ 100
@@ -388,14 +381,18 @@ def daily_webscraping_plus_currencies(cloud_event):
             data_to_export['Close'] = data_to_export['Current Value'].div(data_to_export['Transaction_amount'],
                                                                             fill_value=pd.NA)
 
-                    # Wyznaczam średnią wartość jednej obligacji, ważąc średnią wolumenem transakcyjnym
-                    data_to_export_obligacje = data_to_export.groupby(['Project_id', 'Ticker', 'Date']).\
-                        apply(lambda x: np.average(x['Close'], \
-                        weights=x['Transaction_amount']))\
-                        .reset_index(name='Close').\
-                        round(decimals = 3)
-                    data_to_export_obligacje['Volume'] = 0
-                    data_to_export_obligacje['Turnover'] = 0
+            # Wyznaczam średnią wartość jednej obligacji, ważąc średnią wolumenem transakcyjnym
+            data_to_export['weighted_close'] = (
+                data_to_export['Close'] * data_to_export['Transaction_amount']
+            )
+            group = data_to_export.groupby(['Project_id', 'Ticker', 'Date'])
+            data_to_export_obligacje = (
+                group['weighted_close'].sum().div(group['Transaction_amount'].sum())
+                .reset_index(name='Close')
+                .round({'Close': 3})
+            )
+            data_to_export_obligacje['Volume'] = 0
+            data_to_export_obligacje['Turnover'] = 0
 
             print("Ocena wartości obligacji skarbowych zakończona powodzeniem.")
                 
