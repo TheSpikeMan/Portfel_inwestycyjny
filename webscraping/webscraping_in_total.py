@@ -318,8 +318,8 @@ def daily_webscraping_plus_currencies(cloud_event):
                                                         how='inner',
                                                         on = 'Ticker')
             
-            # Definiuję docelowy DataFrame z nazewnictwem kolumn
-            result_df = pd.DataFrame(columns=['Project_id', 'Ticker', 'Date', 'Current Value'])
+            # Definiuję listę do zbierania danych
+            results = []
             
             # Iteruję po instrumentach obligacji skarbowych w ramach wszystkich projektów
             for dane in dane_do_analizy.iterrows():
@@ -376,24 +376,16 @@ def daily_webscraping_plus_currencies(cloud_event):
                             else:
                                 current_value = current_value + current_value * \
                                     (uwzgl_infl + marza_kolejne_lata) / 100
-                                liczba_dni = liczba_dni - 365
-                            n = n + 1 
-                    
-                    # Przygotowuję końcowe dane do eksportu
-                    result_df = pd.concat([result_df, \
-                                        pd.DataFrame(data=[[project_id,
-                                                            ticker,
-                                                            data_zakupu,
-                                                            round(current_value, 2)]],
-                                                            columns=['Project_id', 'Ticker', 'Date', 'Current Value'])])
-                    data_to_export = result_df.merge(right=dane_do_analizy, 
-                                    how='inner',
-                                    left_on=['Project_id', 'Ticker', 'Date'],
-                                    right_on= ['Project_id', 'Ticker', 'Transaction_date'])
+                                liczba_dni -= 365
+                            n = n + 1
 
-                    data_to_export['Date'] = current_date
-                    data_to_export['Close'] = data_to_export['Current Value'].div(data_to_export['Transaction_amount'],
-                                                                                  fill_value=pd.NA)
+                    # Dodaję dane do zbiorczej tabeli
+                    results.append([project_id, ticker, data_zakupu, round(current_value, 2), wolumen])
+            
+            data_to_export = pd.DataFrame(results, columns=['Project_id', 'Ticker', 'Date', 'Current Value', 'Transaction_amount'])
+            data_to_export['Date'] = current_date
+            data_to_export['Close'] = data_to_export['Current Value'].div(data_to_export['Transaction_amount'],
+                                                                            fill_value=pd.NA)
 
                     # Wyznaczam średnią wartość jednej obligacji, ważąc średnią wolumenem transakcyjnym
                     data_to_export_obligacje = data_to_export.groupby(['Project_id', 'Ticker', 'Date']).\
