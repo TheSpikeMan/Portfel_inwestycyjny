@@ -322,15 +322,15 @@ def daily_webscraping_plus_currencies(cloud_event):
             results = []
             
             # Iteruję po instrumentach obligacji skarbowych w ramach wszystkich projektów
-            for dane in dane_do_analizy.iterrows():
+            for row in dane_do_analizy.itertuples():
 
                 # Wyznaczam podstawowe parametry transakcyjne oraz marżowe
-                project_id         = dane[1].iloc[0]
-                ticker             = dane[1].iloc[1]
-                data_zakupu        = dane[1].iloc[2]
-                wolumen            = dane[1].iloc[3]
-                marza_pierwszy_rok = dane[1].iloc[4]
-                marza_kolejne_lata = dane[1].iloc[5]
+                project_id         = row.Project_id
+                ticker             = row.Ticker
+                data_zakupu        = row.Transaction_date
+                wolumen            = row.Transaction_amount
+                marza_pierwszy_rok = row.First_year_interest
+                marza_kolejne_lata = row.Regular_interest
                 
                 wolumen_jednostkowy = 100
                 
