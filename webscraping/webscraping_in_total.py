@@ -304,9 +304,16 @@ def daily_webscraping_plus_currencies(cloud_event):
 
             Obsługiwane obligacje: EDO (indeksowane inflacją), TOS (stałoprocentowe)
             """
-            
+
             print("Rozpoczynam ocenę wartości obligacji skarbowych.")
-            dane_inflacyjne.columns = ['Inflacja', 'Początek miesiąca']
+            
+            # --- Przygotowanie danych ---
+            inflation_data = dane_inflacyjne.copy()
+            inflation_data.columns = ['Inflacja', 'Początek miesiąca']
+            inflation_data['Początek miesiąca'] = pd.to_datetime(inflation_data['Początek miesiąca'].dt.strftime('%Y-%m-01'))
+
+            # Tworzymy słownik inflacji
+            inflacja_dict = dict(zip(dane_inflacyjne['Początek miesiąca'], dane_inflacyjne['Inflacja']))
 
             # Łączę dane transakcyjne z danymi marż
             dane_do_analizy = dane_transakcyjne.merge(right=dane_marz,
