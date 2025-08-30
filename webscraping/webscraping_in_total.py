@@ -112,7 +112,87 @@ def daily_webscraping_plus_currencies(cloud_event):
             except Exception as e:
                 print(f"Error uploading data to BigQuery: {str(e)}")
 
-    class Scraper(): 
+    class Scraper():
+        # --- Funkcje pomocniczne związane z obligacjami ---
+        @staticmethod
+        def _get_interest_rate_for_period(
+            purchase_date: date,
+            completed_years: int,
+            inflation_dict: Dict[str, float],
+            ticker: str,
+            regular_margin: float) -> float:
+            """
+            Wyznacza stopę procentową za dany okres
+
+            Returns:
+                float: Oprocentowanie w danym roku (uwzględniające inflację i marżę).
+            """
+
+            # Określenie daty do sprawdzenia inflacji (2 miesiące przed)
+            inflation_check_offset = timedelta(days=(DAYS_IN_YEAR * completed_years) - INFLATION_LAG_DAYS)
+            inflation_check_date = purchase_date + inflation_check_offset
+
+            # Dokonuję konwersji daty inflacji na STRING
+            inflation_date_key = inflation_check_date.strftime('%Y-%m-01')
+
+            # Wyznaczam wartość inflacji, na podstawie klucza
+            inflation_rate = inflation_dict.get(inflation_date_key, 0.0) / 100.0
+
+            # Dla obligacji TOS inflacja jest ignorowana
+            interest_rate = (inflation_rate if ticker.startswith("EDO") else 0) + regular_margin
+            return interest_rate
+    
+        
+        @staticmethod
+        def _calculate_single_bond_value(row: pd.Series, inflation_dict: Dict[str, float]) -> float:
+            """
+            Oblicza wartość bieżącą dla pojedynczej tranakcji obligacji.
+            """
+
+            # --- Pobranie danych z wiersza ---
+            ticker = row['Ticker']
+            purchase_date = row['Transaction_date']
+            volume = row['Transaction_amount']
+            first_year_margin = row['First_year_interest'] / 100.0
+            regular_margin = row['Regular_interest'] / 100.0
+
+            # --- Obliczenia bazowe ---
+            start_value = volume * NOMINAL_VALUE
+            days_held = (date.today() - purchase_date).days
+
+            # Przypadek 1: Obligacja trzymana krócej niż rok:
+            if days_held < DAYS_IN_YEAR:
+                # Odsetki naliczane proporcjonalnie
+                return start_value * (1 + (days_held / DAYS_IN_YEAR) * first_year_margin)
+            
+            # --- Obliczenia dla obligacji trzymanych dłużej niż rok
+
+            # Wartość po pierwszym pełnym roku
+            current_value = start_value * (1 + first_year_margin)
+            remaining_days = days_held - DAYS_IN_YEAR
+            completed_years = 1
+
+            # Pętla po kolejnych zakończonych latach
+            while remaining_days >= DAYS_IN_YEAR:
+
+                interest_rate = Scraper._get_interest_rate_for_period(purchase_date, completed_years, inflation_dict, ticker, regular_margin)
+                # Kapitalizacja odsetek na koniec roku
+                current_value *= (1 + interest_rate)
+
+                remaining_days -= DAYS_IN_YEAR
+                completed_years += 1
+            
+            # Doliczenie odsetek za bieżący, niepełny rok
+            if remaining_days > 0:
+                # Określenie daty do sprawdzenia inflacji (2 miesiące przed)
+                interest_rate = Scraper._get_interest_rate_for_period(purchase_date, completed_years, inflation_dict, ticker, regular_margin)
+
+                # Proporcjonalne odsetki za dni w bieżącym okrese
+                current_value *= (1 + (remaining_days / DAYS_IN_YEAR) * interest_rate)
+            
+            return current_value
+        
+        # --- Inicjalizacja obiektu ---
         def __init__(self,
                     project_id,
                     dataset_instruments,
