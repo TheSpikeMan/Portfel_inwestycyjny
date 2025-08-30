@@ -300,14 +300,9 @@ def daily_webscraping_plus_currencies(cloud_event):
                         dane_marz):
         
             """
-            
-            Funkcja wyznacza aktualną wartość obligacji skarbowych znajdujących się w portfelu na podstawie danych transakcyjnych,
-                danych inflacji oraz danych marży.
+            Funkcja wyznacza aktualną wartość obligacji skarbowych znajdujących się w portfelu.
 
-            Obsługiwane obligacje skarbowe:
-            - EDO - 10 - letnie skarbowe, indeksowane inflacją, z roczną kapitalizacją
-            - TOS - 3 - letnie skarbowe, o oprocentowaniu stałym, z roczną kapitalizacją
-
+            Obsługiwane obligacje: EDO (indeksowane inflacją), TOS (stałoprocentowe)
             """
             
             print("Oceniam obecność wartość obligacji skarbowych.")
