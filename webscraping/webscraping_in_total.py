@@ -305,7 +305,7 @@ def daily_webscraping_plus_currencies(cloud_event):
             Obsługiwane obligacje: EDO (indeksowane inflacją), TOS (stałoprocentowe)
             """
             
-            print("Oceniam obecność wartość obligacji skarbowych.")
+            print("Rozpoczynam ocenę wartości obligacji skarbowych.")
             dane_inflacyjne.columns = ['Inflacja', 'Początek miesiąca']
 
             # Łączę dane transakcyjne z danymi marż
