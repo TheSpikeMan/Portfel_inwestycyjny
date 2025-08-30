@@ -13,6 +13,12 @@ from flask import Flask, request
 @functions_framework.cloud_event
 def daily_webscraping_plus_currencies(cloud_event):
 
+    # --- Stałe ---
+    # Stałe wykorzystywane w wyznaczaniu wartości obligacji
+    NOMINAL_VALUE = 100
+    DAYS_IN_YEAR = 365
+    INFLATION_LAG_DAYS = 60
+
     class BigQueryExporter():
 
         def __init__(self,
