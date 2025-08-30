@@ -9,9 +9,16 @@ import base64
 import pandas_gbq
 import functions_framework
 from flask import Flask, request
+from typing import Dict
 
 @functions_framework.cloud_event
 def daily_webscraping_plus_currencies(cloud_event):
+
+    # --- Stałe ---
+    # Stałe wykorzystywane w wyznaczaniu wartości obligacji
+    NOMINAL_VALUE = 100
+    DAYS_IN_YEAR = 365
+    INFLATION_LAG_DAYS = 60
 
     class BigQueryExporter():
 
@@ -105,7 +112,87 @@ def daily_webscraping_plus_currencies(cloud_event):
             except Exception as e:
                 print(f"Error uploading data to BigQuery: {str(e)}")
 
-    class Scraper(): 
+    class Scraper():
+        # --- Funkcje pomocniczne związane z obligacjami ---
+        @staticmethod
+        def _get_interest_rate_for_period(
+            purchase_date: date,
+            completed_years: int,
+            inflation_dict: Dict[str, float],
+            ticker: str,
+            regular_margin: float) -> float:
+            """
+            Wyznacza stopę procentową za dany okres
+
+            Returns:
+                float: Oprocentowanie w danym roku (uwzględniające inflację i marżę).
+            """
+
+            # Określenie daty do sprawdzenia inflacji (2 miesiące przed)
+            inflation_check_offset = timedelta(days=(DAYS_IN_YEAR * completed_years) - INFLATION_LAG_DAYS)
+            inflation_check_date = purchase_date + inflation_check_offset
+
+            # Dokonuję konwersji daty inflacji na STRING
+            inflation_date_key = inflation_check_date.strftime('%Y-%m-01')
+
+            # Wyznaczam wartość inflacji, na podstawie klucza
+            inflation_rate = inflation_dict.get(inflation_date_key, 0.0) / 100.0
+
+            # Dla obligacji TOS inflacja jest ignorowana
+            interest_rate = (inflation_rate if ticker.startswith("EDO") else 0) + regular_margin
+            return interest_rate
+    
+        
+        @staticmethod
+        def _calculate_single_bond_value(row: pd.Series, inflation_dict: Dict[str, float]) -> float:
+            """
+            Oblicza wartość bieżącą dla pojedynczej tranakcji obligacji.
+            """
+
+            # --- Pobranie danych z wiersza ---
+            ticker = row['Ticker']
+            purchase_date = row['Transaction_date']
+            volume = row['Transaction_amount']
+            first_year_margin = row['First_year_interest'] / 100.0
+            regular_margin = row['Regular_interest'] / 100.0
+
+            # --- Obliczenia bazowe ---
+            start_value = volume * NOMINAL_VALUE
+            days_held = (date.today() - purchase_date).days
+
+            # Przypadek 1: Obligacja trzymana krócej niż rok:
+            if days_held < DAYS_IN_YEAR:
+                # Odsetki naliczane proporcjonalnie
+                return start_value * (1 + (days_held / DAYS_IN_YEAR) * first_year_margin)
+            
+            # --- Obliczenia dla obligacji trzymanych dłużej niż rok
+
+            # Wartość po pierwszym pełnym roku
+            current_value = start_value * (1 + first_year_margin)
+            remaining_days = days_held - DAYS_IN_YEAR
+            completed_years = 1
+
+            # Pętla po kolejnych zakończonych latach
+            while remaining_days >= DAYS_IN_YEAR:
+
+                interest_rate = Scraper._get_interest_rate_for_period(purchase_date, completed_years, inflation_dict, ticker, regular_margin)
+                # Kapitalizacja odsetek na koniec roku
+                current_value *= (1 + interest_rate)
+
+                remaining_days -= DAYS_IN_YEAR
+                completed_years += 1
+            
+            # Doliczenie odsetek za bieżący, niepełny rok
+            if remaining_days > 0:
+                # Określenie daty do sprawdzenia inflacji (2 miesiące przed)
+                interest_rate = Scraper._get_interest_rate_for_period(purchase_date, completed_years, inflation_dict, ticker, regular_margin)
+
+                # Proporcjonalne odsetki za dni w bieżącym okrese
+                current_value *= (1 + (remaining_days / DAYS_IN_YEAR) * interest_rate)
+            
+            return current_value
+        
+        # --- Inicjalizacja obiektu ---
         def __init__(self,
                     project_id,
                     dataset_instruments,
@@ -293,121 +380,73 @@ def daily_webscraping_plus_currencies(cloud_event):
             print("Pobieranie aktualnych danych inflacyjnch zakończone powodzeniem.")
 
             return dane_inflacyjne, dane_transakcyjne, dane_marz
-
-        def obligacje_skarbowe(self,
-                            dane_inflacyjne, 
-                            dane_transakcyjne, 
-                            dane_marz):
+        
             
+        def treasury_bonds(
+                self,
+                dane_inflacyjne: pd.DataFrame, 
+                dane_transakcyjne: pd.DataFrame, 
+                dane_marz: pd.DataFrame):
+        
             """
-            
-            Funkcja wyznacza aktualną wartość obligacji skarbowych znajdujących się w portfelu na podstawie danych transakcyjnych,
-                danych inflacji oraz danych marży.
+            Funkcja wyznacza aktualną wartość obligacji skarbowych znajdujących się w portfelu.
 
-            Obsługiwane obligacje skarbowe:
-            - EDO - 10 - letnie skarbowe, indeksowane inflacją, z roczną kapitalizacją
-            - TOS - 3 - letnie skarbowe, o oprocentowaniu stałym, z roczną kapitalizacją
-
+            Obsługiwane obligacje: EDO (indeksowane inflacją), TOS (stałoprocentowe)
             """
+
+            print("Rozpoczynam ocenę wartości obligacji skarbowych.")
+
+            # --- Definicja obsługiwanych typów obligacji skarbowych ---
+            SUPPORTED_BONDS = ['EDO', 'TOS']
             
-            print("Oceniam obecność wartość obligacji skarbowych.")
-            dane_inflacyjne.columns = ['Inflacja', 'Początek miesiąca']
+            # --- Przygotowanie danych ---
+            inflation_data = dane_inflacyjne.copy()
+            inflation_data.columns = ['Inflacja', 'Początek miesiąca']
+            inflation_data['Początek miesiąca'] = pd.to_datetime(inflation_data['Początek miesiąca']).dt.strftime('%Y-%m-01')
+
+            # Tworzymy słownik inflacji
+            inflation_dict = dict(zip(inflation_data['Początek miesiąca'], inflation_data['Inflacja']))
 
             # Łączę dane transakcyjne z danymi marż
-            dane_do_analizy = dane_transakcyjne.merge(right=dane_marz,
-                                                        how='inner',
-                                                        on = 'Ticker')
-            
-            # Definiuję docelowy DataFrame z nazewnictwem kolumn
-            result_df = pd.DataFrame(columns=['Project_id', 'Ticker', 'Date', 'Current Value'])
-            
-            # Iteruję po instrumentach obligacji skarbowych w ramach wszystkich projektów
-            for dane in dane_do_analizy.iterrows():
+            analysis_data = dane_transakcyjne.merge(
+                right=dane_marz,
+                how='inner',
+                on='Ticker'
+            ).copy()
 
-                # Wyznaczam podstawowe parametry transakcyjne oraz marżowe
-                project_id         = dane[1].iloc[0]
-                ticker             = dane[1].iloc[1]
-                data_zakupu        = dane[1].iloc[2]
-                wolumen            = dane[1].iloc[3]
-                marza_pierwszy_rok = dane[1].iloc[4]
-                marza_kolejne_lata = dane[1].iloc[5]
-                
-                wolumen_jednostkowy = 100
-                
-                start_value        = wolumen * wolumen_jednostkowy
+            # Filtrujemy tylko obsługiwane obligacje
+            analysis_data = analysis_data[analysis_data['Ticker'].str.startswith(tuple(SUPPORTED_BONDS))].copy()
 
-                # Wyznaczam wszystkie niezbędne daty do wyznaczenia wartości obligacji lub inflacji (jeśli dotyczy)
-                current_date       = date.today()
-                liczba_dni         = (current_date - data_zakupu).days
-                liczba_lat         = int(math.modf(liczba_dni/365)[1])
-                
-                if ticker.startswith("EDO") or ticker.startswith("TOS"):
-                
-                    n = 1
-                    
-                    if liczba_dni < 365:
-                        current_value = start_value + start_value * liczba_dni / 365 * (marza_pierwszy_rok/100)
-                    
-                    else:
-                        current_value = start_value + start_value * (marza_pierwszy_rok/100)
-                        
-                        for i in range(liczba_lat, 0, -1):
-                            
-                            # Wyznaczam liczbę dni do przesunięcia, aby wyznaczyć dzień badania inflacji
-                            liczba_dni_przesuniecie = timedelta(days= 365 * n - 60)
-                            
-                            # Wyznaczam datę badania inflacji
-                            data_badania_inflacji = date(
-                                (data_zakupu + liczba_dni_przesuniecie).year,
-                                (data_zakupu + liczba_dni_przesuniecie).month,
-                                1)
-                            
-                            # Wyznaczam wartość inflacji
-                            inflacja = dane_inflacyjne.loc[dane_inflacyjne['Początek miesiąca']
-                                                           == str(data_badania_inflacji)].iat[0,0]
-                            
-                            # Uwzględniam inflację lub nie w zależności od typu obligacji (uwzględniam dla EDO, dla TOS nie)
-                            uwzgl_infl= inflacja if ticker.startswith("EDO") else 0
-                            
-                            if liczba_dni < 730:
-                                current_value = current_value + current_value * \
-                                (liczba_dni - 365)/365 * \
-                                (uwzgl_infl + marza_kolejne_lata)/ 100
-                            else:
-                                current_value = current_value + current_value * \
-                                    (uwzgl_infl + marza_kolejne_lata) / 100
-                                liczba_dni = liczba_dni - 365
-                            n = n + 1 
-                    
-                    # Przygotowuję końcowe dane do eksportu
-                    result_df = pd.concat([result_df, \
-                                        pd.DataFrame(data=[[project_id,
-                                                            ticker,
-                                                            data_zakupu,
-                                                            round(current_value, 2)]],
-                                                            columns=['Project_id', 'Ticker', 'Date', 'Current Value'])])
-                    data_to_export = result_df.merge(right=dane_do_analizy, 
-                                    how='inner',
-                                    left_on=['Project_id', 'Ticker', 'Date'],
-                                    right_on= ['Project_id', 'Ticker', 'Transaction_date'])
+            # Obsługa potencjalnie pustej ramki danych
+            if analysis_data.empty:
+                print("Nie znaleziono obsługiwanych obligacji do analizy.")
+                return pd.DataFrame()
 
-                    data_to_export['Date'] = current_date
-                    data_to_export['Close'] = data_to_export['Current Value'].div(data_to_export['Transaction_amount'],
-                                                                                  fill_value=pd.NA)
+            # --- Główna logika obliczeniowa ---
+            analysis_data['Current_Value'] = analysis_data.apply(
+                lambda row: Scraper._calculate_single_bond_value(row, inflation_dict),
+                axis=1
+            )
 
-                    # Wyznaczam średnią wartość jednej obligacji, ważąc średnią wolumenem transakcyjnym
-                    data_to_export_obligacje = data_to_export.groupby(['Project_id', 'Ticker', 'Date']).\
-                        apply(lambda x: np.average(x['Close'], \
-                        weights=x['Transaction_amount']))\
-                        .reset_index(name='Close').\
-                        round(decimals = 3)
-                    data_to_export_obligacje['Volume'] = 0
-                    data_to_export_obligacje['Turnover'] = 0
+            # --- Agregacja wyników ---
+
+            analysis_data['Close'] = analysis_data['Current_Value'] / analysis_data['Transaction_amount']
+            analysis_data['weighted_close'] = analysis_data['Close'] * analysis_data['Transaction_amount']
+
+            grouped = analysis_data.groupby(['Project_id', 'Ticker'])
+
+            result = (
+                grouped['weighted_close'].sum() / grouped['Transaction_amount'].sum()
+            ).reset_index(name='Close')
+
+            result['Date'] = date.today()
+            result['Close'] = result['Close'].round(2)
+            result['Volume'] = 0
+            result['Turnover'] = 0
 
             print("Ocena wartości obligacji skarbowych zakończona powodzeniem.")
-                
-            return data_to_export_obligacje
-
+            return result
+        
         def webscraping_markets_ft_webscraping(self,
                                             present_instruments_ETF,
                                             present_currencies):
@@ -563,7 +602,7 @@ def daily_webscraping_plus_currencies(cloud_event):
                                                                                                     present_currencies)
             #data_to_export_catalyst = self.webscraping_biznesradar(website_catalyst, present_instruments_biznesradar) DO POPRAWKI
             
-            data_to_export_obligacje                                 = self.obligacje_skarbowe(dane_inflacyjne,
+            data_to_export_obligacje                                 = self.treasury_bonds(dane_inflacyjne,
                                                                                                 dane_transakcyjne,
                                                                                                 dane_marz)
             data_to_export_etfs_pl                                   = self.webscraping_biznesradar(
