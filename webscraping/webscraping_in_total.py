@@ -380,11 +380,13 @@ def daily_webscraping_plus_currencies(cloud_event):
             print("Pobieranie aktualnych danych inflacyjnch zakończone powodzeniem.")
 
             return dane_inflacyjne, dane_transakcyjne, dane_marz
-
-        def obligacje_skarbowe(self,
-                        dane_inflacyjne, 
-                        dane_transakcyjne, 
-                        dane_marz):
+        
+            
+        def treasury_bonds(
+                self,
+                dane_inflacyjne: pd.DataFrame, 
+                dane_transakcyjne: pd.DataFrame, 
+                dane_marz: pd.DataFrame):
         
             """
             Funkcja wyznacza aktualną wartość obligacji skarbowych znajdujących się w portfelu.
