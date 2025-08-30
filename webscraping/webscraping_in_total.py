@@ -348,41 +348,37 @@ def daily_webscraping_plus_currencies(cloud_event):
                 current_date       = date.today()
                 liczba_dni         = (current_date - data_zakupu).days
                 liczba_lat         = int(math.modf(liczba_dni/365)[1])
-
-                # Wyznaczam słownik dla inflacji
-                inflacja_dict = dict(zip(dane_inflacyjne['Początek miesiąca'], dane_inflacyjne['Inflacja']))
                 
-                if ticker.startswith(("EDO", "TOS")):
-                    n = 1
-                    if liczba_dni < 365:
-                        current_value = start_value + start_value * liczba_dni / 365 * (marza_pierwszy_rok/100)
-                    else:
-                        current_value = start_value + start_value * (marza_pierwszy_rok/100)
-                        for i in range(liczba_lat, 0, -1):
-                            # Wyznaczam liczbę dni do przesunięcia, aby wyznaczyć dzień badania inflacji
-                            liczba_dni_przesuniecie = timedelta(days= 365 * n - 60)
-                            # Wyznaczam datę badania inflacji
-                            data_badania_inflacji = date(
-                                (data_zakupu + liczba_dni_przesuniecie).year,
-                                (data_zakupu + liczba_dni_przesuniecie).month,
-                                1)
-                            # Wyznaczam wartość inflacji
-                            inflacja = inflacja_dict.get(str(data_badania_inflacji), 0)
+                n = 1
+                if liczba_dni < 365:
+                    current_value = start_value + start_value * liczba_dni / 365 * (marza_pierwszy_rok/100)
+                else:
+                    current_value = start_value + start_value * (marza_pierwszy_rok/100)
+                    for i in range(liczba_lat, 0, -1):
+                        # Wyznaczam liczbę dni do przesunięcia, aby wyznaczyć dzień badania inflacji
+                        liczba_dni_przesuniecie = timedelta(days= 365 * n - 60)
+                        # Wyznaczam datę badania inflacji
+                        data_badania_inflacji = date(
+                            (data_zakupu + liczba_dni_przesuniecie).year,
+                            (data_zakupu + liczba_dni_przesuniecie).month,
+                            1)
+                        # Wyznaczam wartość inflacji
+                        inflacja = inflacja_dict.get(str(data_badania_inflacji), 0)
 
-                            # Uwzględniam inflację lub nie w zależności od typu obligacji (uwzględniam dla EDO, dla TOS nie)
-                            uwzgl_infl= inflacja if ticker.startswith("EDO") else 0
-                            if liczba_dni < 730:
-                                current_value = current_value + current_value * \
-                                (liczba_dni - 365)/365 * \
-                                (uwzgl_infl + marza_kolejne_lata)/ 100
-                            else:
-                                current_value = current_value + current_value * \
-                                    (uwzgl_infl + marza_kolejne_lata) / 100
-                                liczba_dni -= 365
-                            n = n + 1
+                        # Uwzględniam inflację lub nie w zależności od typu obligacji (uwzględniam dla EDO, dla TOS nie)
+                        uwzgl_infl= inflacja if ticker.startswith("EDO") else 0
+                        if liczba_dni < 730:
+                            current_value = current_value + current_value * \
+                            (liczba_dni - 365)/365 * \
+                            (uwzgl_infl + marza_kolejne_lata)/ 100
+                        else:
+                            current_value = current_value + current_value * \
+                                (uwzgl_infl + marza_kolejne_lata) / 100
+                            liczba_dni -= 365
+                        n = n + 1
 
-                    # Dodaję dane do zbiorczej tabeli
-                    results.append([project_id, ticker, data_zakupu, round(current_value, 2), wolumen])
+                # Dodaję dane do zbiorczej tabeli
+                results.append([project_id, ticker, data_zakupu, round(current_value, 2), wolumen])
             
             data_to_export = pd.DataFrame(results, columns=['Project_id', 'Ticker', 'Date', 'Current Value', 'Transaction_amount'])
             data_to_export['Date'] = current_date
