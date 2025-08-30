@@ -9,6 +9,7 @@ import base64
 import pandas_gbq
 import functions_framework
 from flask import Flask, request
+from typing import Dict
 
 @functions_framework.cloud_event
 def daily_webscraping_plus_currencies(cloud_event):
