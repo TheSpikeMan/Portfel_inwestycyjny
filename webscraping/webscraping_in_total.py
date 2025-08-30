@@ -593,21 +593,13 @@ def daily_webscraping_plus_currencies(cloud_event):
 
             
             present_instruments_ETF, present_instruments_biznesradar = self.pobierz_aktualne_instrumenty()
-            dane_inflacyjne, dane_transakcyjne, dane_marz            = self.zbadaj_dane_inflacyjne()
-            present_currencies                                       = self.znajdz_kursy_walut()
-            data_to_export_akcje                                     = self.webscraping_biznesradar(website_stocks, 
-                                                                                                    present_instruments_biznesradar)
-            data_to_export_ETFs                                      = self.webscraping_markets_ft_webscraping(
-                                                                                                    present_instruments_ETF,
-                                                                                                    present_currencies)
+            dane_inflacyjne, dane_transakcyjne, dane_marz = self.zbadaj_dane_inflacyjne()
+            present_currencies = self.znajdz_kursy_walut()
+            data_to_export_akcje = self.webscraping_biznesradar(website_stocks, present_instruments_biznesradar)
+            data_to_export_ETFs = self.webscraping_markets_ft_webscraping(present_instruments_ETF,present_currencies)
             #data_to_export_catalyst = self.webscraping_biznesradar(website_catalyst, present_instruments_biznesradar) DO POPRAWKI
-            
-            data_to_export_obligacje                                 = self.treasury_bonds(dane_inflacyjne,
-                                                                                                dane_transakcyjne,
-                                                                                                dane_marz)
-            data_to_export_etfs_pl                                   = self.webscraping_biznesradar(
-                                                                                                website_etfs_pl, 
-                                                                                                present_instruments_biznesradar)
+            data_to_export_obligacje = self.treasury_bonds(dane_inflacyjne,dane_transakcyjne,dane_marz)
+            data_to_export_etfs_pl = self.webscraping_biznesradar(website_etfs_pl, present_instruments_biznesradar)
             
             data_to_export = pd.concat([data_to_export_ETFs, 
                                         data_to_export_akcje,
@@ -623,9 +615,9 @@ def daily_webscraping_plus_currencies(cloud_event):
                                                 table_to_export_currencies=self.table_currencies
                                                 )
             
-            exporterObject.exportDataToBigQueryDailyTable(data_to_export = data_to_export)
+            exporterObject.exportDataToBigQueryDailyTable(data_to_export=data_to_export)
 
-            exporterObject.exportDatatoBigQueryCurrencyTable(currencies_to_export = present_currencies)
+            exporterObject.exportDatatoBigQueryCurrencyTable(currencies_to_export=present_currencies)
             
             
             
