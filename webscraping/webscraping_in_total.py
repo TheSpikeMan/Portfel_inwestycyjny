@@ -316,15 +316,20 @@ def daily_webscraping_plus_currencies(cloud_event):
             inflacja_dict = dict(zip(dane_inflacyjne['Początek miesiąca'], dane_inflacyjne['Inflacja']))
 
             # Łączę dane transakcyjne z danymi marż
-            dane_do_analizy = dane_transakcyjne.merge(right=dane_marz,
-                                                        how='inner',
-                                                        on = 'Ticker')
-            
+            analysis_data = dane_transakcyjne.merge(
+                right=dane_marz,
+                how='inner',
+                on = 'Ticker'
+            ).copy()
+
+            # Filtrujemy tylko obsługiwane obligacje
+            analysis_data = analysis_data[analysis_data['Ticker'].str.startswith(("EDO", "TOS"))].copy()
+
             # Definiuję listę do zbierania danych
             results = []
             
             # Iteruję po instrumentach obligacji skarbowych w ramach wszystkich projektów
-            for row in dane_do_analizy.itertuples():
+            for row in analysis_data.itertuples():
 
                 # Wyznaczam podstawowe parametry transakcyjne oraz marżowe
                 project_id         = row.Project_id
