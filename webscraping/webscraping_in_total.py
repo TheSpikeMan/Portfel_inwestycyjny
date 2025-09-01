@@ -403,59 +403,64 @@ def daily_webscraping_plus_currencies(cloud_event):
             return result
         
         def webscraping_markets_ft_webscraping(self,
-                                            present_instruments_ETF,
-                                            present_currencies):
+                                               present_instruments_ETF,
+                                               present_currencies):
             
             """
             Funkcja wyznacza wartość giełdową zagranicznych ETF.
+            Args:
+                present_instruments_ETF: (pd.DataFrame): DataFrame zawierający dane instrumentów objętych webscrapingiem.
+                present_currencies: (pd.DataFrame): DataFrame z kursami walut, dla powyższych instrumentów
+            Returns:
+                result_df: (pd.DataFrame): DataFrame z przetworzonymi danymi
             """
             
-            print("Dokonuję webscrapingu z 'markets.ft.com'.")
-            result_df = pd.DataFrame()
+            # --- Zdefiniowanie wszystkich elementów startowych ---
+            base_url = "https://markets.ft.com/data/etfs/tearsheet/summary?s="
+            scraped_data = []
             current_date = date.today()
-            for instrument in present_instruments_ETF.iterrows():
+            analysis_data = present_instruments_ETF.copy()
+            currencies_data = present_currencies.copy()
 
-                url = "https://markets.ft.com/data/etfs/tearsheet/summary?s=" + \
-                        f"{instrument[1]['ticker']}:" + \
-                        f"{instrument[1]['market']}:" + \
-                        f"{instrument[1]['market_currency']}"
-                        
-                with requests.get(url=url, timeout=10) as r:                    
-                    soup = BeautifulSoup(r.text, 'html.parser')
-                    close = soup.find_all('span', class_ = 'mod-ui-data-list__value')
-                    close = float(close[0].text)
-                    result_df = pd.concat([result_df, 
-                                        pd.DataFrame([[instrument[1]['ticker'], close]])],
-                                        axis = 0)
-                    
-            result_df.columns = ['Ticker', 'Close']
-            data_to_export = present_instruments_ETF.merge(result_df,
-                                                    how = 'inner',
-                                                    left_on = 'ticker',
-                                                    right_on = 'Ticker')
-            data_to_export = data_to_export.merge(present_currencies,
-                                                how = 'inner',
-                                                left_on = 'market_currency',
-                                                right_on = 'Currency')
-            data_to_export['Project_id'] = np.nan
-            data_to_export['Close'] = (data_to_export['Close'] * \
-                                    data_to_export['Currency_close']).\
-                                    round(decimals = 2)
-            data_to_export['Date'] = current_date
-            data_to_export['Volume'] = 0 
-            data_to_export['Turnover'] = 0 
+            # --- Webscraping ---
+            print("Dokonuję webscrapingu z 'markets.ft.com'.")
+            for row in analysis_data.itertuples():
+                url = f"{base_url}{row.ticker}:{row.market}:{row.market_currency}"
+                try:
+                    with requests.get(url=url, timeout=10) as response:
+                        # Obsługa wyjątków
+                        response.raise_status()                    
+                        soup = BeautifulSoup(response.text, 'html.parser')
+                        price_span = soup.find('span', class_ = 'mod-ui-data-list__value')
+                        if not price_span:
+                            print(f"Ostrzeżenie: Nie znaleziono ceny dla {row.ticker}. Pomijam.")
+                        close_price = float(price_span.text.replace(',', ''))
+                        # Dodajemys łownik do listy
+                        scraped_data.append({
+                                            "Ticker": row.ticker,
+                                            "Close_foreign": close_price,
+                                            "Currency": row.market_currency})
+                except requests.RequestException as e:
+                    print(f"Błąd podczas pobierania danych dla {row.ticker}: {e}")
+                except (ValueError, AttributeError) as e:
+                    print(f"Błąd podczas parsowania danych dla {row.ticker}: {e}")
 
-            data_to_export_ETFs = data_to_export.loc[:,['Project_id',
-                                                        'Ticker',
-                                                        'Date',
-                                                        'Close',
-                                                        'Turnover',
-                                                        'Volume']]
-            
-            
+            result_df = pd.DataFrame(data=scraped_data)
+            final_df= pd.merge(left=result_df, 
+                                 right=currencies_data,
+                                 how='inner',
+                                 on='Currency')
+            # Obliczenia na połączonym DataFrame
+            final_df['Close'] = (final_df['Close_foreign'] * final_df['Currency_close']).round(2)
+            final_df['Date'] = current_date
+            final_df['Project_id'] = np.nan
+            final_df['Turnover'] = 0
+            final_df['Volume'] = 0
+
+            output_columns = ['Project_id', 'Ticker', 'Date', 'Close', 'Turnover', 'Volume']
+            final_df = final_df[output_columns]
             print("Webscraping z 'markets.ft.com' zakończony powodzeniem.")
-
-            return data_to_export_ETFs
+            return final_df
         
         def webscraping_biznesradar(self,
                                     website,
