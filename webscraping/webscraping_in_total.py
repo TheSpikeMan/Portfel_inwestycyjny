@@ -429,7 +429,7 @@ def daily_webscraping_plus_currencies(cloud_event):
                 try:
                     with requests.get(url=url, timeout=10) as response:
                         # Obsługa wyjątków
-                        response.raise_status()                    
+                        response.raise_for_status()                    
                         soup = BeautifulSoup(response.text, 'html.parser')
                         price_span = soup.find('span', class_ = 'mod-ui-data-list__value')
                         if not price_span:
