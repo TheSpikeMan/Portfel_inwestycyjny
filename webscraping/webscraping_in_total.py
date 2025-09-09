@@ -428,8 +428,8 @@ def daily_webscraping_plus_currencies(cloud_event):
             return result
         
         def webscraping_markets_ft_webscraping(self,
-                                               present_instruments_ETF,
-                                               present_currencies):
+                                                present_instruments_ETF,
+                                                present_currencies):
             
             """
             Funkcja wyznacza wartość giełdową zagranicznych ETF.
