@@ -9,7 +9,7 @@ import base64
 import pandas_gbq
 import functions_framework
 from flask import Flask, request
-from typing import Dict, List
+from typing import Dict, List, Any, Optional, Union
 from google.api_core.exceptions import GoogleAPICallError
 
 @functions_framework.cloud_event
@@ -20,6 +20,7 @@ def daily_webscraping_plus_currencies(cloud_event):
     NOMINAL_VALUE = 100
     DAYS_IN_YEAR = 365
     INFLATION_LAG_DAYS = 60
+    CURRENT_DATE = date.today()
 
     class BigQueryExporter():
 
@@ -147,6 +148,31 @@ def daily_webscraping_plus_currencies(cloud_event):
                 current_value *= (1 + (remaining_days / DAYS_IN_YEAR) * interest_rate)
             
             return current_value
+        
+        # --- Funkcja pomocniczna do parsowania wierszy w ramach scrapingu z portalu biznesradar ---
+        @staticmethod
+        def _parse_value(
+                row: BeautifulSoup,
+                data_push_type: str,
+                value_type: Union[float, int]
+        ):
+            """
+            Wyszukuje tag, pobiera jego tekst, czyści go i konwertuje na docelowy typ.
+            Zwraca None w przypadku niepowodzenia na którymkolwiek etapie.
+            """
+
+            element = row.find('span', {'data-push-type' : data_push_type})
+            if not element or not element.text:
+                return None
+            
+            element_cleaned = element.text.strip().replace(' ','')
+            try:
+                if value_type is float:
+                    return float(element_cleaned.replace(',', '.'))
+                if value_type is int:
+                    return int(element_cleaned)
+            except (ValueError, TypeError):
+                return None
         
         # --- Inicjalizacja obiektu ---
         def __init__(self,
@@ -403,8 +429,8 @@ def daily_webscraping_plus_currencies(cloud_event):
             return result
         
         def webscraping_markets_ft_webscraping(self,
-                                               present_instruments_ETF,
-                                               present_currencies):
+                                                present_instruments_ETF,
+                                                present_currencies):
             
             """
             Funkcja wyznacza wartość giełdową zagranicznych ETF.
@@ -418,7 +444,6 @@ def daily_webscraping_plus_currencies(cloud_event):
             # --- Zdefiniowanie wszystkich elementów startowych ---
             base_url = "https://markets.ft.com/data/etfs/tearsheet/summary?s="
             scraped_data = []
-            current_date = date.today()
             analysis_data = present_instruments_ETF.copy()
             currencies_data = present_currencies.copy()
 
@@ -447,12 +472,12 @@ def daily_webscraping_plus_currencies(cloud_event):
 
             result_df = pd.DataFrame(data=scraped_data)
             final_df= pd.merge(left=result_df, 
-                                 right=currencies_data,
-                                 how='inner',
-                                 on='Currency')
+                                    right=currencies_data,
+                                    how='inner',
+                                    on='Currency')
             # Obliczenia na połączonym DataFrame
             final_df['Close'] = (final_df['Close_foreign'] * final_df['Currency_close']).round(2)
-            final_df['Date'] = current_date
+            final_df['Date'] = CURRENT_DATE
             final_df['Project_id'] = np.nan
             final_df['Turnover'] = 0
             final_df['Volume'] = 0
@@ -463,79 +488,82 @@ def daily_webscraping_plus_currencies(cloud_event):
             return final_df
         
         def webscraping_biznesradar(self,
-                                    website,
-                                    present_instruments_biznesradar
+                                    website: str,
+                                    present_instruments_biznesradar: pd.DataFrame
                                     ):
                 
             """
             Funkcja wyznacza aktualną wartość instrumentów finansowych z portalu biznesradar.
+            Args:
+                website: (STR): Adres strony internetowej do odpytania
+                present_instruments_biznesradar: (pd.DataFrame): DataFrame z listą instrumentów do odpytani
+            Returns:
+                result_df: (pd.DataFrame): DataFrame z przetworzonymi danymi
+
             """
 
-            present_instruments = present_instruments_biznesradar['ticker'].tolist()
-
-            current_date = date.today()
-            result_data = []  # Lista na dane do późniejszej konwersji do DataFrame
-
-            print("Pobieranie danych z portalu biznesradar.")
+            # --- Pobranie danych i zapis do zbioru ---
             try:
-                with requests.get(website, timeout=10) as r1:
-                    # Obsługa statusu odpowiedzi HTTP
-                    r1.raise_for_status()
+                instruments_set = set(present_instruments_biznesradar['ticker'].tolist())
+            except (KeyError, AttributeError):
+                print("Błąd: Wejściowy DataFrame musi zawierać kolumnę 'Ticker'.")
+                return pd.DataFrame() # Zwracamy pusty DataFrame
+            
+            scraped_records : List[Dict[str, Any]] = []
+
+            # --- Webscraping ---
+            print("Rozpoczynam pobieranie danych z portalu biznesradar.pl.")
+            try:
+                with requests.Session() as session:
+                    response = session.get(website, timeout=15)
+                    response.raise_for_status()
 
                     # Parsowanie HTML
-                    soup = BeautifulSoup(r1.text, 'html.parser')
-
+                    soup = BeautifulSoup(response.text, 'html.parser')
                     for row in soup.find_all('tr', class_='hot-row'):
-                        try:
-                            Ticker = row.find('a').text.split()[0].strip()
-                            if Ticker in present_instruments:
-                                Close = row.find('span', {'data-push-type': 'QuoteClose'})
-                                Volume = row.find('span', {'data-push-type': 'QuoteVolume'})
-                                Turnover = row.find('span', {'data-push-type': 'QuoteMarketCap'})
-                                
-                                # Upewniamy się, że elementy istnieją przed pobraniem tekstu
-                                Close_value = Close.text.strip() if Close else None
-                                Volume_value = Volume.text.strip() if Volume else None
-                                Turnover_value = Turnover.text.strip() if Turnover else None
-
-                                # Konwersja Close na float, Volume i Turnover na int, obsługa błędów
-                                try:
-                                    Close_value = float(Close_value.replace(',', '.')) if Close_value else None
-                                except ValueError:
-                                    Close_value = None  # Jeśli konwersja nie powiedzie się, ustawiamy None
-                                
-                                try:
-                                    Volume_value = int(Volume_value.replace(' ', '').replace(',', '')) if Volume_value else None
-                                except ValueError:
-                                    Volume_value = None  # Jeśli konwersja nie powiedzie się, ustawiamy None
-                                
-                                try:
-                                    Turnover_value = int(Turnover_value.replace(' ', '').replace(',', '')) if Turnover_value else None
-                                except ValueError:
-                                    Turnover_value = None  # Jeśli konwersja nie powiedzie się, ustawiamy None
-
-                                # Dodanie danych do listy
-                                result_data.append([Ticker, current_date, Close_value, Volume_value, Turnover_value])
-                        except AttributeError as e:
-                            print(f"Błąd podczas parsowania wiersza: {e}")
+                        ticker_tag = row.find('a')
+                        if not ticker_tag:
                             continue
+                        ticker = ticker_tag.text.split()[0].strip()
+                        if ticker in instruments_set:
+                            close_val = self._parse_value(row, 'QuoteClose', float)
+                            volume_val = self._parse_value(row, 'QuoteVolume', int)
+                            turnover_val = self._parse_value(row, 'QuoteMarketCap', int)
 
-
-                    # Przekształcenie wyników na DataFrame
-                    result_df = pd.DataFrame(result_data, columns=['Ticker', 'Date', 'Close', 'Volume', 'Turnover'])
-
-                    # Zdefiniowanie nowej kolumny o nazwie 'Project_id i dodanie jej na początku DataFrame
-                    result_df.insert(0, 'Project_id', np.nan)
-                    print("Pobieranie danych z biznesradar zakończone powodzeniem.")
+                            scraped_records.append({
+                                "Ticker": ticker,
+                                "Date": CURRENT_DATE,
+                                "Close": close_val,
+                                "Volume": volume_val,
+                                "Turnover": turnover_val
+                            })
 
             except requests.exceptions.Timeout:
-                print("Nie udało się podłączyć do strony biznesradar.pl - timeout.")
+                print(f"Błąd: Przekroczono czas oczekiwania na odpowiedź od {website}.")
+                return pd.DataFrame()
             except requests.exceptions.RequestException as e:
-                print(f"Nie udało się podłączyć do strony biznesradar.pl - błąd HTTP: {e}")
+                print(f"Błąd połączenia z {website}: {e}")
+                return pd.DataFrame()
             except Exception as e:
                 print(f"Wystąpił nieoczekiwany błąd: {e}")
+                return pd.DataFrame()
             
+            if not scraped_records:
+                print("Nie znaleziono żadnych pasujących danych na stronie.")
+                return pd.DataFrame()
+        
+            # Tworzymy DataFrame raz, na końcu, i dodajemy kolumnę 'Project_id'
+            
+            result_df = pd.DataFrame(scraped_records)
+            result_df['Project_id'] = np.nan
+
+            # Ustawienie poprawnej kolejności kolumn
+            final_columns = ['Project_id', 'Ticker', 'Date', 'Close', 'Volume', 'Turnover']
+            result_df = result_df[final_columns]
+
+            print("Pobieranie danych z biznesradar zakończone powodzeniem.")
             return result_df
+
 
         def run_scraper(self):
 
