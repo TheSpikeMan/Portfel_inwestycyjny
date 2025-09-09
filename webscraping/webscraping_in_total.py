@@ -9,7 +9,7 @@ import base64
 import pandas_gbq
 import functions_framework
 from flask import Flask, request
-from typing import Dict, List
+from typing import Dict, List, Any, Optional, Union
 from google.api_core.exceptions import GoogleAPICallError
 
 @functions_framework.cloud_event
