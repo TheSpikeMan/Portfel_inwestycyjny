@@ -148,6 +148,31 @@ def daily_webscraping_plus_currencies(cloud_event):
             
             return current_value
         
+        # --- Funkcja pomocniczna do parsowania wierszy w ramach scrapingu z portalu biznesradar ---
+        @staticmethod
+        def _parse_value(
+                row: BeautifulSoup,
+                data_push_type: str,
+                value_type: Union[float, int]
+        ):
+            """
+            Wyszukuje tag, pobiera jego tekst, czyści go i konwertuje na docelowy typ.
+            Zwraca None w przypadku niepowodzenia na którymkolwiek etapie.
+            """
+
+            element = row.find('span', {'data-push-type' : data_push_type})
+            if not element or not element.text:
+                return None
+            
+            element_cleaned = element.text.strip().replace(' ','')
+            try:
+                if value_type is float:
+                    return float(element_cleaned.replace(',', '.'))
+                if value_type is int:
+                    return int(element_cleaned)
+            except (ValueError, TypeError):
+                return None
+        
         # --- Inicjalizacja obiektu ---
         def __init__(self,
                     project_id,
