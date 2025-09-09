@@ -20,6 +20,7 @@ def daily_webscraping_plus_currencies(cloud_event):
     NOMINAL_VALUE = 100
     DAYS_IN_YEAR = 365
     INFLATION_LAG_DAYS = 60
+    CURRENT_DATE = date.today()
 
     class BigQueryExporter():
 
@@ -443,7 +444,6 @@ def daily_webscraping_plus_currencies(cloud_event):
             # --- Zdefiniowanie wszystkich elementów startowych ---
             base_url = "https://markets.ft.com/data/etfs/tearsheet/summary?s="
             scraped_data = []
-            current_date = date.today()
             analysis_data = present_instruments_ETF.copy()
             currencies_data = present_currencies.copy()
 
@@ -472,12 +472,12 @@ def daily_webscraping_plus_currencies(cloud_event):
 
             result_df = pd.DataFrame(data=scraped_data)
             final_df= pd.merge(left=result_df, 
-                                 right=currencies_data,
-                                 how='inner',
-                                 on='Currency')
+                                    right=currencies_data,
+                                    how='inner',
+                                    on='Currency')
             # Obliczenia na połączonym DataFrame
             final_df['Close'] = (final_df['Close_foreign'] * final_df['Currency_close']).round(2)
-            final_df['Date'] = current_date
+            final_df['Date'] = CURRENT_DATE
             final_df['Project_id'] = np.nan
             final_df['Turnover'] = 0
             final_df['Volume'] = 0
