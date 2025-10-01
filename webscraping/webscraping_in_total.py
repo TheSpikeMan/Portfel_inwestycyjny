@@ -28,7 +28,7 @@ def daily_webscraping_plus_currencies(cloud_event):
             """
             Utworzenie obiektu, który umożliwi późniejszy eksport danych do tabel w BigQuery.
             """
-            self.client                       = bigquery.Client()
+            self.client = bigquery.Client()
         
         def export_dataframes_to_bigquery(self,
                                             data_to_export: Dict[str, pd.DataFrame]):
@@ -199,23 +199,23 @@ def daily_webscraping_plus_currencies(cloud_event):
 
             """
         
-            self.project_id              = project_id
-            self.dataset_instruments     = dataset_instruments
-            self.dataset_currencies      = dataset_currencies
-            self.dataset_daily           = dataset_daily
-            self.dataset_inflation       = dataset_inflation
-            self.dataset_transactions    = dataset_transactions
-            self.table_instruments       = table_instruments
+            self.project_id = project_id
+            self.dataset_instruments = dataset_instruments
+            self.dataset_currencies = dataset_currencies
+            self.dataset_daily = dataset_daily
+            self.dataset_inflation = dataset_inflation
+            self.dataset_transactions = dataset_transactions
+            self.table_instruments = table_instruments
             self.table_instruments_types = table_instruments_types
-            self.table_currencies        = table_currencies
-            self.table_daily             = table_daily
-            self.table_inflation         = table_inflation
-            self.table_treasury_bonds    = table_treasury_bonds
-            self.view_transactions       = view_transactions
-            self.website_stocks          = website_stocks
-            self.website_etfs_pl         = website_etfs_pl
-            self.website_catalyst        = website_catalyst
-            self.client                  = bigquery.Client()
+            self.table_currencies = table_currencies
+            self.table_daily = table_daily
+            self.table_inflation = table_inflation
+            self.table_treasury_bonds = table_treasury_bonds
+            self.view_transactions = view_transactions
+            self.website_stocks = website_stocks
+            self.website_etfs_pl = website_etfs_pl
+            self.website_catalyst = website_catalyst
+            self.client = bigquery.Client()
 
         def pobierz_aktualne_instrumenty(self):
 
@@ -274,11 +274,11 @@ def daily_webscraping_plus_currencies(cloud_event):
             aktualne_kursy_walut = pd.DataFrame()
             
             for path in list_of_paths:
-                response       = requests.get(path)
+                response = requests.get(path)
             
                 data = response.json()
-                currency_date  = date.today()
-                currency_code  = data['code']
+                currency_date = date.today()
+                currency_code = data['code']
                 currency_close = data['rates'][0]['mid']
                 
                 currency_df = pd.DataFrame({
@@ -351,12 +351,12 @@ def daily_webscraping_plus_currencies(cloud_event):
             WHERE TRUE
             """
         
-            query_job_1       = self.client.query(query_1)
-            query_job_2       = self.client.query(query_2)
-            query_job_3       = self.client.query(query_3)
-            dane_inflacyjne   = query_job_1.to_dataframe()
+            query_job_1 = self.client.query(query_1)
+            query_job_2 = self.client.query(query_2)
+            query_job_3 = self.client.query(query_3)
+            dane_inflacyjne = query_job_1.to_dataframe()
             dane_transakcyjne = query_job_2.to_dataframe()
-            dane_marz         = query_job_3.to_dataframe()
+            dane_marz = query_job_3.to_dataframe()
 
             print("Pobieranie aktualnych danych inflacyjnch zakończone powodzeniem.")
 
