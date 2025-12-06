@@ -1,5 +1,34 @@
-from make_url_and_request import make_url_and_request
+from make_url import make_url
+from make_request import make_request
 from transform_data import transform_data
+from biznesradar_webscraping_dict import market_dict, reports_dict, data_dict, period_dict
 
 if __name__ == '__main__':
-    transform_data(*make_url_and_request())
+    """
+    market: str = 'gpw',
+    report_type: str = 'Raporty_finansowe',
+    sub_report_type: str = 'Rachunek_zyskow_i_strat',
+    measure: str = 'Przychody_ze_sprzedazy',
+    period: str = 'Kwartalne'):
+    """
+
+    data_to_build_urls = []
+    urls_to_request = []
+    market = 'gpw'
+    report_type = 'Raporty_finansowe'
+    sub_report_type = 'Rachunek_zyskow_i_strat'
+    for index_main, subreport_type in enumerate(data_dict.get(sub_report_type), start=0):
+        sub_report_type_url = next(iter(subreport_type.keys()))
+        for index, period_instance in enumerate(period_dict.get('Okres'), start=1):
+            period_instance_url = next(iter(period_instance.keys()))
+            data_to_build_urls.append(
+                {'market': market,
+                 'report_type': report_type,
+                 'sub_report_type': sub_report_type,
+                 'measure': sub_report_type_url,
+                 'period': period_instance_url}
+            )
+    for data_to_build_url in data_to_build_urls:
+        urls_to_request.append(make_url(**data_to_build_url))
+
+    make_request(urls_to_request)
