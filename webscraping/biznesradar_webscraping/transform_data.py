@@ -2,7 +2,8 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import re
 
-def transform_data(input_data: str, path: str):
+
+def transform_data(input_data: str, path: str, report_name: str):
     """
 
     Parameters
@@ -36,4 +37,5 @@ def transform_data(input_data: str, path: str):
     df = pd.DataFrame(scraped_data_dict).T
     df.columns = column_names
 
-    df.to_excel("Przychody.xlsx")
+    df.to_excel(report_name)
+    print(f"Zapisałem dane dla raportu {report_name}")
