@@ -37,5 +37,20 @@ def transform_data(input_data: str, path: str, report_name: str):
     df = pd.DataFrame(scraped_data_dict).T
     df.columns = column_names
 
-    df.to_excel(report_name)
-    print(f"Zapisałem dane dla raportu {report_name}")
+    # Dodanie nazwy raportu do danych
+    df.insert(2, 'Nazwa_raportu', report_name)
+
+    # Transformacja danych
+    df_melted = df.melt(
+        id_vars=['Profil', 'Raport', 'Nazwa_raportu'],
+        var_name='Dane',
+        value_name='Wartosc'
+    )
+
+    df_grouped = df_melted.groupby(['Profil', 'Raport', 'Nazwa_raportu']).apply(
+        lambda x: dict(zip(x['Dane'], x['Wartosc']))
+    )
+
+    df_final = df_grouped.reset_index(name='Dane_slownik')
+
+    return df_final
