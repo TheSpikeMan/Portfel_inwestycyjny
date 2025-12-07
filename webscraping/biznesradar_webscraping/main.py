@@ -24,4 +24,5 @@ if __name__ == '__main__':
     for data_to_build_url in data_to_build_urls:
         urls_to_request.append(make_url(**data_to_build_url))
 
-    make_request(urls_to_request)
+    #make_request(urls_to_request)
+    print(urls_to_request)
