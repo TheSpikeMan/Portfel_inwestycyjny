@@ -12,6 +12,7 @@ if __name__ == '__main__':
     period: str = 'Kwartalne'):
     """
 
+    """ Creating URLS to request """
     data_to_build_urls = []
     urls_to_request = []
     market = 'gpw'
