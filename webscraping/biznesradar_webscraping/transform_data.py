@@ -51,6 +51,16 @@ def transform_data(input_data: str, params_dict: dict):
         value_name='Wartosc'
     )
 
+    # Usuwam białe znaki, znaki % oraz '+'
+    signs_to_exclude_pattern = re.compile(r'[%+ ]')
+    df_melted['Wartosc'] = df_melted['Wartosc'].str.replace(signs_to_exclude_pattern, "", regex=True)
+
+    # Konwersja typu
+    df_melted['Wartosc'] = pd.to_numberic(
+        df_melted['Wartosc'],
+        errors='coerce'
+    )
+
     # Ustawiam kolejność kolumn
     df_final = df_melted['Profil, Typ_raportu', 'Typ_subraportu', 'Miara', 'Okres', 'Raport', 'Rynek', 'Dane', 'Wartosc']
 
