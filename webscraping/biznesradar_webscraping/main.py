@@ -17,7 +17,7 @@ if __name__ == '__main__':
     market = 'gpw'
     report_type = 'Raporty_finansowe'
     sub_report_type = 'Rachunek_zyskow_i_strat'
-    for subreport_type in ata_dict.get(sub_report_type):
+    for subreport_type in data_dict.get(sub_report_type):
         sub_report_type_url = next(iter(subreport_type.keys()))
         for period_instance in period_dict.get('Okres'):
             period_instance_url = next(iter(period_instance.keys()))
