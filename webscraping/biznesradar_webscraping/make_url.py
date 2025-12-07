@@ -29,7 +29,17 @@ def make_url(
                   in period_dict.get('Okres')
                   if period_instance.get(period)][0]
 
+    """ Creating path """
     path = f"{sub_report_type_url}/{market_url},{period_url},{measure_url}"
+
+    """ Joining base URL with custom part """
     url = urljoin(base_url, path)
-    result_dict[url] = [{'path': path, 'report_name': report_name}]
+
+    """ Assigning data to dict"""
+    result_dict[url] = {'path': path,
+                        'market': market,
+                        'report_type': report_type,
+                        'sub_report_type': sub_report_type,
+                        'measure': measure,
+                        'period': period}
     return result_dict
