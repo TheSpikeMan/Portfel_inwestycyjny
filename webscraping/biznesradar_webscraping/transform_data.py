@@ -16,33 +16,39 @@ def transform_data(input_data: str, params_dict: dict):
 
     """
     scraped_data_dict = {}
-    keys_to_remove = []
     soup = BeautifulSoup(input_data, 'html.parser')
 
     # Nagłówki
-    pattern = re.compile(rf'.*{params_dict.get('path')}.*')
-    column_names = [row.text for row in soup.find_all('a', href=pattern)]
+    column_names = [row.text for row in soup.find_all('th')]
+    expected_length = len(column_names)
 
     # Przetwarzanie danych
     for row in soup.find_all('tr'):
-        ticker_tag = row.find('a').text.split()[0]
-        tds = [td.text for td in row.find_all('td')]
-        single_dict = {ticker_tag: tds}
-        scraped_data_dict.update(single_dict)
-
-    for key, value in scraped_data_dict.items():
-        if len(value) != 5:
-            keys_to_remove.append(key)
-    del scraped_data_dict[keys_to_remove[0]]
+        # Sprawdzenie czy znajdziemy link
+        ticker_link = row.find('a')
+        tds = row.find_all('td')
+        # Sprawdzenie czy mamy 5 wierszy
+        if ticker_link and len(tds) == 5:
+            ticker_tag = ticker_link.text.split()[0]
+            tds_texts = [td.text for td in tds]
+            # Połączenie danych z nagłówkami
+            if len(tds_texts) == expected_length:
+                tds_with_names = dict(zip(column_names, tds_texts))
+                scraped_data_dict.update({ticker_tag: tds_with_names})
+            else:
+                continue
+        else:
+            continue
+    # Transponuję dane, aby zmienić ich układ
     df = pd.DataFrame(scraped_data_dict).T
-    df.columns = column_names
 
     # Dodanie kolumn z charakterystyką raportu
-    df.insert(2, 'Typ_raportu', params_dict.get('report_type'))
-    df.insert(3, 'Typ_subraportu', params_dict.get('sub_report_type'))
-    df.insert(4, 'Miara', params_dict.get('measure'))
-    df.insert(5, 'Okres', params_dict.get('period'))
-    df.insert(6, 'Rynek', params_dict.get('market'))
+
+    df['Typ_raportu'] = params_dict.get('report_type')
+    df['Typ_subraportu'] = params_dict.get('sub_report_type')
+    df['Miara'] = params_dict.get('measure')
+    df['Okres'] = params_dict.get('period')
+    df['Rynek'] = params_dict.get('market')
 
     # Transformacja danych
     df_melted = df.melt(
