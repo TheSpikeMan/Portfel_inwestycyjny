@@ -55,8 +55,11 @@ def transform_data(input_data: str, params_dict: dict):
     signs_to_exclude_pattern = re.compile(r'[%+ ]')
     df_melted['Wartosc'] = df_melted['Wartosc'].str.replace(signs_to_exclude_pattern, "", regex=True)
 
+    # Zamieniam ',' na '.'
+    df_melted['Wartosc'] = df_melted['Wartosc'].str.replace(",", ".", regex=False)
+
     # Konwersja typu
-    df_melted['Wartosc'] = pd.to_numberic(
+    df_melted['Wartosc'] = pd.to_numeric(
         df_melted['Wartosc'],
         errors='coerce'
     )
