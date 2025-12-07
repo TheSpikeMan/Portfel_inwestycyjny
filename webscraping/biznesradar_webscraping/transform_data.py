@@ -3,13 +3,13 @@ import pandas as pd
 import re
 
 
-def transform_data(input_data: str, path: str, report_name: str):
+def transform_data(input_data: str, params_dict: dict):
     """
 
     Parameters
     ----------
     input_data: dane pobrane za pomocą request w formie tekstowej
-    path: ścieżka do fragmentu adresu URL, odnoszącego się do raportu
+    params_dict: słownik z charakterystyką raportu
 
     Returns
     -------
@@ -20,7 +20,7 @@ def transform_data(input_data: str, path: str, report_name: str):
     soup = BeautifulSoup(input_data, 'html.parser')
 
     # Nagłówki
-    pattern = re.compile(rf'.*{path}.*')
+    pattern = re.compile(rf'.*{params_dict.get('path')}.*')
     column_names = [row.text for row in soup.find_all('a', href=pattern)]
 
     # Przetwarzanie danych
@@ -37,20 +37,21 @@ def transform_data(input_data: str, path: str, report_name: str):
     df = pd.DataFrame(scraped_data_dict).T
     df.columns = column_names
 
-    # Dodanie nazwy raportu do danych
-    df.insert(2, 'Nazwa_raportu', report_name)
+    # Dodanie kolumn z charakterystyką raportu
+    df.insert(2, 'Typ_raportu', params_dict.get('report_type'))
+    df.insert(3, 'Typ_subraportu', params_dict.get('sub_report_type'))
+    df.insert(4, 'Miara', params_dict.get('measure'))
+    df.insert(5, 'Okres', params_dict.get('period'))
+    df.insert(6, 'Rynek', params_dict.get('market'))
 
     # Transformacja danych
     df_melted = df.melt(
-        id_vars=['Profil', 'Raport', 'Nazwa_raportu'],
+        id_vars=['Profil', 'Raport', 'Typ_raportu', 'Typ_subraportu', 'Miara', 'Okres', 'Rynek'],
         var_name='Dane',
         value_name='Wartosc'
     )
 
-    df_grouped = df_melted.groupby(['Profil', 'Raport', 'Nazwa_raportu']).apply(
-        lambda x: dict(zip(x['Dane'], x['Wartosc']))
-    )
-
-    df_final = df_grouped.reset_index(name='Dane_slownik')
+    # Ustawiam kolejność kolumn
+    df_final = df_melted['Profil, Typ_raportu', 'Typ_subraportu', 'Miara', 'Okres', 'Raport', 'Rynek', 'Dane', 'Wartosc']
 
     return df_final
