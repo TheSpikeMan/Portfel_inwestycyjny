@@ -65,6 +65,6 @@ def transform_data(input_data: str, params_dict: dict):
     )
 
     # Ustawiam kolejność kolumn
-    df_final = df_melted['Profil, Typ_raportu', 'Typ_subraportu', 'Miara', 'Okres', 'Raport', 'Rynek', 'Dane', 'Wartosc']
+    df_final = df_melted[['Profil', 'Typ_raportu', 'Typ_subraportu', 'Miara', 'Okres', 'Raport', 'Rynek', 'Dane', 'Wartosc']]
 
     return df_final

@@ -26,7 +26,7 @@ def make_request(urls_list: list[dict]):
                         all_dfs.append(df)
         df_total = pd.concat(all_dfs, ignore_index=True)
         print("Rozpoczynam generowanie zbiorczego raportu...")
-        df_total.to_excel("Raport_z_biznesradar.xlsx")
+        df_total.to_excel("Raport_z_biznesradar.xlsx", index=False)
         print("Raport wygenerowany.")
 
     except ConnectionError:
