@@ -4,14 +4,6 @@ from transform_data import transform_data
 from biznesradar_webscraping_dict import market_dict, reports_dict, data_dict, period_dict
 
 if __name__ == '__main__':
-    """
-    market: str = 'gpw',
-    report_type: str = 'Raporty_finansowe',
-    sub_report_type: str = 'Rachunek_zyskow_i_strat',
-    measure: str = 'Przychody_ze_sprzedazy',
-    period: str = 'Kwartalne'):
-    """
-
     """ Creating URLS to request """
     data_to_build_urls = []
     urls_to_request = []
