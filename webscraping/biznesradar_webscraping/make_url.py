@@ -10,7 +10,6 @@ def make_url(
         measure: str = 'Przychody_ze_sprzedazy',
         period: str = 'Kwartalne'):
 
-    report_name = f"2025_12_06_{sub_report_type}_{measure}_{period}.xlsx"
 
     """ Creating url """
     result_dict = {}
