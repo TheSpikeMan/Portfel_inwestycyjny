@@ -1,5 +1,6 @@
 from bs4 import BeautifulSoup
 import pandas as pd
+import pendulum
 import re
 
 
@@ -15,6 +16,9 @@ def transform_data(input_data: str, params_dict: dict):
     -------
 
     """
+    # Obecna data (string)
+    current_date = pendulum.now().to_date_string()
+
     scraped_data_dict = {}
     soup = BeautifulSoup(input_data, 'html.parser')
 
@@ -48,9 +52,12 @@ def transform_data(input_data: str, params_dict: dict):
         df['Okres'] = params_dict.get('period')
         df['Rynek'] = params_dict.get('market')
 
+        # Dodaję datę
+        df['Data'] = current_date
+
         # Transformacja danych
         df_melted = df.melt(
-            id_vars=['Ticker', 'Profil', 'Raport', 'Typ_raportu', 'Typ_subraportu', 'Miara', 'Okres', 'Rynek'],
+            id_vars=['Ticker', 'Profil', 'Data', 'Raport', 'Typ_raportu', 'Typ_subraportu', 'Miara', 'Okres', 'Rynek'],
             var_name='Dane',
             value_name='Wartosc'
         )
@@ -69,9 +76,9 @@ def transform_data(input_data: str, params_dict: dict):
         )
 
         # Ustawiam kolejność kolumn
-        df_final = df_melted[['Ticker', 'Profil', 'Typ_raportu', 'Typ_subraportu', 'Miara', 'Okres', 'Raport', 'Rynek', 'Dane', 'Wartosc']]
+        df_final = df_melted[['Ticker', 'Profil', 'Data', 'Typ_raportu', 'Typ_subraportu', 'Miara', 'Okres', 'Raport', 'Rynek', 'Dane', 'Wartosc']]
 
         return df_final
     else:
-        empty_cols = ['Ticker', 'Profil', 'Typ_raportu', 'Typ_subraportu', 'Miara', 'Okres', 'Raport', 'Rynek', 'Dane', 'Wartosc']
+        empty_cols = ['Ticker', 'Profil', 'Data', 'Typ_raportu', 'Typ_subraportu', 'Miara', 'Okres', 'Raport', 'Rynek', 'Dane', 'Wartosc']
         return pd.DataFrame(columns=empty_cols)
