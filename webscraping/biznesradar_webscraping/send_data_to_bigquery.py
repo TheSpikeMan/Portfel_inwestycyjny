@@ -26,7 +26,10 @@ def send_data_to_bigquery(df: pd.DataFrame):
     )
 
     try:
-        job = client.load_table_from_dataframe(df, table, job_config=job_config)
+        job = client.load_table_from_dataframe(
+            dataframe=df,
+            destination=table,
+            job_config=job_config)
         job.result()  # czekaj na zakończenie
         print(f"Data successfully inserted into {table}.")
     except Exception as e:
