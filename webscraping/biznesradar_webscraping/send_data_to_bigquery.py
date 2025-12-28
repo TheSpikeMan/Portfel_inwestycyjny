@@ -4,21 +4,17 @@ from pathlib import Path
 import os
 import pandas as pd
 
+""" Pobieram zmienne środowiskowe """
+load_dotenv()
+project_id = os.getenv("BQ_PROJECT_ID")
+dataset_id = os.getenv("BQ_DATASET_RAW")
+table_id = os.getenv("BQ_TABLE_RAW_DATA")
+
 
 def send_data_to_bigquery(df: pd.DataFrame):
 
-    """ Pobieram zmienne środowiskowe """
-    env_path = Path(__file__).parent.parent.parent / ".env"
-    load_dotenv(dotenv_path=env_path)
-
-    project_id = os.getenv("BQ_PROJECT_ID")
-    dataset_id = os.getenv("BQ_DATASET_RAW")
-    table_id = os.getenv("BQ_TABLE_RAW_DATA")
-
     """ Inicjuję klienta BigQuery """
-
     client = bigquery.Client()
-
     table = f"{project_id}.{dataset_id}.{table_id}"
     job_config = bigquery.LoadJobConfig(
         write_disposition="WRITE_APPEND",
