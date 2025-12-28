@@ -56,6 +56,7 @@ def transform_data(input_data: str, params_dict: dict):
         # Dodaję timestamp oraz datę
         df['Timestamp'] = current_timestamp
         df['Data'] = current_date
+        df['Data'] = pd.to_datetime(df['Data']).dt.date
 
         # Transformacja danych
         df_melted = df.melt(
