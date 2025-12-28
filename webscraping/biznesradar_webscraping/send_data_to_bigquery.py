@@ -53,7 +53,7 @@ def send_data_to_bigquery(df: pd.DataFrame) -> None:
             destination=TABLE_FULL_ID,
             job_config=job_config)
         job.result()  # czekaj na zakończenie
-        logger.info(f"Data successfully inserted into {TABLE_FULL_ID}.")
+        logger.info(f"Data successfully inserted into `{TABLE_FULL_ID}`.")
     except GoogleAPIError:
         logger.exception("BigQuery API error.")
         raise
