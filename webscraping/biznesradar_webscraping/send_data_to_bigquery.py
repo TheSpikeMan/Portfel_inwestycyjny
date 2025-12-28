@@ -22,7 +22,12 @@ def send_data_to_bigquery(df: pd.DataFrame):
     table = f"{project_id}.{dataset_id}.{table_id}"
     job_config = bigquery.LoadJobConfig(
         write_disposition="WRITE_APPEND",
-        create_disposition="CREATE_IF_NEEDED"
+        create_disposition="CREATE_IF_NEEDED",
+        clustering_fields=['Timestamp', 'Ticker'],
+        time_partitioning=bigquery.TimePartitioning(
+            type_=bigquery.TimePartitioningType.DAY,
+            field='Data'
+        )
     )
 
     try:
