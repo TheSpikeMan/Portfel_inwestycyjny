@@ -46,6 +46,7 @@ def send_data_to_bigquery(df: pd.DataFrame) -> None:
         )
     )
 
+    logger.info(f"Loading {len(df)} rows into `{TABLE_FULL_ID}`.")
     try:
         job = bq_client.load_table_from_dataframe(
             dataframe=df,
