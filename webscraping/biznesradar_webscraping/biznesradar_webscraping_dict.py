@@ -37,7 +37,19 @@ data_dict = {
                   {'Zysk_przed_opodatkowaniem': 'IncomeBeforeTaxProfit'},
                   {'Zysk_strata_z_dzialalnosci_gospodarczej': 'IncomeDiscontinuedProfit'},
                   {'Zysk_netto': 'IncomeNetProfit'},
-                  {'Zysk_netto_akcjonariuszy_jednostki_dominujacej': 'IncomeShareholderNetProfit'}]
+                  {'Zysk_netto_akcjonariuszy_jednostki_dominujacej': 'IncomeShareholderNetProfit'}],
+    'Bilans':
+                 [{'Aktywa_razem': 'BalanceTotalAssets'},
+                  {'Aktywa_trwale': 'BalanceNoncurrentAssets'},
+                  {'Wartosci_niematerialne_i_prawne': 'BalanceIntangibleAssets'},
+                  {'Wartosc_firmy': 'BalanceGoodwill'},
+                  {'Rzeczowe_skladniki_majatku_trwalego': 'BalanceProperty'},
+                  {'Aktywa_z_tytulu_prawa_do_uzytkowania': 'BalanceRightToUseAssets'},
+                  {'Naleznosci_dlugoterminowe': 'BalanceNoncurrentReceivables'},
+                  {'Inwestycyjne_dlugoterminowe': 'BalanceNoncurrInvestments'},
+                  {'Pozostale_aktywa_trwale': 'BalanceOtherNoncurrentAssets'},
+                  {'Aktywa_obrotowe': 'BalanceCurrentAssets'},
+                  {}]
              }
 
 """ Słownik okresów dla raportów """
