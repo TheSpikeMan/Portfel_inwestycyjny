@@ -9,12 +9,10 @@ reports_dict = {
                   {'Bilans': 'spolki-raporty-finansowe-bilans'},
                   {'Przeplywy_pieniezne': 'spolki-raporty-finansowe-przeplywy-pieniezne'}],
     'Wskazniki':
-                  [{'Wartosci_rynkowej': 'spolki-wskazniki-wartosci-rynkowej'},
-                   {'Rentownosci': 'spolki-wskazniki-rentownosci'},
-                   {'Przeplywow_pienieznych': 'spolki-wskazniki-przeplywow-pienieznych'},
-                   {'Zadluzenia': 'spolki-wskazniki-zadluzenia'},
-                   {'Plynnosci': 'spolki-wskazniki-plynnosci'},
-                   {'Aktywnosci': 'spolki-wskazniki-aktywnosci'}],
+                  [{'Wskazniki_wartosci_rynkowej': 'spolki-wskazniki-wartosci-rynkowej'},
+                   {'Wskazniki_rentownosci': 'spolki-wskazniki-rentownosci'},
+                   {'Wskazniki_przeplywow_pienieznych': 'spolki-wskazniki-przeplywow-pienieznych'},
+                   {'Wskazniki_zadluzenia': 'spolki-wskazniki-zadluzenia'}],
     'Rating': [{'Rating': 'spolki-rating'}]
     }
 
@@ -83,7 +81,7 @@ data_dict = {
                    {'Marza_zysku_brutto': 'GPM'},
                    {'Marza_zysku_brutto_ze_sprzedazy': 'RBS'},
                    {'Rentownosc_operacyjna_aktywow': 'ROPA'}],
-    'Wskazniki_przeplywyw_pienieznych':
+    'Wskazniki_przeplywow_pienieznych':
                   [{'Udzial_zysku_netto_w_przeplywach_operacyjnych': 'ZNPO'},
                    {'Wskaznik_zrodel_finansowania_inwestycji': 'ZFI'}],
     'Wskazniki_zadluzenia':
@@ -100,8 +98,17 @@ data_dict = {
 
 """ Słownik okresów dla raportów """
 period_dict = {
-    'Okres': [
-        {'Kwartalne': 'Q'},
-        {'Roczne': 'Y'},
-        {'Skumulowane': 'C'}]
+    'Rachunek_zyskow_i_strat': {
+        'Kwartalne': 'Q',
+        'Roczne': 'Y',
+        'Skumulowane': 'C'
+    },
+    'Bilans': {
+        'Zestawienie': '0',
+        'Udzial_w_bilansie': '1'
+    },
+    'Przeplywy_pieniezne': {
+        'Kwartalne': 'Q',
+        'Roczne': 'Y'
+    }
 }
