@@ -1,3 +1,5 @@
+""" Główny URL"""
+BASE_URL = 'https://www.biznesradar.pl/'
 
 """ Słownik rynków """
 market_dict = {
