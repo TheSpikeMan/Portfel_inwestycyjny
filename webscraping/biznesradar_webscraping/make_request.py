@@ -3,9 +3,14 @@ import time
 import random
 from transform_data import transform_data
 from send_data_to_bigquery import send_data_to_bigquery
+import logging
 import pandas as pd
 
-def make_request(urls_list: list[dict]):
+""" Logging """
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+def make_request(urls_dict: [dict]):
 
     BATCH_SIZE = 10
     all_dfs = []
