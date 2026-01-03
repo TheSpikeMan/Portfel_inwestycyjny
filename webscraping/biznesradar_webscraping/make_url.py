@@ -4,8 +4,9 @@ from biznesradar_webscraping_dict import (BASE_URL, market_dict, reports_dict, d
 import pandas as pd
 
 
-def make_url() -> dict:
+def make_url(list_of_restrictions: dict) -> dict:
     """
+    :params: list of restrictions to scraping
     :return: dict, where KEY is URL, and VALUE are parameters describing key as an internal dict
     """
 
@@ -55,6 +56,21 @@ def make_url() -> dict:
 
     """ Creating a copy of DataFrame to work with """
     df_work = df.copy()
+
+    """ Applying restrictions from main.py lists"""
+    market_mask = list_of_restrictions.get('market_restrictions', [])
+    report_group_mask = list_of_restrictions.get('report_group_restrictions', [])
+    report_mask = list_of_restrictions.get('report_restrictions', [])
+    report_detailed_mask = list_of_restrictions.get('report_detailed_restrictions', [])
+    period_mask = list_of_restrictions.get('period_restrictions', [])
+
+    df_work = df_work[
+        ~df_work['market'].isin(market_mask) &
+        ~df_work['report_group'].isin(report_group_mask) &
+        ~df_work['report'].isin(report_mask) &
+        ~df_work['report_detailed'].isin(report_detailed_mask) &
+        ~df_work['period'].isin(period_mask)
+        ]
 
     """ Creating path and url """
     df_work['path'] = df_work['raport_slug'] + '/' + df_work['market_slug'] + ',' + df_work['period_slug'] + ',' + \
