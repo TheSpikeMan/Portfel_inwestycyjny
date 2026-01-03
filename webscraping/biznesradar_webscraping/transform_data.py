@@ -48,7 +48,7 @@ def transform_data(input_data: str, params_dict: dict):
     if not df.empty:
         # Dodanie kolumn z charakterystyką raportu
         df['Typ_raportu'] = params_dict.get('report_group')
-        df['Typ_subraportu'] = params_dict.get('report_type')
+        df['Typ_subraportu'] = params_dict.get('report')
         df['Miara'] = params_dict.get('report_detailed')
         df['Okres'] = params_dict.get('period')
         df['Rynek'] = params_dict.get('market')
