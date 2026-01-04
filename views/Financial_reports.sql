@@ -1,4 +1,5 @@
-WITH
+CREATE VIEW `projekt-inwestycyjny.Analysis.Financial_reports`
+AS WITH
 raw_scraped_data_raw AS (SELECT * FROM `projekt-inwestycyjny.Raw_data.Raw_scraped_data`),
 raw_scraped_data     AS (
   SELECT
@@ -36,8 +37,8 @@ raw_scraped_data     AS (
   FROM raw_scraped_data_raw
   WHERE TRUE
     AND Rynek = 'gpw'
-    AND Typ_raportu IN ("Raporty_finansowe", "Wskaźniki")
-    AND Typ_subraportu NOT IN ("Bilans")
+    AND Typ_raportu IN (""Raporty_finansowe"", ""Wskaźniki"")
+    AND Typ_subraportu NOT IN (""Bilans"")
   QUALIFY TRUE
     AND ROW_NUMBER() OVER latest_data = 1
   WINDOW
@@ -152,3 +153,4 @@ PIVOT(
 )
 WHERE TRUE
 ORDER BY Ticker, Data_konca_kwartalu DESC
+;
