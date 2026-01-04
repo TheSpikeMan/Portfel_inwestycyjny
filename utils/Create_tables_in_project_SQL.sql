@@ -5,6 +5,7 @@ CREATE SCHEMA IF NOT EXISTS `projekt-inwestycyjny.Dane_instrumentow`;
 CREATE SCHEMA IF NOT EXISTS `projekt-inwestycyjny.Inflation`;
 CREATE SCHEMA IF NOT EXISTS `projekt-inwestycyjny.Transactions`;
 CREATE SCHEMA IF NOT EXISTS `projekt-inwestycyjny.Waluty`;
+CREATE SCHEMA IF NOT EXISTS `projekt-inwestycyjny.Analysis`;
 
 -- UTWORZENIE TABEL W ZBIORZE CALENDAR --
 -- Tabela przechowuje zestaw dat od 2020-01-01 do 2030-12-31 wraz z innymi miarami takimi jak rok, miesiąć
