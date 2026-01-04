@@ -1,16 +1,58 @@
 -- Utworzenie datasetów
 
-CREATE SCHEMA IF NOT EXISTS `projekt-inwestycyjny.Calendar`;
-CREATE SCHEMA IF NOT EXISTS `projekt-inwestycyjny.Dane_instrumentow`;
-CREATE SCHEMA IF NOT EXISTS `projekt-inwestycyjny.Inflation`;
-CREATE SCHEMA IF NOT EXISTS `projekt-inwestycyjny.Transactions`;
-CREATE SCHEMA IF NOT EXISTS `projekt-inwestycyjny.Waluty`;
+CREATE SCHEMA IF NOT EXISTS `projekt-inwestycyjny.Calendar`
+OPTIONS(
+  location="europe-central2",
+  is_case_insensitive=false,
+  max_time_travel_hours=168,
+  storage_billing_model=LOGICAL
+);
+CREATE SCHEMA IF NOT EXISTS`projekt-inwestycyjny.Dane_instrumentow`
+OPTIONS(
+  location="europe-central2",
+  is_case_insensitive=false,
+  max_time_travel_hours=168,
+  storage_billing_model=LOGICAL
+);
+
+CREATE SCHEMA IF NOT EXISTS `projekt-inwestycyjny.Inflation`
+OPTIONS(
+  location="europe-central2",
+  is_case_insensitive=false,
+  max_time_travel_hours=168,
+  storage_billing_model=LOGICAL
+);
+
+CREATE SCHEMA IF NOT EXISTS `projekt-inwestycyjny.Transactions`
+OPTIONS(
+  location="europe-central2",
+  is_case_insensitive=false,
+  max_time_travel_hours=168,
+  storage_billing_model=LOGICAL
+);
+
+CREATE SCHEMA IF NOT EXISTS `projekt-inwestycyjny.Waluty`
+OPTIONS(
+  location="europe-central2",
+  is_case_insensitive=false,
+  max_time_travel_hours=168,
+  storage_billing_model=LOGICAL
+);
+
 CREATE SCHEMA IF NOT EXISTS `projekt-inwestycyjny.Raw_data`
     OPTIONS(
       location="europe-central2",
       is_case_insensitive=false,
       max_time_travel_hours=168
     );
+
+CREATE SCHEMA IF NOT EXISTS `projekt-inwestycyjny.Analysis`
+OPTIONS(
+  location="europe-central2",
+  is_case_insensitive=false,
+  max_time_travel_hours=168
+);
+
 
 -- UTWORZENIE TABEL W ZBIORZE CALENDAR --
 -- Tabela przechowuje zestaw dat od 2020-01-01 do 2030-12-31 wraz z innymi miarami takimi jak rok, miesiąć
