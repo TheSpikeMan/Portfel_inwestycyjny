@@ -138,10 +138,12 @@ class BigQueryReaderAndExporter():
 
         print("Pomyślnie utworzono obiekt klasy 'BigQueryReaderAndExporter'.")
 
+        # Tworzymy połączenie tylko raz przy starcie aplikacji/okna
+        print("Nawiązywanie połączenia z BigQuery...")
+        self.client = bigquery.Client(project=self.project, location=self.location)
+
     
     def downloadLastTransactionId(self):
-        client = bigquery.Client(project=self.project,
-                                 location=self.location)
 
         # Download last transaction id from BigQuery
         queryMaxTransactionId = f"""
@@ -149,33 +151,26 @@ class BigQueryReaderAndExporter():
             MAX(Transaction_id)  AS Max_transaction_id
         FROM `{self.project}.{self.dataSetTransactions}.{self.tableTransactions}`
         """
-        query_job_max_transaction_id = client.query(query=queryMaxTransactionId)
+        query_job_max_transaction_id = self.client.query(query=queryMaxTransactionId)
         self.maxTransactionId = query_job_max_transaction_id.to_dataframe()
 
         return self.maxTransactionId
     
     def downloadLastInstrumentId(self):
- 
-        client = bigquery.Client(project=self.project,
-                                 location=self.location)
 
         # Download last transaction id from BigQuery
- 
         queryMaxInstrumentId = f"""
         SELECT
             MAX(Instrument_id)  AS Max_instrument_id
         FROM `{self.project}.{self.dataSetDaneIntrumentow}.{self.tableInstruments}`
         """
 
-        query_job_max_instrument_id = client.query(query=queryMaxInstrumentId)
+        query_job_max_instrument_id = self.client.query(query=queryMaxInstrumentId)
         self.maxInstrument_id = query_job_max_instrument_id.to_dataframe()
         return self.maxInstrument_id
     
     def downloadDataFromBigQuery(self):
 
-        client = bigquery.Client(project=self.project,
-                                 location=self.location)
-        
         # Downloading Currencies Data from Big Query view
         queryCurrencies = f"""
         SELECT
@@ -185,7 +180,7 @@ class BigQueryReaderAndExporter():
             last_currency_close                             AS last_currency_close
         FROM `{self.project}.{self.dataSetCurrencies}.{self.viewCurrencies}`
         """
-        query_job_currencies = client.query(query=queryCurrencies)
+        query_job_currencies = self.client.query(query=queryCurrencies)
         self.currenciesDataFrame = query_job_currencies.to_dataframe()
 
         # Downloading Instruments and instrument types Data from Big Query
@@ -207,7 +202,7 @@ class BigQueryReaderAndExporter():
         ORDER BY Ticker ASC
         """
 
-        query_job_instruments = client.query(query=query_Instrument_And_Instrument_Types)
+        query_job_instruments = self.client.query(query=query_Instrument_And_Instrument_Types)
         self.instrumentsDataFrame = query_job_instruments.to_dataframe()
 
         # downloading transactions data
@@ -231,7 +226,7 @@ class BigQueryReaderAndExporter():
         ORDER BY
         Ticker
         """
-        query_job_transactions = client.query(query=query_transactions)
+        query_job_transactions = self.client.query(query=query_transactions)
         self.transactionsDataFrame = query_job_transactions.to_dataframe()
 
         query_instrument_types = f"""
@@ -241,7 +236,7 @@ class BigQueryReaderAndExporter():
         FROM `{self.project}.{self.dataSetDaneIntrumentow}.{self.tableInstrumentTypes}`
         """
 
-        query_job_instrument_types = client.query(query=query_instrument_types)
+        query_job_instrument_types = self.client.query(query=query_instrument_types)
         self.instrumentTypesDataFrame = query_job_instrument_types.to_dataframe()
 
         return (self.currenciesDataFrame,
@@ -262,8 +257,6 @@ class BigQueryReaderAndExporter():
         self.destination_table = destination_table
         print("Wysyłam dane do BigQuery, cel: ", self.destination_table)
 
-        client = bigquery.Client()
-
         # Mapowanie destination_table na pełne identyfikatory tabeli w BigQuery
         destination_mapping = {
             "Dane transakcyjne": f"{self.project}.{self.dataSetTransactions}.{self.tableTransactions}",
@@ -274,7 +267,7 @@ class BigQueryReaderAndExporter():
         self.destination_table = destination_mapping.get(self.destination_table)
         if self.destination_table:
             # Pobieranie tabeli i schemy z BigQuery
-            self.table = client.get_table(self.destination_table)
+            self.table = self.client.get_table(self.destination_table)
             self.schema = self.table.schema
         else:
             # Jeśli tabela nie została znaleziona w mappingu
@@ -289,7 +282,7 @@ class BigQueryReaderAndExporter():
 
         # Próba załadowania danych do BigQuery
         try:
-            job = client.load_table_from_dataframe(self.data_to_export,
+            job = self.client.load_table_from_dataframe(self.data_to_export,
                                                    self.destination_table,
                                                    job_config=job_config)
             job.result()  # Czekanie na zakończenie procesu ładowania
