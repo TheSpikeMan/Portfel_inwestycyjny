@@ -538,29 +538,29 @@ class DodajTransakcje(QWidget):
         self.setWindowTitle("Transakcje")
         self.setFixedSize(QSize(800,600))
         self.addWidgets()
+
+    def add_form_row(self, row, label_text, widget, third_widget=None):
+        label = QLabel(label_text)
+        self.layout.addWidget(label, row, 0)
+        self.layout.addWidget(widget, row, 1)
+        if third_widget:
+            self.layout.addWidget(third_widget, row, 2)
     
     def addWidgets(self):
         self.layout = QGridLayout()
 
-        # Dodanie QLabel do opisu daty
-        primaryLabel = QLabel()
-        primaryLabel.setText("Transakcje")
+        # Nagłówek
+        primaryLabel = QLabel("Transakcje")
         self.fontTitle = QFont()
         self.fontTitle.setPointSize(16)
         primaryLabel.setFont(self.fontTitle)
         self.layout.addWidget(primaryLabel, 0, 0, 1, 3, alignment= Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignHCenter)
 
-        # Dodanie QLabel do opisu daty
-        dateLabel = QLabel()
-        dateLabel.setText("Data transakcji")
-        self.layout.addWidget(dateLabel, 1, 0)
-
-        # Dodanie QDateEdit do wyboru daty transakcji
+        # Definicje widgetów
         self.dateDateEdit = QDateEdit()
         self.dateDateEdit.setDisplayFormat("yyyy-MM-dd")
         self.dateDateEdit.setDate(QDate.currentDate())
         self.dateDateEdit.setEnabled(False)
-        self.layout.addWidget(self.dateDateEdit, 1, 1)
 
         # Dodanie przycisku otwierającego kalendarz. Po naciśnięciu przycisku uruchamiana jest metoda
         # OpenCalendar, która tworzy nowy obiekt QCalendarWidget, pobiera od użytkownika datę,
@@ -568,34 +568,16 @@ class DodajTransakcje(QWidget):
         self.openCalendarButton       = QPushButton()
         self.openCalendarButton.setText("Kalendarz")
         self.openCalendarButton.pressed.connect(self.OpenCalendar)
-        self.layout.addWidget(self.openCalendarButton, 1, 2)
-
-        # Dodanie QLabel do opisu typu transakcji
-        transactionTypeLabel = QLabel()
-        transactionTypeLabel.setText("Typ transakcji")
-        self.layout.addWidget(transactionTypeLabel, 2, 0)
 
         # Dodanie ComboBoxa do wyboru typu transakcji
         self.transactionsTypeComboBox = QComboBox()
         self.transactionsTypeComboBox.addItems(["Sprzedaż", "Zakup", "Wykup", "Dywidenda", "Odsetki"])
         self.transactionsTypeComboBox.currentTextChanged.connect(self.TransactionTypeBuyChosen)
-        self.layout.addWidget(self.transactionsTypeComboBox, 2, 1)
-
-        # Dodanie QLabel do opisu typu instrumentu finansowego
-        instrumentTypeLabel = QLabel()
-        instrumentTypeLabel.setText("Rodzaj instrumentu finansowego")
-        self.layout.addWidget(instrumentTypeLabel, 3, 0)
 
         # Dodanie ComboBoxa do wyboru typu instrumentu finansowego
         self.instrumentTypeComboBox = QComboBox()
         self.instrumentTypeComboBox.addItems(set(self.instrumentsTypesDataFrame['Instrument_type'].to_list()))
         self.instrumentTypeComboBox.currentTextChanged.connect(self.instrumentTypeChanged)
-        self.layout.addWidget(self.instrumentTypeComboBox, 3, 1)
-
-        # Dodanie QLabel do opisu typu instrumentu finansowego
-        instrumentLabel = QLabel()
-        instrumentLabel.setText("Ticker")
-        self.layout.addWidget(instrumentLabel, 4, 0)
 
         # Dodanie ComboBoxa do wyboru instrumentu finansowego
         self.instrumentComboBox = QComboBox()
@@ -603,28 +585,15 @@ class DodajTransakcje(QWidget):
             self.instrumentsDataFrame['Project_id'] == self.project_ID,   # Pobierz dane dla danego Project_ID
             'Ticker'                                                      # Interesują mnie wyłącznie dane z kolumny Ticker
         ].to_list())
-        self.layout.addWidget(self.instrumentComboBox, 4, 1)
-
-        # Dodanie QLabel do opisu ilości instrumentu podlegającego transakcji
-        quantityLabel = QLabel()
-        quantityLabel.setText("Ilość")
-        self.layout.addWidget(quantityLabel, 5, 0)
 
         # Dodanie pola do wpisania ilości zakupionego waloru
         self.quantityLineEdit         = QLineEdit()
         self.quantityLineEdit.installEventFilter(self)
-        self.layout.addWidget(self.quantityLineEdit, 5, 1)
-
-        # Dodanie QLabel do opisu ceny instrumentu podlegającego transakcji
-        priceLabel = QLabel()
-        priceLabel.setText("Cena oraz waluta")
-        self.layout.addWidget(priceLabel, 6, 0)
 
         # Dodanie pola do ceny zakupionego waloru
         self.priceLineEdit            = QLineEdit()
         self.priceLineEdit.installEventFilter(self)
         self.dot_entered = False
-        self.layout.addWidget(self.priceLineEdit, 6, 1)
 
         # Dodanie ComboBoxa do wyboru waluty instrumentu finansowego
         self.currencyComboBox = QComboBox()
@@ -633,65 +602,37 @@ class DodajTransakcje(QWidget):
         # Ustawiam walutę na domyślną w razie braku zmian waluty przed datą. Dane wykorzystywane przez metodę DateChanged
         self.currentCurrency = "PLN"
         self.currencyComboBox.currentTextChanged.connect(self.CurrencyChanged)
-        self.layout.addWidget(self.currencyComboBox, 6, 2)
-
-        # Dodanie QLabel do opisu kursu waluty instrumentu podlegającego transakcji
-        currencyValueLabel = QLabel()
-        currencyValueLabel.setText("Kurs waluty")
-        self.layout.addWidget(currencyValueLabel, 7, 0)
 
         # Dodanie pola do kursu waluty waloru
         self.currencyValueLineEdit           = QLineEdit()
         self.currencyValueLineEdit.setText("1")
         self.currencyValueLineEdit.setEnabled(False)
-        self.layout.addWidget(self.currencyValueLineEdit, 7, 1)
-
-        # Dodanie QLabel do opisu prowizji instrumentu podlegającego transakcji
-        commisionLabel = QLabel()
-        commisionLabel.setText("Prowizja")
-        self.layout.addWidget(commisionLabel, 8, 0)
 
         # Dodanie pola do prowizji zakupionego waloru
         self.commisionLineEdit          = QLineEdit()
         self.commisionLineEdit.installEventFilter(self)
-        self.layout.addWidget(self.commisionLineEdit, 8, 1)
 
         # Dodanie QLabel do opisu wartośći instrumentu podlegającego transakcji
         valueLabel = QLabel()
         valueLabel.setText("Wartość")
-        self.layout.addWidget(valueLabel, 9, 0)
 
         # Dodanie pola do wpisania wartości
         self.valueLineEdit              = QLineEdit()
         self.valueLineEdit.installEventFilter(self)
-        self.layout.addWidget(self.valueLineEdit, 9, 1)
 
         # Dodanie przycisku do przeliczenia wartości
         self.valueCalculateButton       = QPushButton("Przelicz wartość")
         self.valueCalculateButton.pressed.connect(self.CalculateValue)
-        self.layout.addWidget(self.valueCalculateButton)
-
-        # Dodanie QLabel do opisu podatku
-        taxLabel = QLabel()
-        taxLabel.setText("Czy zapłacono podatek?")
-        self.layout.addWidget(taxLabel, 10, 0)
 
         # Dodanie ComboBoxa do wyboru waluty instrumentu finansowego
         self.taxComboBox = QComboBox()
         self.taxComboBox.addItems(["Tak", "Nie"])
         self.taxComboBox.setCurrentText("Nie")
-        self.layout.addWidget(self.taxComboBox, 10, 1)
         self.taxComboBox.currentTextChanged.connect(self.taxStateChosen)
-
-        # Dodanie QLabel do opisu wartości podatku
-        taxValueLabel = QLabel()
-        taxValueLabel.setText("Wartość podatku")
-        self.layout.addWidget(taxValueLabel, 11, 0)
 
         # Dodanie pola do wpisania wartości podatku
         self.taxValueLineEdit              = QLineEdit()
         self.taxValueLineEdit.installEventFilter(self)
-        self.layout.addWidget(self.taxValueLineEdit, 11, 1)
         self.taxValueLineEdit.setEnabled(False)
 
         # Dodanie widgetu wyświetlającego informacje podczas wykonywania programu
@@ -704,13 +645,25 @@ class DodajTransakcje(QWidget):
         sendDataPushButton.setText("Wyślij dane do bazy")
         sendDataPushButton.pressed.connect(self.sendDataToBigQuery)
         sendDataPushButton.clicked.connect(self.close)
-        self.layout.addWidget(sendDataPushButton, 13, 1)
 
         # Wyjście do poprzedniego okna
         returnButton             = QPushButton()
         returnButton.setText("Powrót")
         returnButton.pressed.connect(self.close)
-        self.layout.addWidget(returnButton, 14, 1)
+
+        # Tworzenie labelów
+        self.add_form_row(1, "Data transakcji", self.dateDateEdit, self.openCalendarButton)
+        self.add_form_row(2, "Typ transakcji", self.transactionsTypeComboBox)
+        self.add_form_row(3, "Rodzaj instrumentu", self.instrumentTypeComboBox)
+        self.add_form_row(4, "Ticker", self.instrumentComboBox)
+        self.add_form_row(5, "Ilość", self.quantityLineEdit)
+        self.add_form_row(6, "Cena i waluta", self.priceLineEdit, self.currencyComboBox)
+        self.add_form_row(7, "Kurs waluty", self.currencyValueLineEdit)
+        self.add_form_row(8, "Prowizja", self.commisionLineEdit)
+        self.add_form_row(9, "Wartość", self.valueLineEdit, self.valueCalculateButton)
+        self.add_form_row(10, "Czy zapłacono podatek?", self.taxComboBox)
+        self.add_form_row(11, "Wartość podatku", self.taxValueLineEdit)
+
 
         self.layout.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignHCenter)
         self.layout.setSpacing(10)
@@ -719,6 +672,11 @@ class DodajTransakcje(QWidget):
         self.layout.setColumnStretch(1, 2)
         self.layout.setColumnStretch(2, 1)
         self.setLayout(self.layout)
+
+        # Dodanie przycisków do layoutu
+        self.layout.addWidget(sendDataPushButton, 13, 1)
+        self.layout.addWidget(returnButton, 14, 1)
+
 
     # Metoda maskująca wprowadzane dane. Ograniczenie do danych liczbowych, backspace'a oraz pojedynczej kropki.
     def eventFilter(self, obj, event):
