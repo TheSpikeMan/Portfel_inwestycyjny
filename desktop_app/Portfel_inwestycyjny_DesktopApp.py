@@ -23,6 +23,7 @@ from dotenv import load_dotenv
 import os
 from pathlib import Path
 
+Kole
 class ProgressDialog(QDialog):
     def __init__(self):
         super().__init__()
@@ -60,9 +61,10 @@ class ProgressDialog(QDialog):
         # Ustawiamy pozycję okna
         self.move(x, y)
 
+
 class WorkerThread(QThread):
-    progress = pyqtSignal(int) # Sygnał postępu
-    finished = pyqtSignal() # Sygnał zakończenia
+    progress = pyqtSignal(int)  # Sygnał postępu
+    finished = pyqtSignal()  # Sygnał zakończenia
     data_ready = pyqtSignal(object, object, object, object)
 
     def __init__(self, bqrae):
@@ -84,6 +86,7 @@ class WorkerThread(QThread):
                              self.transactionsDataFrame)
         self.progress.emit(50)
         self.finished.emit()
+
 
 class BigQueryProject():
 
@@ -325,12 +328,15 @@ class DodajInstrumentDoSlownika(QWidget):
         # Ustawienie docelowego miejsca eksportu danych
         self.export_destination = 'Dane instrumentow'
 
-    def add_form_row(self, row, label_text, widget, third_widget=None):
+    def add_form_row(self, row: int, label_text: str, widget=None, widget_items=None):
         label = QLabel(label_text)
+        if widget is None:
+            widget = QLineEdit()
+        if widget_items and isinstance(widget, QComboBox):
+            widget.addItems(list(widget_items))
         self.layout.addWidget(label, row, 0)
         self.layout.addWidget(widget, row, 1)
-        if third_widget:
-            self.layout.addWidget(third_widget, row, 2)
+        return widget
 
     def addWidgets(self):
         self.layout = QGridLayout()
@@ -342,61 +348,42 @@ class DodajInstrumentDoSlownika(QWidget):
         self.fontTitle.setPointSize(16)
         primaryLabel.setFont(self.fontTitle)
         self.layout.addWidget(primaryLabel, 0, 0, 1, 3,
-        alignment=Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignHCenter)
-
-        # Dodanie ComboBoxa do wyboru typu danych
-        self.instrumentTypes = QComboBox()
-        self.instrumentTypes.addItems(set(self.instrumentsTypesDataFrame['Instrument_type'].to_list()))
-
-        # Dodanie QLineEdit do wprowadzenia Tickera
-        self.tickerLineEdit = QLineEdit()
-        # self.quantityLineEdit.installEventFilter(self) --> Do wprowadzenia
-
-        # Dodanie QLineEdit do wprowadzenia numeru ISIN
-        self.tickerISINLineEdit = QLineEdit()
-        # self.quantityLineEdit.installEventFilter(self) --> Do wprowadzenia
-
-        # Dodanie QLineEdit do wprowadzenia nazwy instrumentu
-        self.instrumentNameLineEdit = QLineEdit()
-
-        # Dodanie QComboBox do wprowadzenia jednostki instrumentu
-        self.instrumentUnitComboBox = QComboBox()
-        self.instrumentUnitComboBox.addItems(["1", "10", "100", "1000", "10000"])
-
-        # Dodanie QLineEdit do wprowadzenia kraju notowania danego instrumentu
-        self.countryLineEdit = QLineEdit()
-
-        # Dodanie QLineEdit do wprowadzenia identyfikatora rynku danego instrumentu
-        self.marketLineEdit = QLineEdit()
-        self.layout.addWidget(self.marketLineEdit, 8, 1)
-
-        # Dodanie QComboBoc do wprowadzenia waluty w jakiej notowany jest dany instrument
-        self.currencyComboBox = QComboBox()
-        self.currencyComboBox.addItems(["USD", "EUR", "GBP", "CHF", "PLN"])
-
-        # Dodanie QComboBoc do wprowadzenia waluty, w jakiej rozliczany jest dany instrument
-        self.basecurrencyComboBox = QComboBox()
-        self.basecurrencyComboBox.addItems(["USD", "EUR", "GBP", "CHF", "PLN"])
-
-        # Dodanie QComboBox do wprowadzenia polityki dystrybucji danego instrumentu
-        self.distributionPolicyCombobox = QComboBox()
-        self.distributionPolicyCombobox.addItems(["Distributing", "Accumulating"])
-
-        # Dodanie QLineEdit do wprowadzenia siedziby danego instrumentu
-        self.instrumentHeadquarterLineEdit = QLineEdit()
+                              alignment=Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignHCenter)
 
         # Utworzenie elementów typu QLabel oraz dodanie odpowiadających im pól do layoutu
-        self.add_form_row(2, "Rodzaj instrumentu finansowego", self.instrumentTypes)
-        self.add_form_row(3, "Ticker", self.tickerLineEdit)
-        self.add_form_row(4, "ISIN", self.tickerISINLineEdit)
-        self.add_form_row(5, "Pełna nazwa instrumentu", self.instrumentNameLineEdit)
-        self.add_form_row(6, "Jednostka", self.instrumentUnitComboBox)
-        self.add_form_row(7, "Kraj notowania (skrót)", self.countryLineEdit)
-        self.add_form_row(8, "Identyfiktor giełdy (skrót)", self.marketLineEdit)
-        self.add_form_row(9, "Waluta instrumentu na rynku", self.currencyComboBox)
-        self.add_form_row(10, "Waluta bazowa (rozliczeniowa)", self.basecurrencyComboBox)
-        self.add_form_row(11, "Polityka dystrybucji", self.distributionPolicyCombobox)
-        self.add_form_row(12, "Siedziba", self.instrumentHeadquarterLineEdit)
+        self.instrumentTypes = self.add_form_row(2,
+                                                 label_text="Rodzaj instrumentu finansowego",
+                                                 widget=QComboBox(),
+                                                 widget_items=set(
+                                                   self.instrumentsTypesDataFrame['Instrument_type'].to_list()))
+        self.tickerLineEdit = self.add_form_row(3,
+                                                label_text="Ticker")
+        self.tickerISINLineEdit = self.add_form_row(4,
+                                                    label_text="ISIN")
+        self.instrumentNameLineEdit = self.add_form_row(5,
+                                                        label_text="Pełna nazwa instrumentu")
+        self.instrumentUnitComboBox = self.add_form_row(6,
+                                                        label_text="Jednostka",
+                                                        widget=QComboBox(),
+                                                        widget_items=["1", "10", "100", "1000", "10000"])
+        self.countryLineEdit = self.add_form_row(7,
+                                                 label_text="Kraj notowania (skrót)")
+        self.marketLineEdit = self.add_form_row(8,
+                                                label_text="Identyfiktor giełdy (skrót)")
+        self.currencyComboBox = self.add_form_row(9,
+                                                  label_text="Waluta instrumentu na rynku",
+                                                  widget=QComboBox(),
+                                                  widget_items=["USD", "EUR", "GBP", "CHF", "PLN"])
+        self.basecurrencyComboBox = self.add_form_row(10,
+                                                      label_text="Waluta bazowa (rozliczeniowa)",
+                                                      widget=QComboBox(),
+                                                      widget_items=["USD", "EUR", "GBP", "CHF", "PLN"])
+        self.distributionPolicyCombobox = self.add_form_row(11,
+                                                            label_text="Polityka dystrybucji",
+                                                            widget=QComboBox(),
+                                                            widget_items=["Distributing", "Accumulating"])
+        self.instrumentHeadquarterLineEdit = self.add_form_row(12,
+                                                               label_text="Siedziba")
 
         # Dodanie przycisku do wysłania danych do BigQuery
         sendDataPushButton = QPushButton()
