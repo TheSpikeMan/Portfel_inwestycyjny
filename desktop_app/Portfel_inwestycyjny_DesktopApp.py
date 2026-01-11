@@ -23,6 +23,7 @@ from dotenv import load_dotenv
 import os
 from pathlib import Path
 
+Kole
 class ProgressDialog(QDialog):
     def __init__(self):
         super().__init__()
@@ -60,9 +61,10 @@ class ProgressDialog(QDialog):
         # Ustawiamy pozycję okna
         self.move(x, y)
 
+
 class WorkerThread(QThread):
-    progress = pyqtSignal(int) # Sygnał postępu
-    finished = pyqtSignal() # Sygnał zakończenia
+    progress = pyqtSignal(int)  # Sygnał postępu
+    finished = pyqtSignal()  # Sygnał zakończenia
     data_ready = pyqtSignal(object, object, object, object)
 
     def __init__(self, bqrae):
@@ -84,6 +86,7 @@ class WorkerThread(QThread):
                              self.transactionsDataFrame)
         self.progress.emit(50)
         self.finished.emit()
+
 
 class BigQueryProject():
 
@@ -325,6 +328,16 @@ class DodajInstrumentDoSlownika(QWidget):
         # Ustawienie docelowego miejsca eksportu danych
         self.export_destination = 'Dane instrumentow'
 
+    def add_form_row(self, row: int, label_text: str, widget=None, widget_items=None):
+        label = QLabel(label_text)
+        if widget is None:
+            widget = QLineEdit()
+        if widget_items and isinstance(widget, QComboBox):
+            widget.addItems(list(widget_items))
+        self.layout.addWidget(label, row, 0)
+        self.layout.addWidget(widget, row, 1)
+        return widget
+
     def addWidgets(self):
         self.layout = QGridLayout()
 
@@ -335,116 +348,45 @@ class DodajInstrumentDoSlownika(QWidget):
         self.fontTitle.setPointSize(16)
         primaryLabel.setFont(self.fontTitle)
         self.layout.addWidget(primaryLabel, 0, 0, 1, 3,
-        alignment=Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignHCenter)
+                              alignment=Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignHCenter)
 
-        # Dodanie QLabel do rodzaju instrumentu finansowego
-        self.instrumentTypeLabel = QLabel()
-        self.instrumentTypeLabel.setText("Rodzaj instrumentu finansowego")
-        self.layout.addWidget(self.instrumentTypeLabel, 2, 0)
-
-        # Dodanie ComboBoxa do wyboru typu danych
-        self.instrumentTypes = QComboBox()
-        self.instrumentTypes.addItems(set(self.instrumentsTypesDataFrame['Instrument_type'].to_list()))
-        self.layout.addWidget(self.instrumentTypes, 2, 1)
-
-        # Dodanie QLabel wskazującego na konkretny ticker
-        self.instrumentLabel = QLabel()
-        self.instrumentLabel.setText("Ticker")
-        self.layout.addWidget(self.instrumentLabel, 3, 0)
-
-        # Dodanie QLineEdit do wprowadzenia Tickera
-        self.tickerLineEdit = QLineEdit()
-        # self.quantityLineEdit.installEventFilter(self) --> Do wprowadzenia
-        self.layout.addWidget(self.tickerLineEdit, 3, 1)
-
-        # Dodanie QLabel wskazującego na konkretny numeru ISIN
-        self.instrumentISINLabel = QLabel()
-        self.instrumentISINLabel.setText("ISIN")
-        self.layout.addWidget(self.instrumentISINLabel, 4, 0)
-
-        # Dodanie QLineEdit do wprowadzenia numeru ISIN
-        self.tickerISINLineEdit = QLineEdit()
-        # self.quantityLineEdit.installEventFilter(self) --> Do wprowadzenia
-        self.layout.addWidget(self.tickerISINLineEdit, 4, 1)
-
-        # Dodanie QLabel wskazującego na konkretną nazwę instrumentu
-        self.instrumentNameLabel = QLabel()
-        self.instrumentNameLabel.setText("Pełna nazwa instrumentu")
-        self.layout.addWidget(self.instrumentNameLabel, 5, 0)
-
-        # Dodanie QLineEdit do wprowadzenia nazwy instrumentu
-        self.instrumentNameLineEdit = QLineEdit()
-        self.layout.addWidget(self.instrumentNameLineEdit, 5, 1)
-
-        # Dodanie QLabel wskazującego na konkretną jednostkę danego instrumentu
-        self.instrumentUnitLabel = QLabel()
-        self.instrumentUnitLabel.setText("Jednostka")
-        self.layout.addWidget(self.instrumentUnitLabel, 6, 0)
-
-        # Dodanie QComboBox do wprowadzenia jednostki instrumentu
-        self.instrumentUnitComboBox = QComboBox()
-        self.instrumentUnitComboBox.addItems(["1", "10", "100", "1000", "10000"])
-        self.layout.addWidget(self.instrumentUnitComboBox, 6, 1)
-
-        # Dodanie QLabel wskazującego na kraj notowania danego instrumentu
-        self.countryLabel = QLabel()
-        self.countryLabel.setText("Kraj notowania (skrót)")
-        self.layout.addWidget(self.countryLabel, 7, 0)
-
-        # Dodanie QLineEdit do wprowadzenia kraju notowania danego instrumentu
-        self.countryLineEdit = QLineEdit()
-        self.layout.addWidget(self.countryLineEdit, 7, 1)
-
-        # Dodanie QLabel wskazującego na identyfikator rynku danego instrumentu
-        self.marketLabel = QLabel()
-        self.marketLabel .setText("Identyfiktor giełdy (skrót)")
-        self.layout.addWidget(self.marketLabel, 8, 0)
-
-        # Dodanie QLineEdit do wprowadzenia identyfikatora rynku danego instrumentu
-        self.marketLineEdit = QLineEdit()
-        self.layout.addWidget(self.marketLineEdit, 8, 1)
-
-        # Dodanie QLabel wskazującego na walutę w jakiej notowany jest dany instrument
-        self.currencyLabel = QLabel()
-        self.currencyLabel .setText("Waluta instrumentu na rynku")
-        self.layout.addWidget(self.currencyLabel, 9, 0)
-
-        # Dodanie QComboBoc do wprowadzenia waluty w jakiej notowany jest dany instrument
-        self.currencyComboBox = QComboBox()
-        self.currencyComboBox.addItems(["USD", "EUR", "GBP", "CHF", "PLN"])
-        self.layout.addWidget(self.currencyComboBox, 9, 1)
-
-        # Dodanie QLabel wskazującego na walutę, w jakiej rozliczany jest dany instrument
-        self.basecurrencyLabel = QLabel()
-        self.basecurrencyLabel .setText("Waluta bazowa (rozliczeniowa)")
-        self.layout.addWidget(self.basecurrencyLabel, 10, 0)
-
-        # Dodanie QComboBoc do wprowadzenia waluty, w jakiej rozliczany jest dany instrument
-        self.basecurrencyComboBox = QComboBox()
-        self.basecurrencyComboBox.addItems(["USD", "EUR", "GBP", "CHF", "PLN"])
-        self.layout.addWidget(self.basecurrencyComboBox, 10, 1)
-
-        # Dodanie QLabel wskazującego na politykę dystrybucji danego instrumentu
-        self.distributionPolicyLabel = QLabel()
-        self.distributionPolicyLabel.setText("Polityka dystrybucji")
-        self.layout.addWidget(self.distributionPolicyLabel, 11, 0)
-
-        # Dodanie QComboBox do wprowadzenia polityki dystrybucji danego instrumentu
-        self.distributionPolicyCombobox = QComboBox()
-        self.distributionPolicyCombobox.addItems(["Distributing", "Accumulating"])
-        self.layout.addWidget(self.distributionPolicyCombobox, 11, 1)
-
-        # Dodanie QLabel wskazującego na siedzibę danego instrumentu
-        self.instrumentHeadquarterLabel = QLabel()
-        self.instrumentHeadquarterLabel.setText("Siedziba")
-        self.layout.addWidget(self.instrumentHeadquarterLabel, 12, 0)
-
-        # Dodanie QLineEdit do wprowadzenia siedziby danego instrumentu
-        self.instrumentHeadquarterLineEdit = QLineEdit()
-        self.layout.addWidget(self.instrumentHeadquarterLineEdit, 12, 1)
+        # Utworzenie elementów typu QLabel oraz dodanie odpowiadających im pól do layoutu
+        self.instrumentTypes = self.add_form_row(2,
+                                                 label_text="Rodzaj instrumentu finansowego",
+                                                 widget=QComboBox(),
+                                                 widget_items=set(
+                                                   self.instrumentsTypesDataFrame['Instrument_type'].to_list()))
+        self.tickerLineEdit = self.add_form_row(3,
+                                                label_text="Ticker")
+        self.tickerISINLineEdit = self.add_form_row(4,
+                                                    label_text="ISIN")
+        self.instrumentNameLineEdit = self.add_form_row(5,
+                                                        label_text="Pełna nazwa instrumentu")
+        self.instrumentUnitComboBox = self.add_form_row(6,
+                                                        label_text="Jednostka",
+                                                        widget=QComboBox(),
+                                                        widget_items=["1", "10", "100", "1000", "10000"])
+        self.countryLineEdit = self.add_form_row(7,
+                                                 label_text="Kraj notowania (skrót)")
+        self.marketLineEdit = self.add_form_row(8,
+                                                label_text="Identyfiktor giełdy (skrót)")
+        self.currencyComboBox = self.add_form_row(9,
+                                                  label_text="Waluta instrumentu na rynku",
+                                                  widget=QComboBox(),
+                                                  widget_items=["USD", "EUR", "GBP", "CHF", "PLN"])
+        self.basecurrencyComboBox = self.add_form_row(10,
+                                                      label_text="Waluta bazowa (rozliczeniowa)",
+                                                      widget=QComboBox(),
+                                                      widget_items=["USD", "EUR", "GBP", "CHF", "PLN"])
+        self.distributionPolicyCombobox = self.add_form_row(11,
+                                                            label_text="Polityka dystrybucji",
+                                                            widget=QComboBox(),
+                                                            widget_items=["Distributing", "Accumulating"])
+        self.instrumentHeadquarterLineEdit = self.add_form_row(12,
+                                                               label_text="Siedziba")
 
         # Dodanie przycisku do wysłania danych do BigQuery
-        sendDataPushButton       = QPushButton()
+        sendDataPushButton = QPushButton()
         sendDataPushButton.setText("Wyślij dane do bazy")
         sendDataPushButton.pressed.connect(self.sendDataToBigQuery)
         sendDataPushButton.clicked.connect(self.close)
@@ -521,18 +463,18 @@ class DodajTransakcje(QWidget):
         super().__init__()
 
         # Pobranie danych z klasy MainWindow (poprzez argumenty)
-        self.currenciesDataFrame        = currenciesDataFrame
-        self.instrumentsDataFrame       = instrumentsDataFrame
-        self.instrumentsTypesDataFrame  = instrumentsTypesDataFrame
-        self.transactionsDataFrame      = transactionsDataFrame
+        self.currenciesDataFrame = currenciesDataFrame
+        self.instrumentsDataFrame = instrumentsDataFrame
+        self.instrumentsTypesDataFrame = instrumentsTypesDataFrame
+        self.transactionsDataFrame = transactionsDataFrame
 
         # Pobranie obiektu klasy BigQueryProject i nazwy projektu
-        self.project                    = project_name
-        self.project_ID                 = int(project_ID.text())
-        self.bqrae                      = bqrae
+        self.project = project_name
+        self.project_ID = int(project_ID.text())
+        self.bqrae = bqrae
 
         # Konwersja typu DataFrame na float
-        self.maxTransactionId           = maxTransactionId.iloc[0,0]
+        self.maxTransactionId = maxTransactionId.iloc[0,0]
 
         # Ustawienie okna oraz załadowanie widgetów
         self.setWindowTitle("Transakcje")
@@ -565,7 +507,7 @@ class DodajTransakcje(QWidget):
         # Dodanie przycisku otwierającego kalendarz. Po naciśnięciu przycisku uruchamiana jest metoda
         # OpenCalendar, która tworzy nowy obiekt QCalendarWidget, pobiera od użytkownika datę,
         # wpisuje ją do pola obok i zamyka obiekt.
-        self.openCalendarButton       = QPushButton()
+        self.openCalendarButton = QPushButton()
         self.openCalendarButton.setText("Kalendarz")
         self.openCalendarButton.pressed.connect(self.OpenCalendar)
 
@@ -587,11 +529,11 @@ class DodajTransakcje(QWidget):
         ].to_list())
 
         # Dodanie pola do wpisania ilości zakupionego waloru
-        self.quantityLineEdit         = QLineEdit()
+        self.quantityLineEdit = QLineEdit()
         self.quantityLineEdit.installEventFilter(self)
 
         # Dodanie pola do ceny zakupionego waloru
-        self.priceLineEdit            = QLineEdit()
+        self.priceLineEdit = QLineEdit()
         self.priceLineEdit.installEventFilter(self)
         self.dot_entered = False
 
@@ -604,12 +546,12 @@ class DodajTransakcje(QWidget):
         self.currencyComboBox.currentTextChanged.connect(self.CurrencyChanged)
 
         # Dodanie pola do kursu waluty waloru
-        self.currencyValueLineEdit           = QLineEdit()
+        self.currencyValueLineEdit = QLineEdit()
         self.currencyValueLineEdit.setText("1")
         self.currencyValueLineEdit.setEnabled(False)
 
         # Dodanie pola do prowizji zakupionego waloru
-        self.commisionLineEdit          = QLineEdit()
+        self.commisionLineEdit = QLineEdit()
         self.commisionLineEdit.installEventFilter(self)
 
         # Dodanie QLabel do opisu wartośći instrumentu podlegającego transakcji
@@ -617,11 +559,11 @@ class DodajTransakcje(QWidget):
         valueLabel.setText("Wartość")
 
         # Dodanie pola do wpisania wartości
-        self.valueLineEdit              = QLineEdit()
+        self.valueLineEdit = QLineEdit()
         self.valueLineEdit.installEventFilter(self)
 
         # Dodanie przycisku do przeliczenia wartości
-        self.valueCalculateButton       = QPushButton("Przelicz wartość")
+        self.valueCalculateButton = QPushButton("Przelicz wartość")
         self.valueCalculateButton.pressed.connect(self.CalculateValue)
 
         # Dodanie ComboBoxa do wyboru waluty instrumentu finansowego
@@ -631,7 +573,7 @@ class DodajTransakcje(QWidget):
         self.taxComboBox.currentTextChanged.connect(self.taxStateChosen)
 
         # Dodanie pola do wpisania wartości podatku
-        self.taxValueLineEdit              = QLineEdit()
+        self.taxValueLineEdit = QLineEdit()
         self.taxValueLineEdit.installEventFilter(self)
         self.taxValueLineEdit.setEnabled(False)
 
@@ -641,13 +583,13 @@ class DodajTransakcje(QWidget):
         self.informationTextEdit.setEnabled(False)
 
         # Dodanie przycisku do wysłania danych do BigQuery
-        sendDataPushButton       = QPushButton()
+        sendDataPushButton = QPushButton()
         sendDataPushButton.setText("Wyślij dane do bazy")
         sendDataPushButton.pressed.connect(self.sendDataToBigQuery)
         sendDataPushButton.clicked.connect(self.close)
 
         # Wyjście do poprzedniego okna
-        returnButton             = QPushButton()
+        returnButton = QPushButton()
         returnButton.setText("Powrót")
         returnButton.pressed.connect(self.close)
 
@@ -759,7 +701,7 @@ class DodajTransakcje(QWidget):
         self.dateEditField = self.dateDateEdit.date()
         self.dateEditField = self.dateEditField.toString("yyyy-MM-dd")
         # Pobranie waluty z Comboboxa
-        self.currentCurrency  = currentTextChanged
+        self.currentCurrency = currentTextChanged
 
         # Sprawdzenie waluty i podpięcie ostatniego kursu waluty dla danego dnia. Wykorzystanie widoku Currency_view.
         if self.currentCurrency != 'PLN':
@@ -786,7 +728,7 @@ class DodajTransakcje(QWidget):
             pass    
 
     def TransactionTypeBuyChosen(self, currentTextChanged):
-        self.transactionType    = currentTextChanged
+        self.transactionType = currentTextChanged
         if self.transactionType == "Zakup":
             self.taxComboBox.setEnabled(False)
             self.taxValueLineEdit.setEnabled(False)
@@ -799,31 +741,31 @@ class DodajTransakcje(QWidget):
         print("Uruchamiam funkcję PrepareDataForBigQueryExport")
 
         # Przypisanie wartości domyślnych do zmiennych
-        self.Transaction_price     = np.nan
-        self.Transaction_amount    = np.nan
-        self.Commision_id          = np.nan
-        self.Dirty_bond_price      = 0.0
-        self.Tax_value             = np.nan
+        self.Transaction_price = np.nan
+        self.Transaction_amount = np.nan
+        self.Commision_id = np.nan
+        self.Dirty_bond_price = 0.0
+        self.Tax_value = np.nan
 
         # Dodanie do obecnie ostatniego numeru transakcji wartości większej od 1
-        self.Transaction_id        = self.maxTransactionId + 1
-        self.Transaction_date      = self.dateDateEdit.date().toString("yyyy-MM-dd")
-        self.Transaction_date      = pd.to_datetime(self.Transaction_date, format = "%Y-%m-%d")
-        self.Transaction_type      = self.transactionsTypeComboBox.currentText()
+        self.Transaction_id = self.maxTransactionId + 1
+        self.Transaction_date = self.dateDateEdit.date().toString("yyyy-MM-dd")
+        self.Transaction_date = pd.to_datetime(self.Transaction_date, format = "%Y-%m-%d")
+        self.Transaction_type = self.transactionsTypeComboBox.currentText()
 
-        if self.Transaction_type   == "Sprzedaż":
-            self.Transaction_type  = "Sell"
+        if self.Transaction_type == "Sprzedaż":
+            self.Transaction_type = "Sell"
         elif self.Transaction_type == "Zakup":
-            self.Transaction_type  = "Buy"
+            self.Transaction_type = "Buy"
         else:
-            self.Transaction_Type  = np.nan
+            self.Transaction_Type = np.nan
 
     
-        self.Currency              = self.currencyComboBox.currentText()
+        self.Currency = self.currencyComboBox.currentText()
         if self.priceLineEdit.text():
-            self.Transaction_price     = float(self.priceLineEdit.text())
+            self.Transaction_price = float(self.priceLineEdit.text())
         if self.quantityLineEdit.text():
-            self.Transaction_amount    = float(self.quantityLineEdit.text())
+            self.Transaction_amount = float(self.quantityLineEdit.text())
 
         # Na podstawie Tickera oraz ID projektu wyznaczam Instrument_id
         self.Instrument_id = (
@@ -835,16 +777,16 @@ class DodajTransakcje(QWidget):
         )
         
         if self.commisionLineEdit.text():
-            self.Commision_id          = float(self.commisionLineEdit.text())
+            self.Commision_id = float(self.commisionLineEdit.text())
         # self.Dirty_bond_price
         print(bool(self.taxComboBox.currentText()))
-        self.Tax_paid                  = self.taxComboBox.currentText()
-        if self.Tax_paid               == "Tak":
-            self.Tax_paid              = True
-        elif self.Tax_paid             == "Nie":
-            self.Tax_paid              = False
+        self.Tax_paid = self.taxComboBox.currentText()
+        if self.Tax_paid == "Tak":
+            self.Tax_paid = True
+        elif self.Tax_paid == "Nie":
+            self.Tax_paid = False
         if self.taxValueLineEdit.text():
-            self.Tax_value             = float(self.taxValueLineEdit.text())
+            self.Tax_value = float(self.taxValueLineEdit.text())
 
         #if self.valueLineEdit.text():
         #    if self.Transaction_type == "Dywidenda":
@@ -882,7 +824,7 @@ class DodajTransakcje(QWidget):
         
         
         transaction_parameters_dataFrame = pd.DataFrame(data=[transaction_parameters],
-                                                        columns = columns)
+                                                        columns=columns)
         
         return transaction_parameters_dataFrame
         
@@ -891,7 +833,7 @@ class DodajTransakcje(QWidget):
 
         # przypisuję do zmiennej wynik pracy metody przygotowującej dane do eksportu
         transaction_data_to_export = self.PrepareDataForBigQueryExport()
-        self.destination           = "Dane transakcyjne"
+        self.destination = "Dane transakcyjne"
 
         # Tworzę obiekt BigQueryReaderAndExporter do eksportu danych do BQ i przekazuję mi dane projektu z klasy BigQueryProject
         bigQueryExporterObject = BigQueryReaderAndExporter(self.project, 
@@ -959,7 +901,6 @@ class MainWindow(QMainWindow):
         # Dodanie przycisku odpowiedzialnego za dodanie transakcji
         self.addTransaction = QPushButton("Dodaj transakcję")
         self.addTransaction.setProperty("id", "addTransaction")
-        print("Property wynosi :", self.addTransaction.property("id"))
         self.addTransaction.clicked.connect(lambda: self.addTransactionOrInstrument(self.addTransaction.property("id")))
         self.addTransaction.setVisible(False)
         layout.addWidget(self.addTransaction, 3, 0, 1, 3)
@@ -967,7 +908,6 @@ class MainWindow(QMainWindow):
         # Dodanie przycisku odpowiedzialnego za dodanie nowego instrumentu do słownika
         self.addInstr = QPushButton("Dodaj nowy instrument do słownika")
         self.addInstr.setProperty("id", "addInstr")
-        print("Property wynosi :", self.addInstr.property("id"))
         self.addInstr.clicked.connect(lambda: self.addTransactionOrInstrument(self.addInstr.property("id")))
         self.addInstr.setVisible(False)
         layout.addWidget(self.addInstr, 4, 0, 1, 3)
@@ -1074,7 +1014,7 @@ class MainWindow(QMainWindow):
                                                                    self.bqrae,
                                                                    self.instrumentsDataFrame,
                                                                    self.instrumentTypesDataFrame,
-                                                                   self.maxInstrument_id)                                                             
+                                                                   self.maxInstrument_id)
                     self.addInstrument.show()
             except:
                 print("Projekt nie istnieje. Proszę wybrać inny!")
@@ -1085,26 +1025,26 @@ env_path = Path(__file__).parent.parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
 # Deklaracja nazw datasetów i tabel
-location               = os.getenv("BQ_PROJECT_LOCATION")
+location = os.getenv("BQ_PROJECT_LOCATION")
 
 # Definicje nazw DataSetów
 dataSetDaneIntrumentow = os.getenv("BQ_DATASET_INSTRUMENTS")
-dataSetCurrencies      = os.getenv("BQ_DATASET_CURRENCIES")
-dataSetTransactions    = os.getenv("BQ_DATASET_TRANSACTIONS")
-dataSetInflation       = os.getenv("BQ_DATASET_INFLATION")
+dataSetCurrencies = os.getenv("BQ_DATASET_CURRENCIES")
+dataSetTransactions = os.getenv("BQ_DATASET_TRANSACTIONS")
+dataSetInflation = os.getenv("BQ_DATASET_INFLATION")
 
 # Definicje nazw tabel
-tableDaily             = os.getenv("BQ_TABLE_DAILY")
-tableInstrumentTypes   = os.getenv("BQ_TABLE_INSTRUMENT_TYPES")
-tableInstruments       = os.getenv("BQ_TABLE_INSTRUMENTS")
-tableTreasuryBonds     = os.getenv("BQ_TABLE_TREASURY_BONDS")
-tableInflation         = os.getenv("BQ_TABLE_INFLATION")
-tableTransactions      = os.getenv("BQ_TABLE_TRANSACTIONS")
-tableCurrency          = os.getenv("BQ_TABLE_CURRENCY")
+tableDaily = os.getenv("BQ_TABLE_DAILY")
+tableInstrumentTypes = os.getenv("BQ_TABLE_INSTRUMENT_TYPES")
+tableInstruments = os.getenv("BQ_TABLE_INSTRUMENTS")
+tableTreasuryBonds = os.getenv("BQ_TABLE_TREASURY_BONDS")
+tableInflation = os.getenv("BQ_TABLE_INFLATION")
+tableTransactions = os.getenv("BQ_TABLE_TRANSACTIONS")
+tableCurrency = os.getenv("BQ_TABLE_CURRENCY")
 
 # Definicje nazw widoków
-viewTransactionsView   = os.getenv("BQ_VIEW_TRANSACTIONS_VIEW")
-viewCurrencies         = os.getenv("BQ_VIEW_CURRENCIES")
+viewTransactionsView = os.getenv("BQ_VIEW_TRANSACTIONS_VIEW")
+viewCurrencies = os.getenv("BQ_VIEW_CURRENCIES")
         
 # Main part of the app
 app = QApplication([]) 
