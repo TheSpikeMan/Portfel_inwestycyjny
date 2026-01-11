@@ -325,6 +325,13 @@ class DodajInstrumentDoSlownika(QWidget):
         # Ustawienie docelowego miejsca eksportu danych
         self.export_destination = 'Dane instrumentow'
 
+    def add_form_row(self, row, label_text, widget, third_widget=None):
+        label = QLabel(label_text)
+        self.layout.addWidget(label, row, 0)
+        self.layout.addWidget(widget, row, 1)
+        if third_widget:
+            self.layout.addWidget(third_widget, row, 2)
+
     def addWidgets(self):
         self.layout = QGridLayout()
 
@@ -337,111 +344,59 @@ class DodajInstrumentDoSlownika(QWidget):
         self.layout.addWidget(primaryLabel, 0, 0, 1, 3,
         alignment=Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignHCenter)
 
-        # Dodanie QLabel do rodzaju instrumentu finansowego
-        self.instrumentTypeLabel = QLabel()
-        self.instrumentTypeLabel.setText("Rodzaj instrumentu finansowego")
-        self.layout.addWidget(self.instrumentTypeLabel, 2, 0)
-
         # Dodanie ComboBoxa do wyboru typu danych
         self.instrumentTypes = QComboBox()
         self.instrumentTypes.addItems(set(self.instrumentsTypesDataFrame['Instrument_type'].to_list()))
-        self.layout.addWidget(self.instrumentTypes, 2, 1)
-
-        # Dodanie QLabel wskazującego na konkretny ticker
-        self.instrumentLabel = QLabel()
-        self.instrumentLabel.setText("Ticker")
-        self.layout.addWidget(self.instrumentLabel, 3, 0)
 
         # Dodanie QLineEdit do wprowadzenia Tickera
         self.tickerLineEdit = QLineEdit()
         # self.quantityLineEdit.installEventFilter(self) --> Do wprowadzenia
-        self.layout.addWidget(self.tickerLineEdit, 3, 1)
-
-        # Dodanie QLabel wskazującego na konkretny numeru ISIN
-        self.instrumentISINLabel = QLabel()
-        self.instrumentISINLabel.setText("ISIN")
-        self.layout.addWidget(self.instrumentISINLabel, 4, 0)
 
         # Dodanie QLineEdit do wprowadzenia numeru ISIN
         self.tickerISINLineEdit = QLineEdit()
         # self.quantityLineEdit.installEventFilter(self) --> Do wprowadzenia
-        self.layout.addWidget(self.tickerISINLineEdit, 4, 1)
-
-        # Dodanie QLabel wskazującego na konkretną nazwę instrumentu
-        self.instrumentNameLabel = QLabel()
-        self.instrumentNameLabel.setText("Pełna nazwa instrumentu")
-        self.layout.addWidget(self.instrumentNameLabel, 5, 0)
 
         # Dodanie QLineEdit do wprowadzenia nazwy instrumentu
         self.instrumentNameLineEdit = QLineEdit()
-        self.layout.addWidget(self.instrumentNameLineEdit, 5, 1)
-
-        # Dodanie QLabel wskazującego na konkretną jednostkę danego instrumentu
-        self.instrumentUnitLabel = QLabel()
-        self.instrumentUnitLabel.setText("Jednostka")
-        self.layout.addWidget(self.instrumentUnitLabel, 6, 0)
 
         # Dodanie QComboBox do wprowadzenia jednostki instrumentu
         self.instrumentUnitComboBox = QComboBox()
         self.instrumentUnitComboBox.addItems(["1", "10", "100", "1000", "10000"])
-        self.layout.addWidget(self.instrumentUnitComboBox, 6, 1)
-
-        # Dodanie QLabel wskazującego na kraj notowania danego instrumentu
-        self.countryLabel = QLabel()
-        self.countryLabel.setText("Kraj notowania (skrót)")
-        self.layout.addWidget(self.countryLabel, 7, 0)
 
         # Dodanie QLineEdit do wprowadzenia kraju notowania danego instrumentu
         self.countryLineEdit = QLineEdit()
-        self.layout.addWidget(self.countryLineEdit, 7, 1)
-
-        # Dodanie QLabel wskazującego na identyfikator rynku danego instrumentu
-        self.marketLabel = QLabel()
-        self.marketLabel .setText("Identyfiktor giełdy (skrót)")
-        self.layout.addWidget(self.marketLabel, 8, 0)
 
         # Dodanie QLineEdit do wprowadzenia identyfikatora rynku danego instrumentu
         self.marketLineEdit = QLineEdit()
         self.layout.addWidget(self.marketLineEdit, 8, 1)
 
-        # Dodanie QLabel wskazującego na walutę w jakiej notowany jest dany instrument
-        self.currencyLabel = QLabel()
-        self.currencyLabel .setText("Waluta instrumentu na rynku")
-        self.layout.addWidget(self.currencyLabel, 9, 0)
-
         # Dodanie QComboBoc do wprowadzenia waluty w jakiej notowany jest dany instrument
         self.currencyComboBox = QComboBox()
         self.currencyComboBox.addItems(["USD", "EUR", "GBP", "CHF", "PLN"])
-        self.layout.addWidget(self.currencyComboBox, 9, 1)
-
-        # Dodanie QLabel wskazującego na walutę, w jakiej rozliczany jest dany instrument
-        self.basecurrencyLabel = QLabel()
-        self.basecurrencyLabel .setText("Waluta bazowa (rozliczeniowa)")
-        self.layout.addWidget(self.basecurrencyLabel, 10, 0)
 
         # Dodanie QComboBoc do wprowadzenia waluty, w jakiej rozliczany jest dany instrument
         self.basecurrencyComboBox = QComboBox()
         self.basecurrencyComboBox.addItems(["USD", "EUR", "GBP", "CHF", "PLN"])
-        self.layout.addWidget(self.basecurrencyComboBox, 10, 1)
-
-        # Dodanie QLabel wskazującego na politykę dystrybucji danego instrumentu
-        self.distributionPolicyLabel = QLabel()
-        self.distributionPolicyLabel.setText("Polityka dystrybucji")
-        self.layout.addWidget(self.distributionPolicyLabel, 11, 0)
 
         # Dodanie QComboBox do wprowadzenia polityki dystrybucji danego instrumentu
         self.distributionPolicyCombobox = QComboBox()
         self.distributionPolicyCombobox.addItems(["Distributing", "Accumulating"])
-        self.layout.addWidget(self.distributionPolicyCombobox, 11, 1)
-
-        # Dodanie QLabel wskazującego na siedzibę danego instrumentu
-        self.instrumentHeadquarterLabel = QLabel()
-        self.instrumentHeadquarterLabel.setText("Siedziba")
-        self.layout.addWidget(self.instrumentHeadquarterLabel, 12, 0)
 
         # Dodanie QLineEdit do wprowadzenia siedziby danego instrumentu
         self.instrumentHeadquarterLineEdit = QLineEdit()
-        self.layout.addWidget(self.instrumentHeadquarterLineEdit, 12, 1)
+
+        # Utworzenie elementów typu QLabel oraz dodanie odpowiadających im pól do layoutu
+        self.add_form_row(2, "Rodzaj instrumentu finansowego", self.instrumentTypes)
+        self.add_form_row(3, "Ticker", self.tickerLineEdit)
+        self.add_form_row(4, "ISIN", self.tickerISINLineEdit)
+        self.add_form_row(5, "Pełna nazwa instrumentu", self.instrumentNameLineEdit)
+        self.add_form_row(6, "Jednostka", self.instrumentUnitComboBox)
+        self.add_form_row(7, "Kraj notowania (skrót)", self.countryLineEdit)
+        self.add_form_row(8, "Identyfiktor giełdy (skrót)", self.marketLineEdit)
+        self.add_form_row(9, "Waluta instrumentu na rynku", self.currencyComboBox)
+        self.add_form_row(10, "Waluta bazowa (rozliczeniowa)", self.basecurrencyComboBox)
+        self.add_form_row(11, "Polityka dystrybucji", self.distributionPolicyCombobox)
+        self.add_form_row(12, "Siedziba", self.instrumentHeadquarterLineEdit)
 
         # Dodanie przycisku do wysłania danych do BigQuery
         sendDataPushButton = QPushButton()
@@ -959,7 +914,6 @@ class MainWindow(QMainWindow):
         # Dodanie przycisku odpowiedzialnego za dodanie transakcji
         self.addTransaction = QPushButton("Dodaj transakcję")
         self.addTransaction.setProperty("id", "addTransaction")
-        print("Property wynosi :", self.addTransaction.property("id"))
         self.addTransaction.clicked.connect(lambda: self.addTransactionOrInstrument(self.addTransaction.property("id")))
         self.addTransaction.setVisible(False)
         layout.addWidget(self.addTransaction, 3, 0, 1, 3)
@@ -967,7 +921,6 @@ class MainWindow(QMainWindow):
         # Dodanie przycisku odpowiedzialnego za dodanie nowego instrumentu do słownika
         self.addInstr = QPushButton("Dodaj nowy instrument do słownika")
         self.addInstr.setProperty("id", "addInstr")
-        print("Property wynosi :", self.addInstr.property("id"))
         self.addInstr.clicked.connect(lambda: self.addTransactionOrInstrument(self.addInstr.property("id")))
         self.addInstr.setVisible(False)
         layout.addWidget(self.addInstr, 4, 0, 1, 3)
@@ -1074,7 +1027,7 @@ class MainWindow(QMainWindow):
                                                                    self.bqrae,
                                                                    self.instrumentsDataFrame,
                                                                    self.instrumentTypesDataFrame,
-                                                                   self.maxInstrument_id)                                                             
+                                                                   self.maxInstrument_id)
                     self.addInstrument.show()
             except:
                 print("Projekt nie istnieje. Proszę wybrać inny!")
@@ -1085,7 +1038,7 @@ env_path = Path(__file__).parent.parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
 # Deklaracja nazw datasetów i tabel
-location  os.getenv("BQ_PROJECT_LOCATION")
+location = os.getenv("BQ_PROJECT_LOCATION")
 
 # Definicje nazw DataSetów
 dataSetDaneIntrumentow = os.getenv("BQ_DATASET_INSTRUMENTS")
