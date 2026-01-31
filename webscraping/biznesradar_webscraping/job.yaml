@@ -1,0 +1,26 @@
+apiVersion: run.googleapis.com/v1
+kind: Job
+metadata:
+  name: biznesradar-webscraping
+  labels:
+    cloud.googleapis.com/location: europe-central2
+spec:
+  template:
+    spec:
+      template:
+        spec:
+          containers:
+          - image: gcr.io/projekt-inwestycyjny/biznesradar-webscraping
+            resources:
+              limits:
+                cpu: "1000m"
+                memory: 512Mi
+            env:
+            - name: BQ_PROJECT_ID
+              value: "projekt-inwestycyjny"
+            - name: BQ_DATASET_RAW
+              value: "Raw_data"
+            - name: BQ_TABLE_RAW_DATA
+              value: "Raw_scraped_data"
+          timeoutSeconds: 1800
+          maxRetries: 0
