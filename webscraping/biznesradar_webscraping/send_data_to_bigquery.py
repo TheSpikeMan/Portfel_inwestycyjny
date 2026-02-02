@@ -1,6 +1,7 @@
 import os
 import logging
 import pandas as pd
+import pandas_gbq
 from dotenv import load_dotenv
 from google.cloud import bigquery
 from google.api_core.exceptions import GoogleAPIError
