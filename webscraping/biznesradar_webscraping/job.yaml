@@ -3,7 +3,7 @@ kind: Job
 metadata:
   name: biznesradar-webscraping
   labels:
-    cloud.googleapis.com/location: europe-central2
+    cloud.googleapis.com/location: europe-west1
 spec:
   template:
     spec:
