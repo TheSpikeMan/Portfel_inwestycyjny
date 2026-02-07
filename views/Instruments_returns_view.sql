@@ -42,6 +42,20 @@ Instruments AS (
   FROM Instruments_raw
 ),
 
+Transactions AS (
+  SELECT DISTINCT
+    t.*,
+    CASE
+      WHEN Transaction_type = "Sell"
+      THEN (-1) * Transaction_amount
+      WHEN Transaction_type = 'Buy'
+      THEN Transaction_amount
+    ELSE NULL
+    END AS Transaction_amount_signed
+  FROM Transactions_raw AS t
+),
+
+
 --- JOINING TOGETHER SOURCES
 
 Cleaned_price_history AS (
@@ -53,6 +67,8 @@ Cleaned_price_history AS (
     c.quarter                       AS quarter,
     c.quarter_text                  AS quarter_text,
     c.year_quarter                  AS year_quarter,
+    i.project_id                    AS project_id,
+    i.instrument_id                 AS instrument_id,
     i.ticker                        AS ticker,
     it.instrument_type_id           AS instrument_type_id,
     it.instrument_type              AS instrument_type,
@@ -90,13 +106,74 @@ Cleaned_price_history AS (
     ON it.instrument_type_id = i.instrument_type_id
   WHERE TRUE
     AND c.date <= CURRENT_DATE('Europe/Warsaw') - 1
+),
+
+--- CALCULATING DAILY CLOSE CHANGES ---
+
+Daily_price_changes AS (
+  SELECT
+    c.*,
+    SAFE_DIVIDE(
+      adjusted_close - LAG(adjusted_close) OVER w_ticker_ordered_by_date,
+      LAG(adjusted_close) OVER w_ticker_ordered_by_date
+    )                                 AS price_change_daily_pct
+  FROM Cleaned_price_history          AS c
+  WHERE TRUE
+    AND (
+      --- EXCLUDING TREASURY AND CORPORATE BONDS FOR WHICH I DON'T HAVE DATA AS THEIR VALUE RELY ON TRANSACTIONS
+      c.Instrument_type_id IN (5,7)
+      AND c.adjusted_close IS NOT NULL
+      )
+      --- OR ALL OTHER TYPES
+      OR Instrument_type_id IN (1, 2, 3, 4, 6)
+  WINDOW
+    w_ticker_ordered_by_date AS (
+      PARTITION BY ticker
+      ORDER BY date
+    )
+),
+
+--- JOINNG INFORMATION ABOUT DAILY HOLDINGS ---
+
+Daily_holdings AS (
+  SELECT
+    d.*,
+    t.transaction_date,
+    t.transaction_amount,
+    t.transaction_amount_signed,
+    SUM(transaction_amount_signed) OVER w_project_ticker_order_by_date AS daily_transaction_amount_by_transactions
+  FROM Daily_price_changes AS d
+  LEFT JOIN Transactions AS t
+    ON d.date = t.transaction_date
+    AND d.instrument_id = t.instrument_id
+  WHERE TRUE
+  GROUP BY ALL
+  WINDOW
+    w_project_ticker_order_by_date AS (
+      PARTITION BY
+        d.Project_id,
+        d.Instrument_id
+      ORDER BY
+        t.Transaction_date,
+        MAX(transaction_amount)
+      ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+    )
+),
+
+Daily_holdings_extended AS (
+  SELECT
+    d.*,
+    COALESCE(
+      daily_transaction_amount_by_transactions,
+      LAST_VALUE(daily_transaction_amount_by_transactions IGNORE NULLS) OVER(PARTITION BY Project_id, Instrument_id ORDER BY date ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING),
+      0
+    )                       AS daily_transaction_amount,
+    COALESCE(
+      adjusted_close * transaction_amount_signed,
+      0
+    )                       AS daily_cashflow
+  FROM Daily_holdings AS d
 )
 
 SELECT *
-FROM Cleaned_price_history
-WHERE TRUE
-  AND (
-    --- EXCLUDING TREASURY AND CORPORADE BONDS FOR WHICH I DON'T HAVE DATA AS THEIR VALUE RELY ON TRANSACTIONS
-    Instrument_type_id IN (5,7)
-    AND adjusted_close IS NOT NULL
-    )
+FROM Daily_holdings_extended
