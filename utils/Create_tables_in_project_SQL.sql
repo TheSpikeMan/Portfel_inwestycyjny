@@ -53,6 +53,13 @@ OPTIONS(
   max_time_travel_hours=168
 );
 
+CREATE SCHEMA IF NOT EXISTS `projekt-inwestycyjny.Projects`
+OPTIONS(
+  location="europe-central2",
+  is_case_insensitive=false,
+  max_time_travel_hours=168
+);
+
 
 -- UTWORZENIE TABEL W ZBIORZE CALENDAR --
 -- Tabela przechowuje zestaw dat od 2020-01-01 do 2030-12-31 wraz z innymi miarami takimi jak rok, miesiąć
