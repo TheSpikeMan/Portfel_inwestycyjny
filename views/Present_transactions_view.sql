@@ -288,7 +288,7 @@ present_instruments_plus_present_indicators AS (
         (piv.ticker_present_amount 
         * daily.Close 
         * inst.unit)/
-          SUM(piv.ticker_present_amount * daily.Close * inst.unit) OVER(), 
+          SUM(piv.ticker_present_amount * daily.Close * inst.unit) OVER(PARTITION BY piv.Project_id),
       2) 
                                                           AS share_of_portfolio,
     ROUND(100 * 
