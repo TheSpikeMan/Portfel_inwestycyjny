@@ -229,3 +229,18 @@ CREATE TABLE IF NOT EXISTS `projekt-inwestycyjny.Waluty.Currency`(
   Currency       STRING NOT NULL OPTIONS(description="Waluta"),
   Currency_close FLOAT  NOT NULL OPTIONS(description="Wartość kursu walutowego wzg. PLN"),
 );
+
+-- UTWORZENIE TABEL W ZBIORZE PROJECTS --
+-- Tabela Projects zawiera dane projektów inwestycyjnych --
+CREATE OR REPLACE EXTERNAL TABLE `projekt-inwestycyjny.Projects.Projects` (
+    Project_id   INT64   OPTIONS(description="ID projektu inwestycyjnego"),
+    Owner        STRING  OPTIONS(description="Właściciel projektu inwestycyjnego"),
+    Description  STRING  OPTIONS(description="Opis projektu inwestycyjnego")
+)
+
+OPTIONS(
+    sheet_range="Projekty!A1:C",
+    skip_leading_rows=1,
+    format="GOOGLE_SHEETS",
+    uris=[{uris}]
+)
