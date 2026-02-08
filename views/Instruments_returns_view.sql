@@ -154,8 +154,7 @@ Daily_holdings AS (
         d.Project_id,
         d.Instrument_id
       ORDER BY
-        t.Transaction_date,
-        MAX(transaction_amount)
+        d.Date
       ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
     )
 ),
@@ -163,17 +162,36 @@ Daily_holdings AS (
 Daily_holdings_extended AS (
   SELECT
     d.*,
+    adjusted_close *
     COALESCE(
       daily_transaction_amount_by_transactions,
       LAST_VALUE(daily_transaction_amount_by_transactions IGNORE NULLS) OVER(PARTITION BY Project_id, Instrument_id ORDER BY date ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING),
       0
-    )                       AS daily_transaction_amount,
+    )                       AS daily_market_value,
+    -- DOCELOWO DO POPRAWKI ABY CASHFLOW OBLICZAĆ NA DANYCH TRANSAKCYJNYCH A NIE GIEŁDOWYCH Z KURSEM ZAMKINIĘCIA
     COALESCE(
       adjusted_close * transaction_amount_signed,
       0
     )                       AS daily_cashflow
   FROM Daily_holdings AS d
+),
+
+Daily_returns AS (
+  SELECT
+    d.*,
+    SAFE_DIVIDE(
+      daily_market_value - daily_cashflow,
+      LAST_VALUE(daily_market_value) OVER (PARTITION BY Project_id, Instrument_id ORDER BY date ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING)
+    ) - 1                      AS daily_twr
+  FROM Daily_holdings_extended AS d
+),
+
+Cumulative_returns AS (
+  SELECT
+    d.*,
+    EXP(SUM(LN(1 + COALESCE(daily_twr, 0))) OVER (PARTITION BY Project_id, Instrument_id ORDER BY date)) - 1 AS cumulative_twr
+  FROM Daily_returns  AS d
 )
 
 SELECT *
-FROM Daily_holdings_extended
+FROM Cumulative_returns
