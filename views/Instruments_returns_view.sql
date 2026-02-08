@@ -2,11 +2,11 @@
 
 WITH
 
-Daily_raw           AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Daily`),
-Calendar_raw        AS (SELECT * FROM `projekt-inwestycyjny.Calendar.Dates`),
-Instrument_types_raw AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instrument_types`),
-Instruments_raw     AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instruments`),
-Transactions_raw    AS (SELECT * FROM `projekt-inwestycyjny.Transactions.Transactions`),
+Daily_raw                  AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Daily`),
+Calendar_raw               AS (SELECT * FROM `projekt-inwestycyjny.Calendar.Dates`),
+Instrument_types_raw       AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instrument_types`),
+Instruments_raw            AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instruments`),
+Transactions_view_raw      AS (SELECT * FROM `projekt-inwestycyjny.Transactions.Transactions_view`),
 
 --- FILTERING DATA ---
 
@@ -44,15 +44,20 @@ Instruments AS (
 
 Transactions AS (
   SELECT DISTINCT
-    t.*,
+    Project_id,
+    Instrument_id,
+    Transaction_date,
+    Transaction_price,
+    Transaction_amount,
+    Transaction_amount_with_sign,
     CASE
+      WHEN Transaction_type = "Buy"
+      THEN Transaction_value_pln
       WHEN Transaction_type = "Sell"
-      THEN (-1) * Transaction_amount
-      WHEN Transaction_type = 'Buy'
-      THEN Transaction_amount
-    ELSE NULL
-    END AS Transaction_amount_signed
-  FROM Transactions_raw AS t
+      THEN (-1) * Transaction_value_pln
+    ELSE 0
+    END AS Transaction_value_pln_with_sign
+  FROM Transactions_view_raw AS t
 ),
 
 
@@ -140,8 +145,9 @@ Daily_holdings AS (
     d.*,
     t.transaction_date,
     t.transaction_amount,
-    t.transaction_amount_signed,
-    SUM(transaction_amount_signed) OVER w_project_ticker_order_by_date AS daily_transaction_amount_by_transactions
+    t.Transaction_amount_with_sign,
+    t.Transaction_value_pln_with_sign,
+    SUM(Transaction_amount_with_sign) OVER w_project_ticker_order_by_date AS daily_transaction_amount_by_transactions
   FROM Daily_price_changes AS d
   LEFT JOIN Transactions AS t
     ON d.date = t.transaction_date
@@ -170,7 +176,7 @@ Daily_holdings_extended AS (
     )                       AS daily_market_value,
     -- DOCELOWO DO POPRAWKI ABY CASHFLOW OBLICZAĆ NA DANYCH TRANSAKCYJNYCH A NIE GIEŁDOWYCH Z KURSEM ZAMKINIĘCIA
     COALESCE(
-      adjusted_close * transaction_amount_signed,
+      Transaction_value_pln_with_sign,
       0
     )                       AS daily_cashflow
   FROM Daily_holdings AS d
