@@ -23,7 +23,7 @@ if __name__ == '__main__':
 
     # -- Defining SQL query to fetch data from BigQuery --
     sql = f"""
-    SELECT
+    SELECT DISTINCT
         ticker,
         market
     FROM `{BQ_PROJECT_ID}.{BQ_DATASET_INSTRUMENTS}.{BQ_TABLE_INSTRUMENTS}`
@@ -36,3 +36,4 @@ if __name__ == '__main__':
 
     # -- Data Transformation --
     df_final = transform_data(instruments_df)
+
