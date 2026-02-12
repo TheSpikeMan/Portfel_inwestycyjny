@@ -2,7 +2,7 @@ import pandas as pd
 import logging
 
 
-def transform_data(df: pd.DataFrame) -> pd.DataFrame:
+def transform_data(df: pd.DataFrame) -> list:
     logging.info("Starting data transformation.")
 
     # -- Mapping markets to RIC suffixes --
@@ -26,7 +26,8 @@ def transform_data(df: pd.DataFrame) -> pd.DataFrame:
 
     # -- Removing null values --
     df_with_suffixes.dropna(axis=0, subset=['ticker_RIC'], inplace=True)
+    tickers_list = df_with_suffixes['ticker_RIC'].to_list()
 
     logging.info("Data transformation finished.")
 
-    return df_with_suffixes
+    return tickers_list
