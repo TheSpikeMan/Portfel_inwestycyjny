@@ -41,11 +41,19 @@ if __name__ == '__main__':
     # -- Fetching instruments data from BigQuery --
     instruments_df = fetch_data_from_bigquery(sql, params={'instrument_type_id': 1})
 
-    # -- Data Transformation --
-    df_final = transform_data(instruments_df)
+    # -- Data Transformation and USE_STATIC_INSTRUMENTS flag validation --
+    resulting_tickers = static_instrument_list \
+        if USE_STATIC_INSTRUMENTS \
+        else transform_data(instruments_df)
 
     # -- Yahoo Finance data fetching
     result_df = fetch_data_from_yahoo_finance(tickers_list_to_fetch=resulting_tickers,
                                               tickers_start_date=start_date,
                                               tickers_end_date=end_date)
                                               #tickers_period=period_to_fetch)
+
+    # -- Yahoo Finance data transformation
+    result_df = (result_df.stack(level=0, future_stack=True)
+                 .reset_index()
+                 .drop(labels=['Open', 'High', 'Low', 'Volume'], axis=1))
+    result_df['Ticker'] = result_df['Ticker'].str.split(pat='.').str[0]
