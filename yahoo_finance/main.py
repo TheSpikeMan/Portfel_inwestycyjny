@@ -1,5 +1,6 @@
 import os
 import logging
+import pendulum
 from dotenv import load_dotenv
 from fetch_instruments_data import fetch_data_from_bigquery
 from transform_data import transform_data
@@ -18,8 +19,13 @@ if __name__ == '__main__':
     BQ_TABLE_INSTRUMENTS = os.getenv("BQ_TABLE_INSTRUMENTS")
 
     # -- Defining flags and variables --
-    static_instrument_list = []
-    USE_STATIC_INSTRUMENTS = False   # --> Use data from 'static_instrument_list' instead of reading from BigQuery
+    static_instrument_list = ['AMB.WA', 'PZU.WA']
+    USE_STATIC_INSTRUMENTS = True   # --> Use data from 'static_instrument_list' instead of reading from BigQuery
+
+    # -- Defining basic time period --
+    start_date = pendulum.date(2026, 1, 7)
+    end_date = pendulum.date(2026, 1, 9)
+    #period_to_fetch = "1d"
 
     # -- Defining SQL query to fetch data from BigQuery --
     sql = f"""
