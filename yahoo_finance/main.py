@@ -4,6 +4,7 @@ import pendulum
 from dotenv import load_dotenv
 from fetch_instruments_data import fetch_data_from_bigquery
 from transform_data import transform_data
+from fetch_data import fetch_data_from_yahoo_finance
 
 load_dotenv()
 
@@ -43,3 +44,8 @@ if __name__ == '__main__':
     # -- Data Transformation --
     df_final = transform_data(instruments_df)
 
+    # -- Yahoo Finance data fetching
+    result_df = fetch_data_from_yahoo_finance(tickers_list_to_fetch=resulting_tickers,
+                                              tickers_start_date=start_date,
+                                              tickers_end_date=end_date)
+                                              #tickers_period=period_to_fetch)
