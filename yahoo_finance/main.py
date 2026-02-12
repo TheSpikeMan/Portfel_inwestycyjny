@@ -21,12 +21,13 @@ if __name__ == '__main__':
 
     # -- Defining flags and variables --
     static_instrument_list = ['AMB.WA', 'PZU.WA']
-    USE_STATIC_INSTRUMENTS = True   # --> Use data from 'static_instrument_list' instead of reading from BigQuery
+    USE_STATIC_INSTRUMENTS = False   # --> Use static instruments instead of BigQuery source
+    USE_PERIOD = True                # --> Use period instead of dates
 
     # -- Defining basic time period --
     start_date = pendulum.date(2026, 1, 7)
-    end_date = pendulum.date(2026, 1, 9)
-    #period_to_fetch = "1d"
+    end_date = pendulum.date(2026, 1, 30)
+    period_to_fetch = "1d"
 
     # -- Defining SQL query to fetch data from BigQuery --
     sql = f"""
@@ -46,11 +47,16 @@ if __name__ == '__main__':
         if USE_STATIC_INSTRUMENTS \
         else transform_data(instruments_df)
 
+    # -- Dates config validation ---
+    if USE_PERIOD:
+        dates_params = {'period': period_to_fetch}
+    else:
+        dates_params = {'start': start_date,
+                        'end': end_date}
+
     # -- Yahoo Finance data fetching
     result_df = fetch_data_from_yahoo_finance(tickers_list_to_fetch=resulting_tickers,
-                                              tickers_start_date=start_date,
-                                              tickers_end_date=end_date)
-                                              #tickers_period=period_to_fetch)
+                                              tickers_dates_conf=dates_params)
 
     # -- Yahoo Finance data transformation
     result_df = (result_df.stack(level=0, future_stack=True)
