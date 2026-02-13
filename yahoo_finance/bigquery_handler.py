@@ -37,7 +37,7 @@ def fetch_data_from_bigquery(sql: str, params: dict = None):
         return pd.DataFrame()
 
 
-def send_data_to_bigquery(df: pd.Dataframe, destination_params: dict = None):
+def send_data_to_bigquery(df: pd.DataFrame, destination_params: dict = None):
     """
     :param
         df: DataFrame to send to BigQuery table
