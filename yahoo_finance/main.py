@@ -2,7 +2,7 @@ import os
 import logging
 import pendulum
 from dotenv import load_dotenv
-from bigquery_handler import fetch_data_from_bigquery
+from bigquery_handler import fetch_data_from_bigquery, send_data_to_bigquery
 from data_transform import transform_fetched_bigquery_data
 from yfinance_provider import fetch_data_from_yahoo_finance
 
@@ -29,6 +29,14 @@ if __name__ == '__main__':
     start_date = pendulum.date(2026, 1, 7)
     end_date = pendulum.date(2026, 1, 30)
     period_to_fetch = "1d"
+
+    # -- Defining export destination dictionary --
+    destination_bigquery = {
+        'project_name': 'projekt-inwestycyjny',
+        'dataset_name': 'Dane_instrumentow',
+        'table_name': 'Daily_yfinance',
+        'location_name': 'europe-central2'
+    }
 
     # -- Defining SQL query to fetch data from BigQuery --
     sql = f"""
@@ -65,3 +73,8 @@ if __name__ == '__main__':
                  .reset_index()
                  .drop(labels=['Open', 'High', 'Low', 'Volume'], axis=1))
     result_df['Ticker'] = result_df['Ticker'].str.split(pat='.').str[0]
+    result_df['Close'] = result_df['Close'].round(decimals=2)
+
+    # -- Sending data to BigQuery table --
+    send_data_to_bigquery(df=result_df,
+                          destination_params=destination_bigquery)
