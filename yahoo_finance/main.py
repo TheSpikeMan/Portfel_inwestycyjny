@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 if __name__ == '__main__':
-
+    # ---------- USER PARAMETERS PART ----------
     # -- Reading environment variables from .env file --
     BQ_PROJECT_ID = os.getenv("BQ_PROJECT_ID")
     BQ_DATASET_INSTRUMENTS = os.getenv("BQ_DATASET_INSTRUMENTS")
@@ -25,6 +25,7 @@ if __name__ == '__main__':
     USE_PERIOD = True                # --> Use period instead of dates
 
     # -- Defining basic time period --
+    # Define either start_date and end_date or period to fetch
     start_date = pendulum.date(2026, 1, 7)
     end_date = pendulum.date(2026, 1, 30)
     period_to_fetch = "1d"
@@ -38,6 +39,7 @@ if __name__ == '__main__':
     WHERE TRUE
         AND instrument_type_id = SAFE_CAST(@instrument_type_id AS INT64)
     """
+    # ---------- END OF USER PARAMETERS PART ----------
 
     # -- Fetching instruments data from BigQuery --
     instruments_df = fetch_data_from_bigquery(sql, params={'instrument_type_id': 1})
@@ -54,11 +56,11 @@ if __name__ == '__main__':
         dates_params = {'start': start_date,
                         'end': end_date}
 
-    # -- Yahoo Finance data fetching
+    # -- Yahoo Finance data fetching --
     result_df = fetch_data_from_yahoo_finance(tickers_list_to_fetch=resulting_tickers,
                                               tickers_dates_conf=dates_params)
 
-    # -- Yahoo Finance data transformation
+    # -- Yahoo Finance data transformation --
     result_df = (result_df.stack(level=0, future_stack=True)
                  .reset_index()
                  .drop(labels=['Open', 'High', 'Low', 'Volume'], axis=1))
