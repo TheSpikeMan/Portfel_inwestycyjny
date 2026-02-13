@@ -2,9 +2,9 @@ import os
 import logging
 import pendulum
 from dotenv import load_dotenv
-from fetch_instruments_data import fetch_data_from_bigquery
-from transform_data import transform_data
-from fetch_data import fetch_data_from_yahoo_finance
+from bigquery_handler import fetch_data_from_bigquery
+from data_transform import transform_fetched_bigquery_data
+from yfinance_provider import fetch_data_from_yahoo_finance
 
 load_dotenv()
 
@@ -21,8 +21,8 @@ if __name__ == '__main__':
 
     # -- Defining flags and variables --
     static_instrument_list = ['AMB.WA', 'PZU.WA']
-    USE_STATIC_INSTRUMENTS = False   # --> Use static instruments instead of BigQuery source
-    USE_PERIOD = True                # --> Use period instead of dates
+    USE_STATIC_INSTRUMENTS = True   # --> Use static instruments instead of BigQuery source
+    USE_PERIOD = False                # --> Use period instead of dates
 
     # -- Defining basic time period --
     # Define either start_date and end_date or period to fetch
@@ -47,7 +47,7 @@ if __name__ == '__main__':
     # -- Data Transformation and USE_STATIC_INSTRUMENTS flag validation --
     resulting_tickers = static_instrument_list \
         if USE_STATIC_INSTRUMENTS \
-        else transform_data(instruments_df)
+        else transform_fetched_bigquery_data(instruments_df)
 
     # -- Dates config validation ---
     if USE_PERIOD:

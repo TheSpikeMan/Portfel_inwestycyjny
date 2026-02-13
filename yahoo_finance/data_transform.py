@@ -2,8 +2,8 @@ import pandas as pd
 import logging
 
 
-def transform_data(df: pd.DataFrame) -> list:
-    logging.info("Starting data transformation.")
+def transform_fetched_bigquery_data(df: pd.DataFrame) -> list:
+    logging.info("zStarting data transformation.")
 
     # -- Mapping markets to RIC suffixes --
     suffix_map = {
