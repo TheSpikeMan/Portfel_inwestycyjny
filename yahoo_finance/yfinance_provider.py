@@ -17,6 +17,7 @@ def fetch_data_from_yahoo_finance(
     result = yf.download(
         tickers=tickers_list_to_fetch,
         group_by='ticker',
+        auto_adjust=False,
         **tickers_dates_conf
     )
     return result
