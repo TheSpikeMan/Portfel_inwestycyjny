@@ -60,7 +60,7 @@ Transactions AS (
 ),
 
 
---- JOINING TOGETHER SOURCES
+--- JOINING TOGETHER SOURCES ---
 
 Cleaned_price_history AS (
   SELECT
