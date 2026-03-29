@@ -79,28 +79,12 @@ Cleaned_price_history AS (
     it.instrument_type_main         AS instrument_type_main,
     COALESCE(
       d.close,
-      -- IF NULL THEN AVERAGE OF 2 LAST AVAILABLE
-      SAFE_DIVIDE(
-        -- FETCHING LAST NON-NULL FOR SPECIFIC ROW (PRECEDING)
-        LAST_VALUE(d.close IGNORE NULLS) OVER (
-          PARTITION BY i.ticker
-          ORDER BY c.date
-          ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
-        ) +
-        -- FETCHING FIRST NON-NULL VALUE FOR SPECIFING RAW (FOLLOWING)
-        FIRST_VALUE(d.close IGNORE NULLS) OVER (
-          PARTITION BY i.ticker
-          ORDER BY c.date
-          ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING
-        ),
-        2),
-        -- IF NO PRECEDING VALUE AVAILABLE TAKE THE FIRST FOLLOWING
-        FIRST_VALUE(d.close IGNORE NULLS) OVER (
-          PARTITION BY i.ticker
-          ORDER BY c.date
-          ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING
-        )
-    )                               AS adjusted_close
+      LAST_VALUE(d.close IGNORE NULLS) OVER (
+        PARTITION BY i.ticker
+        ORDER BY c.date
+        ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+      )
+) AS adjusted_close
   FROM Calendar                     AS c
   CROSS JOIN Instruments            AS i
   LEFT JOIN Daily                   AS d
