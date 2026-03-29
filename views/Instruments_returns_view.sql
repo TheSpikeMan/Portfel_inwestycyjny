@@ -95,7 +95,7 @@ Cleaned_price_history AS (
           ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING
         ),
         2),
-        -- IF NO PRECREDING VALUE AVAILABLE TAKE THE FIRST FOLLOWING
+        -- IF NO PRECEDING VALUE AVAILABLE TAKE THE FIRST FOLLOWING
         FIRST_VALUE(d.close IGNORE NULLS) OVER (
           PARTITION BY i.ticker
           ORDER BY c.date
@@ -126,7 +126,7 @@ Daily_price_changes AS (
   WHERE TRUE
     AND (
       --- EXCLUDING TREASURY AND CORPORATE BONDS FOR WHICH I DON'T HAVE DATA AS THEIR VALUE RELY ON TRANSACTIONS
-      c.Instrument_type_id IN (5,7)
+      c.Instrument_type_id IN (5,7)      -- Treasury and corporate bonds
       AND c.adjusted_close IS NOT NULL
       )
       --- OR ALL OTHER TYPES
@@ -174,7 +174,6 @@ Daily_holdings_extended AS (
       LAST_VALUE(daily_transaction_amount_by_transactions IGNORE NULLS) OVER(PARTITION BY Project_id, Instrument_id ORDER BY date ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING),
       0
     )                       AS daily_market_value,
-    -- DOCELOWO DO POPRAWKI ABY CASHFLOW OBLICZAĆ NA DANYCH TRANSAKCYJNYCH A NIE GIEŁDOWYCH Z KURSEM ZAMKINIĘCIA
     COALESCE(
       Transaction_value_pln_with_sign,
       0
