@@ -177,7 +177,8 @@ Cumulative_returns AS (
   SELECT
     d.*,
     EXP(
-      SUM(LN(1 + COALESCE(daily_twr, 0))) OVER (PARTITION BY Project_id, Instrument_id ORDER BY date)) - 1 AS cumulative_twr
+      SUM(LN(1 + COALESCE(daily_twr, 0))) OVER (PARTITION BY Project_id, Instrument_id ORDER BY date)) - 1 AS cumulative_twr,
+    CASE WHEN daily_transaction_amount_by_transactions > 0 THEN 1 ELSE 0 END                               AS is_active
   FROM Daily_returns  AS d
 )
 
