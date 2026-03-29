@@ -51,7 +51,8 @@ Transactions AS (
     SUM(
       CASE
         WHEN Transaction_type = "Buy"   THEN Transaction_value_pln
-        WHEN Transaction_type = "Sell"  THEN (-1) * Transaction_value_pln
+        WHEN Transaction_type = "Sell"
+          OR Transaction_type = "Wykup" THEN (-1) * Transaction_value_pln
       ELSE 0
       END
      ) AS daily_net_cashflow
