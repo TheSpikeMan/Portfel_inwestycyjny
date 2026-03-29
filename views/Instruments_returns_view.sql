@@ -182,5 +182,24 @@ Cumulative_returns AS (
   FROM Daily_returns  AS d
 )
 
-SELECT *
+SELECT
+  `date`,
+  year,
+  month,
+  day,
+  quarter,
+  quarter_text,
+  year_quarter,
+  project_id,
+  instrument_id,
+  ticker,
+  instrument_type_id,
+  instrument_type,
+  instrument_type_main,
+  adjusted_close,
+  price_change_daily_pct,
+  daily_transaction_amount_by_transactions,
+  daily_twr,
+  cumulative_twr,
+  is_active
 FROM Cumulative_returns
