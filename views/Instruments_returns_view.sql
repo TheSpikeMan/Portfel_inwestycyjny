@@ -47,17 +47,16 @@ Transactions AS (
     Project_id,
     Instrument_id,
     Transaction_date,
-    Transaction_price,
-    Transaction_amount,
-    Transaction_amount_with_sign,
-    CASE
-      WHEN Transaction_type = "Buy"
-      THEN Transaction_value_pln
-      WHEN Transaction_type = "Sell"
-      THEN (-1) * Transaction_value_pln
-    ELSE 0
-    END AS Transaction_value_pln_with_sign
-  FROM Transactions_view_raw AS t
+    SUM(Transaction_amount_with_sign)   AS daily_net_amount,
+    SUM(
+      CASE
+        WHEN Transaction_type = "Buy"   THEN Transaction_value_pln
+        WHEN Transaction_type = "Sell"  THEN (-1) * Transaction_value_pln
+      ELSE 0
+      END
+     ) AS daily_net_cashflow
+  FROM Transactions_view_raw
+  GROUP BY 1,2,3
 ),
 
 
