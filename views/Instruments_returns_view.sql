@@ -127,16 +127,14 @@ Daily_holdings AS (
   SELECT
     d.*,
     t.transaction_date,
-    t.transaction_amount,
-    t.Transaction_amount_with_sign,
-    t.Transaction_value_pln_with_sign,
-    SUM(Transaction_amount_with_sign) OVER w_project_ticker_order_by_date AS daily_transaction_amount_by_transactions
+    t.daily_net_amount,
+    t.daily_net_cashflow,
+    SUM(t.daily_net_amount) OVER w_project_ticker_order_by_date AS daily_transaction_amount_by_transactions
   FROM Daily_price_changes AS d
   LEFT JOIN Transactions AS t
     ON d.date = t.transaction_date
     AND d.instrument_id = t.instrument_id
   WHERE TRUE
-  GROUP BY ALL
   WINDOW
     w_project_ticker_order_by_date AS (
       PARTITION BY
@@ -158,7 +156,7 @@ Daily_holdings_extended AS (
       0
     )                       AS daily_market_value,
     COALESCE(
-      Transaction_value_pln_with_sign,
+      daily_net_cashflow,
       0
     )                       AS daily_cashflow
   FROM Daily_holdings AS d
@@ -177,7 +175,8 @@ Daily_returns AS (
 Cumulative_returns AS (
   SELECT
     d.*,
-    EXP(SUM(LN(1 + COALESCE(daily_twr, 0))) OVER (PARTITION BY Project_id, Instrument_id ORDER BY date)) - 1 AS cumulative_twr
+    EXP(
+      SUM(LN(1 + COALESCE(daily_twr, 0))) OVER (PARTITION BY Project_id, Instrument_id ORDER BY date)) - 1 AS cumulative_twr
   FROM Daily_returns  AS d
 )
 
