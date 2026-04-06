@@ -300,18 +300,6 @@ data_all_unioned AS (
   FROM Obligacje_korporacyjne_odsetki
 ),
 
-
-/*
-data_all_unioned_ordered
-Dane analogiczne do powyższych, jednak pofiltrowane wg roku podatkowego oraz rodzaju transakcji.
-*/
-
-data_all_unioned_ordered AS (
-  SELECT *
-  FROM data_all_unioned
-)
-
-
 --- FINALNY RAPORT ---
 SELECT
   ID_Projektu,
@@ -326,7 +314,7 @@ SELECT
     THEN ROUND(SUM(Zysk) * 0.19, 0)                         --> Podatek od dywidend zaokrąglam do pełnych wartości
     ELSE ROUND(SUM(Zysk) * 0.19, 2)  
   END                                                       AS Podatek_do_zaplaty
-FROM data_all_unioned_ordered
+FROM data_all_unioned
 GROUP BY
   ID_Projektu,
   Rok_podatkowy,
