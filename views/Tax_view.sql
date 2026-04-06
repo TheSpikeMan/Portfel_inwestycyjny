@@ -208,7 +208,7 @@ ETF_zagraniczne_dywidendy_poza_GPW AS (
     'Dywidendy poza GPW'                      AS Rodzaj_transakcji,
     'Dywidendy zagraniczne'                   AS Kategoria,
     0                                         AS Koszt_uzyskania_przychodu,
-    SUM(Przychod)                             AS Przychod,
+    0                                         AS Przychod,
     SUM(Zysk)                                 AS Zysk
   FROM Tax_calculations
   WHERE
@@ -237,7 +237,7 @@ Obligacje_korporacyjne_odsetki AS (
     'Odsetki na GPW - obligacje korporacyjne' AS Rodzaj_transakcji,
     'Odsetki polskie'                         AS Kategoria,
     0                                         AS Koszt_uzyskania_przychodu,
-    SUM(Przychod)                             AS Przychod,
+    0                                         AS Przychod,
     SUM(Zysk)                                 AS Zysk
   FROM Tax_calculations
   WHERE
@@ -298,7 +298,7 @@ data_all_unioned AS (
 
   SELECT *
   FROM Obligacje_korporacyjne_odsetki
-),
+)
 
 --- FINALNY RAPORT ---
 SELECT
