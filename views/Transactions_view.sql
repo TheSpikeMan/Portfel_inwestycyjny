@@ -1,14 +1,5 @@
-
-/*
-W tym kroku pobierane są dane:
-- transakcyjne, przechowujące informacje o transakcjach finansowych,
-- walutowe, przechowujące informacje o wartości walut USD oraz EUR na dany dzień względem PLN,
-- instrumentów, przechowujące informacje o instrumentach finasowych,
-- o typach instrumentów finansowych,
-- dziennych kursów giełdowych
-*/
-
-WITH 
+CREATE OR REPLACE VIEW `projekt-inwestycyjny.Transactions.Transactions_view` AS
+WITH
 -- Przechowuje dane transakcji giełdowych
 transactions_data AS (SELECT * FROM `projekt-inwestycyjny.Transactions.Transactions`),
 -- Przechowuje informacje o kursach walut na dany dzień
@@ -57,15 +48,15 @@ Wyznaczenie wskaźników:
 */
 
 data_aggregated AS (
-  SELECT 
+  SELECT
     * EXCEPT (Project_id, Instrument_id, Currency, Instrument_type_id, Ticker, Currency_date, last_currency_close, Currency_close,
     `Date`),
     transactions_data.Project_id                             AS Project_id,
-    instruments_data.Instrument_id                           AS Instrument_id,                       
+    instruments_data.Instrument_id                           AS Instrument_id,
     instruments_data.Ticker                                  AS Ticker,
     transactions_data.Currency                               AS Currency,
     instruments_types.Instrument_type_id                     AS Instrument_type_id,
-    COALESCE(currency_data.Currency_date, Transaction_date)  AS Currency_date,
+    COALESCE(currency_data.Currency_date, CAST(transactions_data.Transaction_timestamp AS DATE))  AS Currency_date,
     COALESCE(Currency_close, 1)                              AS Currency_close,
     COALESCE(currency_data.last_currency_close, 1)           AS last_currency_close,
     -- Utworzenie kolumny, która przechowuje wartość transakcji w PLN
@@ -89,9 +80,9 @@ data_aggregated AS (
       WHEN Transaction_type = 'Buy'       THEN Transaction_amount
       WHEN Transaction_type = 'Dywidenda' THEN 0
       WHEN Transaction_type = 'Odsetki'   THEN 0
-    END                                                      AS Transaction_amount_with_sign,  
-    -- Liczba dni, która upłynęła od transakcji do dnia dzisiejszego                          
-    DATE_DIFF(CURRENT_DATE(), Transaction_date, DAY)         AS age_of_instrument
+    END                                                      AS Transaction_amount_with_sign,
+    -- Liczba dni, która upłynęła od transakcji do dnia dzisiejszego
+    DATE_DIFF(CURRENT_DATE(), CAST(transactions_data.Transaction_timestamp AS DATE), DAY)         AS age_of_instrument
   FROM transactions_data
   -- Połączenie z danymi instrumentów
   LEFT JOIN instruments_data
@@ -103,10 +94,10 @@ data_aggregated AS (
   -- Połączenie z danymi giełdowymi
   LEFT JOIN daily
   ON instruments_data.Ticker = daily.Ticker
-  AND transactions_data.Transaction_date  = daily.Date
+  AND CAST(transactions_data.Transaction_timestamp AS DATE)  = daily.Date
   -- Połączanie z danymi walutowymi
   LEFT JOIN currency_data
-  ON transactions_data.Transaction_date   = currency_data.Currency_date
+  ON CAST(transactions_data.Transaction_timestamp AS DATE)   = currency_data.Currency_date
   AND transactions_data.Currency          = currency_data.Currency
 ),
 
@@ -114,10 +105,10 @@ data_aggregated AS (
 -- PRE FINAL AGGREGATION --
 /*
 Oznaczenie kolumn:
-- transaction_date_buy_ticker_amount - suma wolumenu zakupowego lub sprzedażowego na moment transakcj. 
+- transaction_date_buy_ticker_amount - suma wolumenu zakupowego lub sprzedażowego na moment transakcj.
 Wartość jest sumowana po typie transakcji (buy/sell).
 - transaction_date_ticker_value - wartość giełdowa instrumentu finansowego na moment transakcji.
-- transaction_date_ticker_amount - suma wolumenu uwzględniająca rodzaj transakcji. 
+- transaction_date_ticker_amount - suma wolumenu uwzględniająca rodzaj transakcji.
 Jest to aktualna ilość wolumenu danego instrumentu na moment transakcji
 - cumulative_sell_amoutn_per_ticker - jest to łączna, niezależna od daty transakcji wartość wolumenu sprzedanego danego instrumentu
 */
@@ -128,13 +119,13 @@ data_aggregated_with_windows AS (
     -- Wyznacza wartość wolumenu danego instrumentu na moment danej transakcji (po danej transakcji)
     SUM(Transaction_amount_with_sign)       OVER transaction_amount_until_transaction_date      AS transaction_date_ticker_amount,
     -- Wyznacza wartość danego instrumentu na moment danej transakcji (po danej transakcji)
-    ROUND(SUM(Transaction_amount_with_sign) OVER transaction_amount_until_transaction_date * Close, 2)   
+    ROUND(SUM(Transaction_amount_with_sign) OVER transaction_amount_until_transaction_date * Close, 2)
                                                                                                 AS transaction_date_ticker_value,
     -- Wyznacza wartość wolumenu danego instrumentu na moment danej transakcji (po danej transakcji), lecz z uwzglęnieniem typu transakcji
-    SUM(Transaction_amount)                 OVER transaction_amount_with_type_until_transaction_date 
+    SUM(Transaction_amount)                 OVER transaction_amount_with_type_until_transaction_date
                                                                                                 AS transaction_date_buy_ticker_amount,
     -- Wyznacza całkowitą wartość sprzedaży danego instrumentu finansowego
-    CASE 
+    CASE
       WHEN Transaction_type_group = 'Sell_amount' THEN SUM(Transaction_amount) OVER transaction_sell_amount_window
       ELSE NULL
       END                                                                                       AS cumulative_sell_amount_per_ticker,
@@ -142,20 +133,20 @@ data_aggregated_with_windows AS (
     data_aggregated
   WINDOW
     transaction_amount_until_transaction_date AS (
-      PARTITION BY Project_id, Ticker 
-      ORDER BY Transaction_date, Transaction_id DESC
+      PARTITION BY Project_id, Ticker
+      ORDER BY transaction_timestamp
       ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
     ),
 
     transaction_amount_with_type_until_transaction_date AS (
-      PARTITION BY Project_id, Ticker, Transaction_type_group 
-      ORDER BY Transaction_date, Transaction_id DESC
+      PARTITION BY Project_id, Ticker, Transaction_type_group
+      ORDER BY transaction_timestamp
       ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
     ),
 
     transaction_sell_amount_window AS (
-      PARTITION BY Project_id, Ticker, Transaction_type_group 
-      ORDER BY Transaction_date, Transaction_id DESC
+      PARTITION BY Project_id, Ticker, Transaction_type_group
+      ORDER BY transaction_timestamp
       ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
     )
 ),
@@ -173,8 +164,8 @@ final_aggregation AS (
     * EXCEPT(cumulative_sell_amount_per_ticker),
     -- Określenie wartości danego typu instrumentu na danych dzień
     CASE
-      WHEN Transaction_type_group <> "Div_related_amount" 
-      THEN ROUND(SUM(transaction_date_ticker_amount) OVER instrument_type_window_until_transaction_day_window * Close, 2)                                                                                         
+      WHEN Transaction_type_group <> "Div_related_amount"
+      THEN ROUND(SUM(transaction_date_ticker_amount) OVER instrument_type_window_until_transaction_day_window * Close, 2)
       ELSE 0
     END                                                                                         AS instrument_type_cumulative_value,
     -- Przepisanie wartości sprzedaży danego instrumentu na wiersze zakupowe & dywidendowe itp.
@@ -186,7 +177,7 @@ final_aggregation AS (
   WINDOW
     instrument_type_window_until_transaction_day_window AS (
       PARTITION BY Project_id, Instrument_type_id
-      ORDER BY Transaction_date
+      ORDER BY transaction_timestamp
       ROWS BETWEEN CURRENT ROW AND CURRENT ROW
     ),
     instrument_window AS (
@@ -196,6 +187,5 @@ final_aggregation AS (
 
 SELECT
   *
-FROM final_aggregation 
-ORDER BY Project_id, Transaction_date 
-
+FROM final_aggregation
+ORDER BY Project_id, Transaction_timestamp
