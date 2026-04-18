@@ -12,8 +12,9 @@ from PyQt6.QtWidgets import (
     QCalendarWidget,
     QTextEdit,
     QDialog,
-    QProgressBar)
-from PyQt6.QtCore import QSize, Qt, QDate, QEvent, QThread, pyqtSignal
+    QProgressBar,
+    QTimeEdit)
+from PyQt6.QtCore import QSize, Qt, QDate, QEvent, QThread, pyqtSignal, QTime
 from PyQt6.QtGui import QFont, QGuiApplication
 from google.cloud import bigquery
 import pandas as pd
@@ -23,7 +24,6 @@ from dotenv import load_dotenv
 import os
 from pathlib import Path
 
-Kole
 class ProgressDialog(QDialog):
     def __init__(self):
         super().__init__()
@@ -504,6 +504,10 @@ class DodajTransakcje(QWidget):
         self.dateDateEdit.setDate(QDate.currentDate())
         self.dateDateEdit.setEnabled(False)
 
+        self.dateTimeEdit = QTimeEdit()
+        self.dateTimeEdit.setTime(QTime.currentTime())
+        self.dateTimeEdit.setDisplayFormat("HH:mm:ss")
+
         # Dodanie przycisku otwierającego kalendarz. Po naciśnięciu przycisku uruchamiana jest metoda
         # OpenCalendar, która tworzy nowy obiekt QCalendarWidget, pobiera od użytkownika datę,
         # wpisuje ją do pola obok i zamyka obiekt.
@@ -579,7 +583,7 @@ class DodajTransakcje(QWidget):
 
         # Dodanie widgetu wyświetlającego informacje podczas wykonywania programu
         self.informationTextEdit = QTextEdit()
-        self.layout.addWidget(self.informationTextEdit, 12, 0, 1, 3)
+        self.layout.addWidget(self.informationTextEdit, 13, 0, 1, 3)
         self.informationTextEdit.setEnabled(False)
 
         # Dodanie przycisku do wysłania danych do BigQuery
@@ -595,16 +599,17 @@ class DodajTransakcje(QWidget):
 
         # Tworzenie labelów
         self.add_form_row(1, "Data transakcji", self.dateDateEdit, self.openCalendarButton)
-        self.add_form_row(2, "Typ transakcji", self.transactionsTypeComboBox)
-        self.add_form_row(3, "Rodzaj instrumentu", self.instrumentTypeComboBox)
-        self.add_form_row(4, "Ticker", self.instrumentComboBox)
-        self.add_form_row(5, "Ilość", self.quantityLineEdit)
-        self.add_form_row(6, "Cena i waluta", self.priceLineEdit, self.currencyComboBox)
-        self.add_form_row(7, "Kurs waluty", self.currencyValueLineEdit)
-        self.add_form_row(8, "Prowizja", self.commisionLineEdit)
-        self.add_form_row(9, "Wartość", self.valueLineEdit, self.valueCalculateButton)
-        self.add_form_row(10, "Czy zapłacono podatek?", self.taxComboBox)
-        self.add_form_row(11, "Wartość podatku", self.taxValueLineEdit)
+        self.add_form_row(2, "Czas transakcji", self.dateTimeEdit)
+        self.add_form_row(3, "Typ transakcji", self.transactionsTypeComboBox)
+        self.add_form_row(4, "Rodzaj instrumentu", self.instrumentTypeComboBox)
+        self.add_form_row(5, "Ticker", self.instrumentComboBox)
+        self.add_form_row(6, "Ilość", self.quantityLineEdit)
+        self.add_form_row(7, "Cena i waluta", self.priceLineEdit, self.currencyComboBox)
+        self.add_form_row(8, "Kurs waluty", self.currencyValueLineEdit)
+        self.add_form_row(9, "Prowizja", self.commisionLineEdit)
+        self.add_form_row(10, "Wartość", self.valueLineEdit, self.valueCalculateButton)
+        self.add_form_row(11, "Czy zapłacono podatek?", self.taxComboBox)
+        self.add_form_row(12, "Wartość podatku", self.taxValueLineEdit)
 
 
         self.layout.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignHCenter)
@@ -616,8 +621,8 @@ class DodajTransakcje(QWidget):
         self.setLayout(self.layout)
 
         # Dodanie przycisków do layoutu
-        self.layout.addWidget(sendDataPushButton, 13, 1)
-        self.layout.addWidget(returnButton, 14, 1)
+        self.layout.addWidget(sendDataPushButton, 14, 1)
+        self.layout.addWidget(returnButton, 15, 1)
 
 
     # Metoda maskująca wprowadzane dane. Ograniczenie do danych liczbowych, backspace'a oraz pojedynczej kropki.
@@ -749,8 +754,12 @@ class DodajTransakcje(QWidget):
 
         # Dodanie do obecnie ostatniego numeru transakcji wartości większej od 1
         self.Transaction_id = self.maxTransactionId + 1
-        self.Transaction_date = self.dateDateEdit.date().toString("yyyy-MM-dd")
-        self.Transaction_date = pd.to_datetime(self.Transaction_date, format = "%Y-%m-%d")
+
+        date_str = self.dateDateEdit.date().toString("yyyy-MM-dd")
+        time_str = self.dateTimeEdit.time().toString("HH:mm:ss")
+        full_datetime_str = f"{date_str} {time_str}"
+        self.Transaction_timestamp = pd.to_datetime(full_datetime_str, format="%Y-%m-%d %H:%M:%S")
+
         self.Transaction_type = self.transactionsTypeComboBox.currentText()
 
         if self.Transaction_type == "Sprzedaż":
@@ -796,7 +805,7 @@ class DodajTransakcje(QWidget):
 
         transaction_parameters = [int(self.project_ID),
                                   self.Transaction_id,
-                                  self.Transaction_date,
+                                  self.Transaction_timestamp,
                                   self.Transaction_type,
                                   self.Currency,
                                   self.Transaction_price,
@@ -810,7 +819,7 @@ class DodajTransakcje(QWidget):
         
         columns                = ["Project_id",
                                   "Transaction_id",
-                                  "Transaction_date",
+                                  "Transaction_timestamp",
                                   "Transaction_type",
                                   "Currency",
                                   "Transaction_price",
