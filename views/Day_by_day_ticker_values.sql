@@ -29,7 +29,7 @@ transactions_view AS (
     project_id,
     instrument_id,
     ticker,
-    transaction_date,
+    transaction_timestamp,
     transaction_date_ticker_amount
   FROM transactions_view_raw
   WHERE TRUE
@@ -45,7 +45,7 @@ transactions_view AS (
         project_id,
         instrument_id,
         ticker,
-        transaction_date
+        transaction_timestamp
       ORDER BY
         transaction_timestamp DESC
 
@@ -92,7 +92,7 @@ ticker_date_amount_value AS (
   LEFT JOIN transactions_view AS tv
     ON i.project_id = tv.project_id
     AND i.instrument_id = tv.instrument_id
-    AND c.calendar_date = tv.transaction_date
+    AND c.calendar_date = CAST(tv.transaction_timestamp AS DATE)
   LEFT JOIN daily AS d
     ON c.calendar_date = d.calendar_date
     AND i.ticker = d.ticker
