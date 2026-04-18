@@ -47,7 +47,7 @@ transactions_view AS (
         ticker,
         transaction_date
       ORDER BY
-        transaction_date_ticker_amount -- Do uwzględnienia wiele transakcji jednego dnia i wybór wolumenu (po dodaniu timestampa)
+        transaction_timestamp DESC
 
     )
 ),
