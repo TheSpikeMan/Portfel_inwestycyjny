@@ -53,7 +53,7 @@ transactions_view AS (
         Ticker,
         Transaction_type_group
       ORDER BY
-        Transaction_date,
+        Transaction_timestamp,
         Transaction_id
       ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
     ),
