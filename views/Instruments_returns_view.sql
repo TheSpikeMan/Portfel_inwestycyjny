@@ -1,205 +1,161 @@
---- FETCHING DATA
+--- Fetching data ---
 
 WITH
+daily_raw                  AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Daily`),
+calendar_raw               AS (SELECT * FROM `projekt-inwestycyjny.Calendar.Dates`),
+instruments_raw            AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instruments`),
+transactions_view_raw      AS (SELECT * FROM `projekt-inwestycyjny.Transactions.Transactions_view`),
 
-Daily_raw                  AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Daily`),
-Calendar_raw               AS (SELECT * FROM `projekt-inwestycyjny.Calendar.Dates`),
-Instrument_types_raw       AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instrument_types`),
-Instruments_raw            AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instruments`),
-Transactions_view_raw      AS (SELECT * FROM `projekt-inwestycyjny.Transactions.Transactions_view`),
+--- Filtering data ---
 
---- FILTERING DATA ---
-
-Daily AS (
+daily AS (
   SELECT DISTINCT
-    Date,
-    Project_id,
-    Ticker,
-    Close
+    `date` AS calendar_date,
+    project_id,
+    ticker,
+    close
   FROM Daily_raw
 ),
 
-Calendar AS (
+calendar AS (
   SELECT DISTINCT
-    date,
-    year,
-    month,
-    day,
-    quarter,
-    quarter_text,
-    year_quarter
+    `date` AS calendar_date
   FROM Calendar_raw
 ),
 
-Instruments AS (
+instruments AS (
   SELECT DISTINCT
     project_id,
     instrument_id,
     ticker,
-    market_currency,
-    ticker_currency,
     instrument_type_id
   FROM Instruments_raw
 ),
 
-Transactions AS (
+transactions AS (
   SELECT DISTINCT
-    Project_id,
-    Instrument_id,
-    Transaction_date,
-    SUM(Transaction_amount_with_sign)   AS daily_net_amount,
+    project_id,
+    instrument_id,
+    transaction_date,
+    SUM(transaction_amount_with_sign)   AS daily_net_amount,
     SUM(
       CASE
-        WHEN Transaction_type = "Buy"   THEN Transaction_value_pln
-        WHEN Transaction_type = "Sell"
-          OR Transaction_type = "Wykup" THEN (-1) * Transaction_value_pln
+        WHEN transaction_type = "Buy"   THEN transaction_value_pln
+        WHEN transaction_type = "Sell"
+          OR transaction_type = "Wykup" THEN (-1) * transaction_value_pln
       ELSE 0
       END
      ) AS daily_net_cashflow
-  FROM Transactions_view_raw
+  FROM transactions_view_raw
   GROUP BY 1,2,3
 ),
 
 
---- JOINING TOGETHER SOURCES ---
+--- Joining together sources ---
 
-Cleaned_price_history AS (
+cleaned_price_history AS (
   SELECT
-    c.date                          AS date,
-    c.year                          AS year,
-    c.month                         AS month,
-    c.day                           AS day,
-    c.quarter                       AS quarter,
-    c.quarter_text                  AS quarter_text,
-    c.year_quarter                  AS year_quarter,
-    i.project_id                    AS project_id,
-    i.instrument_id                 AS instrument_id,
-    i.ticker                        AS ticker,
-    it.instrument_type_id           AS instrument_type_id,
-    it.instrument_type              AS instrument_type,
-    it.instrument_type_main         AS instrument_type_main,
+    c.calendar_date,
+    i.project_id,
+    i.instrument_id,
+    i.ticker,
+    i.instrument_type_id,
     COALESCE(
       d.close,
       LAST_VALUE(d.close IGNORE NULLS) OVER (
         PARTITION BY i.ticker
-        ORDER BY c.date
+        ORDER BY c.calendar_date
         ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
       )
-) AS adjusted_close
-  FROM Calendar                     AS c
-  CROSS JOIN Instruments            AS i
-  LEFT JOIN Daily                   AS d
-    ON c.date = d.date
+    )                               AS adjusted_close
+  FROM calendar                     AS c
+  CROSS JOIN instruments            AS i
+  LEFT JOIN daily                   AS d
+    ON c.calendar_date = d.calendar_date
     AND d.ticker = i.ticker
-  LEFT JOIN Instrument_types_raw    AS it
-    ON it.instrument_type_id = i.instrument_type_id
   WHERE TRUE
-    AND c.date <= CURRENT_DATE('Europe/Warsaw') - 1
+    AND c.calendar_date <= CURRENT_DATE('Europe/Warsaw') - 1
 ),
 
---- CALCULATING DAILY CLOSE CHANGES ---
+--- Joining information about transactions  ---
 
-Daily_price_changes AS (
+daily_holdings AS (
   SELECT
     c.*,
-    SAFE_DIVIDE(
-      adjusted_close - LAG(adjusted_close) OVER w_ticker_ordered_by_date,
-      LAG(adjusted_close) OVER w_ticker_ordered_by_date
-    )                                 AS price_change_daily_pct
-  FROM Cleaned_price_history          AS c
-  WHERE TRUE
-    AND (
-      --- EXCLUDING TREASURY AND CORPORATE BONDS FOR WHICH I DON'T HAVE DATA AS THEIR VALUE RELY ON TRANSACTIONS
-      c.Instrument_type_id IN (5,7)      -- Treasury and corporate bonds
-      AND c.adjusted_close IS NOT NULL
-      )
-      --- OR ALL OTHER TYPES
-      OR Instrument_type_id IN (1, 2, 3, 4, 6)
-  WINDOW
-    w_ticker_ordered_by_date AS (
-      PARTITION BY ticker
-      ORDER BY date
-    )
-),
-
---- JOINNG INFORMATION ABOUT DAILY HOLDINGS ---
-
-Daily_holdings AS (
-  SELECT
-    d.*,
     t.transaction_date,
     t.daily_net_amount,
     t.daily_net_cashflow,
     SUM(t.daily_net_amount) OVER w_project_ticker_order_by_date AS daily_transaction_amount_by_transactions
-  FROM Daily_price_changes AS d
-  LEFT JOIN Transactions AS t
-    ON d.date = t.transaction_date
-    AND d.instrument_id = t.instrument_id
+  FROM cleaned_price_history AS c
+  LEFT JOIN transactions AS t
+    ON c.calendar_date = t.transaction_date
+    AND c.instrument_id = t.instrument_id
   WHERE TRUE
+    --- Excluding treasure and corporate bonds without daily data
+    AND
+    (
+        (c.Instrument_type_id IN (5,7)
+        AND c.adjusted_close IS NOT NULL)
+        OR
+        --- Or all other type data
+        (c.Instrument_type_id IN (1, 2, 3, 4, 6))
+    )
   WINDOW
     w_project_ticker_order_by_date AS (
       PARTITION BY
-        d.Project_id,
-        d.Instrument_id
+        c.Project_id,
+        c.Instrument_id
       ORDER BY
-        d.Date
+        c.calendar_date
       ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
     )
 ),
 
-Daily_holdings_extended AS (
+--- Calculating daily market value and daily cashflow ---
+
+daily_holdings_extended AS (
   SELECT
     d.*,
     adjusted_close *
     COALESCE(
       daily_transaction_amount_by_transactions,
-      LAST_VALUE(daily_transaction_amount_by_transactions IGNORE NULLS) OVER(PARTITION BY Project_id, Instrument_id ORDER BY date ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING),
+      LAST_VALUE(daily_transaction_amount_by_transactions IGNORE NULLS) OVER(PARTITION BY Project_id, Instrument_id ORDER BY calendar_date ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING),
       0
-    )                       AS daily_market_value,
+    )                       AS daily_end_market_value,
     COALESCE(
       daily_net_cashflow,
       0
-    )                       AS daily_cashflow
-  FROM Daily_holdings AS d
+    )                       AS daily_end_cashflow
+  FROM daily_holdings AS d
+  WHERE TRUE
+    AND d.daily_transaction_amount_by_transactions > 0
+    OR d.daily_net_cashflow > 0
 ),
 
-Daily_returns AS (
+daily_market_value_yesterday AS (
   SELECT
     d.*,
-    SAFE_DIVIDE(
-      daily_market_value - daily_cashflow,
-      LAST_VALUE(daily_market_value) OVER (PARTITION BY Project_id, Instrument_id ORDER BY date ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING)
-    ) - 1                      AS daily_twr
-  FROM Daily_holdings_extended AS d
-),
-
-Cumulative_returns AS (
-  SELECT
-    d.*,
-    EXP(
-      SUM(LN(1 + COALESCE(daily_twr, 0))) OVER (PARTITION BY Project_id, Instrument_id ORDER BY date)) - 1 AS cumulative_twr,
-    CASE WHEN daily_transaction_amount_by_transactions > 0 THEN 1 ELSE 0 END                               AS is_active
-  FROM Daily_returns  AS d
+    LAG(daily_end_market_value) OVER (PARTITION BY Project_id, Instrument_id ORDER BY calendar_date) AS daily_begin_market_value
+  FROM daily_holdings_extended AS d
 )
 
+
 SELECT
-  `date`,
-  year,
-  month,
-  day,
-  quarter,
-  quarter_text,
-  year_quarter,
+  -- Metadata --
+  calendar_date,
   project_id,
   instrument_id,
   ticker,
   instrument_type_id,
-  instrument_type,
-  instrument_type_main,
+  -- Daily state --
   adjusted_close,
-  price_change_daily_pct,
   daily_transaction_amount_by_transactions,
-  daily_twr,
-  cumulative_twr,
-  is_active
-FROM Cumulative_returns
+  daily_begin_market_value,
+  daily_end_market_value,
+  daily_end_cashflow,
+  -- Performance --
+ SAFE_DIVIDE(
+    daily_end_market_value - daily_end_cashflow,
+    daily_begin_market_value
+  ) AS daily_hpr
+FROM daily_market_value_yesterday
