@@ -15,7 +15,7 @@ Dywidendy i odsetki nieobecne.
 transactions_view AS (
   SELECT
     Project_id                    AS Project_id,
-    Transaction_date              AS Transaction_date,
+    Transaction_timestamp         AS Transaction_timestamp,
     Ticker                        AS Ticker,
     Instrument_id                 AS Instrument_id,
     Transaction_type_group        AS Transaction_type_group,
@@ -63,7 +63,7 @@ transactions_view AS (
         Ticker,
         Transaction_type_group
       ORDER BY
-        Transaction_date,
+        Transaction_timestamp,
         Transaction_id
     )
 ),
@@ -78,7 +78,7 @@ all_finished_transactions AS (
     transactions_view.Project_id                     AS Project_id,
     Ticker                                           AS Ticker,
     Instrument_id                                    AS Instrument_id,
-    Transaction_date                                 AS Transaction_date,
+    Transaction_timestamp                            AS Transaction_timestamp,
     COALESCE(
       CASE WHEN Transaction_type_group = 'Buy_amount'
       THEN amount_sold * Transaction_price * Currency_close ELSE 0 END, 0)      AS Buy_amount,
@@ -107,7 +107,7 @@ SELECT
   Project_id                                      AS Project_id,
   Ticker                                          AS Ticker,
   Instrument_id                                   AS Instrument_id,
-  MAX(Transaction_date)                           AS Last_transaction_date,
+  CAST(MAX(Transaction_timestamp) AS DATE)        AS Last_transaction_date,
   ROUND(SUM(COALESCE(Buy_amount, 0)), 2)          AS Cumulative_buy_value,
   ROUND(SUM(COALESCE(Sell_amount, 0)), 2)         AS Cumulative_sell_value,
   ROUND(SUM(COALESCE(Div_related_amount, 0)), 2)  AS Cumulative_dividend_value,
