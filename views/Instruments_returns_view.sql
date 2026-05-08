@@ -36,7 +36,7 @@ transactions AS (
   SELECT DISTINCT
     project_id,
     instrument_id,
-    transaction_date,
+    CAST(transaction_timestamp AS DATE) AS transaction_date,
     SUM(transaction_amount_with_sign)   AS daily_net_amount,
     SUM(
       CASE
@@ -154,8 +154,12 @@ SELECT
   daily_end_market_value,
   daily_end_cashflow,
   -- Performance --
- SAFE_DIVIDE(
-    daily_end_market_value - daily_end_cashflow,
-    daily_begin_market_value
-  ) AS daily_hpr
+  COALESCE(
+    ABS(
+      SAFE_DIVIDE(
+      daily_end_market_value - daily_end_cashflow,
+      daily_begin_market_value)
+        ),
+      1
+    ) AS daily_hpr
 FROM daily_market_value_yesterday
