@@ -42,7 +42,7 @@ amount_left_per_ticker     AS (
         Instrument_id,
         Transaction_type_group
       ORDER BY
-        Transaction_date DESC,
+        Transaction_timestamp DESC,
         Transaction_amount DESC
     )
 ),
@@ -75,7 +75,7 @@ amount_left_per_transaction AS (
         tvr.Instrument_id,
         Transaction_type_group
       ORDER BY
-        Transaction_Date     DESC,
+        Transaction_timestamp     DESC,
         tvr.Instrument_id    DESC
     )
 ),
@@ -98,7 +98,7 @@ amount_left_per_transaction_corrected AS (
         Instrument_id,
         Transaction_type_group
       ORDER BY
-        Transaction_Date DESC,
+        Transaction_timestamp DESC,
         Instrument_id    DESC
     )
 ),
@@ -119,7 +119,7 @@ corrected_again AS (
         Instrument_id,
         Transaction_type_group
       ORDER BY
-        Transaction_Date DESC,
+        Transaction_timestamp DESC,
         Instrument_id    DESC
     )
 ),
@@ -150,7 +150,7 @@ present_instruments_view AS (
       SUM(transaction_amount_left * transaction_price * last_currency_close)/
       SUM(transaction_amount_left),
       2)                                                        AS ticker_average_close,
-    MIN(Transaction_date)                                       AS minimum_buy_date
+    MIN(CAST(Transaction_timestamp AS DATE))                    AS minimum_buy_date
   FROM corrected_again
   WHERE TRUE
     AND transaction_amount_left <> 0
@@ -208,10 +208,10 @@ dividend_selection AS (
     AND transaction_view.Ticker = present_instruments_view.Ticker
   LEFT JOIN daily
     ON transaction_view.Ticker = daily.Ticker
-    AND transaction_view.Transaction_date = daily.`Date`
+    AND CAST(transaction_view.Transaction_timestamp AS DATE) = daily.`Date`
   WHERE TRUE
     AND Transaction_type_group = 'Div_related_amount'
-    AND present_instruments_view.minimum_buy_date < transaction_view.Transaction_date
+    AND present_instruments_view.minimum_buy_date < CAST(transaction_view.Transaction_timestamp AS DATE)
   WINDOW
     ticker_window AS (
       PARTITION BY
@@ -222,7 +222,7 @@ dividend_selection AS (
       PARTITION BY
         transaction_view.Project_id,
         transaction_view.Ticker,
-        EXTRACT(YEAR FROM Transaction_date)
+        EXTRACT(YEAR FROM Transaction_timestamp)
     )
   ),
 
