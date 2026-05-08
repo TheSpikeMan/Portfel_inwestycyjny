@@ -35,17 +35,17 @@ preliminary_aggregation AS (
     MAX(dd.Close)                             AS close,
     SUM(SUM(tv.Transaction_value_pln)) OVER ticker_in_project_window
                                               AS dividend_sum_total_per_ticker,
-    AVG(AVG(tv.Transaction_value_pln)) OVER ticker_in_project_window 
+    AVG(AVG(tv.Transaction_value_pln)) OVER ticker_in_project_window
                                               AS dividend_average_total_per_ticker
   FROM transactions_view  AS tv
   LEFT JOIN daily_data    AS dd
-    ON dd.Date = tv.Transaction_date 
+    ON dd.Date = CAST(tv.Transaction_timestamp AS DATE)
     AND tv.Ticker = dd.Ticker
-    AND 
+    AND
       (tv.Project_id = dd.Project_id
       OR dd.Project_id IS NULL)
   LEFT JOIN calendar
-    ON tv.Transaction_date = calendar.date
+    ON CAST(tv.Transaction_timestamp AS DATE) = calendar.date
   WHERE TRUE
     AND Transaction_type_group = "Div_related_amount"
   GROUP BY ALL
@@ -73,7 +73,7 @@ initital_aggregation AS (
     SUM(transaction_value_pln) OVER(PARTITION BY project_id, year)            AS dividend_sum_per_year,
     SUM(transaction_value_pln) OVER(PARTITION BY project_id, year, quarter)   AS dividend_sum_per_year_and_quarter,
     100 * SAFE_DIVIDE(dividend_price, close * unit)                           AS dividend_ratio_pct
-  FROM preliminary_aggregation 
+  FROM preliminary_aggregation
 ),
 
 -- MID AGGREGATION VIEW --
@@ -103,7 +103,7 @@ mid_aggregation AS (
       LAG(
         ROUND(dividend_sum_per_ticker_and_year, 2)
         )
-        OVER ticker_in_project_window_ordered, 0) 
+        OVER ticker_in_project_window_ordered, 0)
                                                   AS dividend_value_ticker_last_year,
     IFNULL(
       ROUND(dividend_ratio_pct, 2)
@@ -111,8 +111,8 @@ mid_aggregation AS (
     IFNULL
     (
       ROUND(
-        AVG(dividend_ratio_pct) 
-        OVER ticker_in_project_window, 2) , 0) 
+        AVG(dividend_ratio_pct)
+        OVER ticker_in_project_window, 2) , 0)
                                                   AS avg_dividend_ratio_per_ticker_pct
   FROM initital_aggregation
   WINDOW
@@ -142,7 +142,7 @@ final_aggregation AS (
     CONCAT(
       CAST(
         IFNULL(
-          ROUND((100* SAFE_DIVIDE(dividend_sum_per_ticker_and_year, dividend_value_ticker_last_year) - 100),2),0) 
+          ROUND((100* SAFE_DIVIDE(dividend_sum_per_ticker_and_year, dividend_value_ticker_last_year) - 100),2),0)
       AS STRING), "%") AS dividend_value_change_per_ticker_and_year
   FROM mid_aggregation
 )
