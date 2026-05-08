@@ -323,7 +323,7 @@ def daily_webscraping_plus_currencies(cloud_event):
             SELECT
                 Project_id                                                       AS Project_id,
                 Ticker                                                           AS Ticker,
-                MAX(Transaction_date)                                            AS Transaction_date,   
+                MAX(CAST(Transaction_timestamp AS DATE))                         AS Transaction_date,   
                 CAST(
                     SUM(Transaction_amount) - MAX(cumulative_sell_amount_per_ticker)
                     AS INT64)                                                    AS Transaction_amount
