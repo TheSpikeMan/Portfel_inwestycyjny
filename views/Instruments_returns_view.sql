@@ -137,11 +137,73 @@ daily_market_value_yesterday AS (
     d.*,
     LAG(daily_end_market_value) OVER (PARTITION BY Project_id, Instrument_id ORDER BY calendar_date) AS daily_begin_market_value
   FROM daily_holdings_extended AS d
-)
+),
 
+--- LEVEL 1: Basic single instrument level  ---
+base_instrument_level AS (
+  SELECT
+    'Instrument'                          AS aggregation_level,
+    calendar_date,
+    project_id,
+    instrument_id,
+    ticker,
+    instrument_type_id,
+    adjusted_close,
+    daily_transaction_amount_by_transactions,
+    COALESCE(daily_begin_market_value, 0) AS daily_begin_market_value,
+    daily_end_market_value,
+    daily_end_cashflow
+  FROM daily_market_value_yesterday
+),
+
+--- LEVEL 2: Instrument type level ---
+type_aggregation AS (
+  SELECT
+    'Instrument_type'             AS aggregation_level,
+    calendar_date,
+    project_id,
+    NULL                          AS instrument_id,
+    CAST(NULL AS STRING)          AS ticker,
+    instrument_type_id,
+    NULL                          AS adjusted_close,
+    NULL                          AS daily_transaction_amount_by_transactions,
+    SUM(daily_begin_market_value) AS daily_begin_market_value,
+    SUM(daily_end_market_value)   AS daily_end_market_value,
+    SUM(daily_end_cashflow)       AS daily_end_cashflow
+  FROM base_instrument_level
+  GROUP BY calendar_date, project_id, instrument_type_id
+),
+
+--- LEVEL 3: Project level ---
+project_aggregation AS (
+  SELECT
+    'PROJECT'                     AS aggregation_level,
+    calendar_date,
+    project_id,
+    NULL                          AS instrument_id,
+    CAST(NULL AS STRING)          AS ticker,
+    NULL                          AS instrument_type_id,
+    NULL                          AS adjusted_close,
+    NULL                          AS daily_transaction_amount_by_transactions,
+    SUM(daily_begin_market_value) AS daily_begin_market_value,
+    SUM(daily_end_market_value)   AS daily_end_market_value,
+    SUM(daily_end_cashflow)       AS daily_end_cashflow
+  FROM base_instrument_level
+  GROUP BY calendar_date, project_id
+),
+
+--- Combining all level together  ---
+combined_levels AS (
+  SELECT * FROM base_instrument_level
+  UNION ALL
+  SELECT * FROM type_aggregation
+  UNION ALL
+  SELECT * FROM project_aggregation
+)
 
 SELECT
   -- Metadata --
+  aggregation_level,
   calendar_date,
   project_id,
   instrument_id,
@@ -154,12 +216,9 @@ SELECT
   daily_end_market_value,
   daily_end_cashflow,
   -- Performance --
-  COALESCE(
-    ABS(
-      SAFE_DIVIDE(
-      daily_end_market_value - daily_end_cashflow,
-      daily_begin_market_value)
-        ),
-      1
-    ) AS daily_hpr
-FROM daily_market_value_yesterday
+  CASE
+    WHEN daily_begin_market_value <= 0 THEN 1
+    WHEN (daily_end_market_value - daily_end_cashflow) <= 0 THEN 0.000001
+    ELSE SAFE_DIVIDE(daily_end_market_value - daily_end_cashflow, daily_begin_market_value)
+  END AS daily_hpr
+FROM combined_levels
