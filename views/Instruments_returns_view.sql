@@ -139,10 +139,24 @@ daily_market_value_yesterday AS (
   FROM daily_holdings_extended AS d
 ),
 
+instrument_epoch AS (
+  SELECT
+    d.*,
+    SUM(
+      CASE
+        WHEN daily_begin_market_value = 0
+          AND daily_end_market_value > 0
+          THEN 1
+        ELSE 0 END)
+      OVER (PARTITION BY d.project_id, d.instrument_id ORDER BY d.calendar_date) AS epoch_id
+  FROM daily_market_value_yesterday AS d
+),
+
 --- LEVEL 1: Basic single instrument level  ---
 base_instrument_level AS (
   SELECT
     'Instrument'                          AS aggregation_level,
+    epoch_id,
     calendar_date,
     project_id,
     instrument_id,
@@ -153,13 +167,14 @@ base_instrument_level AS (
     COALESCE(daily_begin_market_value, 0) AS daily_begin_market_value,
     daily_end_market_value,
     daily_end_cashflow
-  FROM daily_market_value_yesterday
+  FROM instrument_epoch
 ),
 
 --- LEVEL 2: Instrument type level ---
 type_aggregation AS (
   SELECT
     'Instrument_type'             AS aggregation_level,
+    epoch_id,
     calendar_date,
     project_id,
     NULL                          AS instrument_id,
@@ -171,13 +186,14 @@ type_aggregation AS (
     SUM(daily_end_market_value)   AS daily_end_market_value,
     SUM(daily_end_cashflow)       AS daily_end_cashflow
   FROM base_instrument_level
-  GROUP BY calendar_date, project_id, instrument_type_id
+  GROUP BY epoch_id, calendar_date, project_id, instrument_type_id
 ),
 
 --- LEVEL 3: Project level ---
 project_aggregation AS (
   SELECT
     'PROJECT'                     AS aggregation_level,
+    epoch_id,
     calendar_date,
     project_id,
     NULL                          AS instrument_id,
@@ -189,7 +205,7 @@ project_aggregation AS (
     SUM(daily_end_market_value)   AS daily_end_market_value,
     SUM(daily_end_cashflow)       AS daily_end_cashflow
   FROM base_instrument_level
-  GROUP BY calendar_date, project_id
+  GROUP BY epoch_id, calendar_date, project_id
 ),
 
 --- Combining all level together  ---
@@ -204,6 +220,7 @@ combined_levels AS (
 SELECT
   -- Metadata --
   aggregation_level,
+  epoch_id,
   calendar_date,
   project_id,
   instrument_id,
