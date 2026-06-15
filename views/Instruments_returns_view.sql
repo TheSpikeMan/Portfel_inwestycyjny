@@ -128,8 +128,8 @@ daily_holdings_extended AS (
     )                       AS daily_end_cashflow
   FROM daily_holdings AS d
   WHERE TRUE
-    AND d.daily_transaction_amount_by_transactions > 0
-    OR d.daily_net_cashflow > 0
+    --AND d.daily_transaction_amount_by_transactions > 0
+    --OR d.daily_net_cashflow > 0
 ),
 
 daily_market_value_yesterday AS (
