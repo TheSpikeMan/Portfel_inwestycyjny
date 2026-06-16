@@ -197,7 +197,7 @@ project_aggregation AS (
     calendar_date,
     project_id,
     NULL                          AS instrument_id,
-    CAST(NULL AS STRING)          AS ticker,
+    ticker,
     NULL                          AS instrument_type_id,
     NULL                          AS adjusted_close,
     NULL                          AS daily_transaction_amount_by_transactions,
@@ -205,7 +205,7 @@ project_aggregation AS (
     SUM(daily_end_market_value)   AS daily_end_market_value,
     SUM(daily_end_cashflow)       AS daily_end_cashflow
   FROM base_instrument_level
-  GROUP BY epoch_id, calendar_date, project_id
+  GROUP BY epoch_id, calendar_date, project_id, ticker
 ),
 
 --- Combining all level together  ---
