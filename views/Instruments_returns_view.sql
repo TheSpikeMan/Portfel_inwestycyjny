@@ -155,11 +155,23 @@ instrument_epoch AS (
   FROM daily_market_value_yesterday AS d
 ),
 
+instrument_present_epoch AS (
+  SELECT
+    ie.*,
+    CASE
+      WHEN epoch_id = MAX(ie.epoch_id) OVER (PARTITION BY ie.project_id, ie.instrument_id)
+      AND epoch_id <> 0
+      THEN 1
+      ELSE 0
+    END AS is_latest_epoch
+  FROM instrument_epoch AS ie
+),
+
 --- LEVEL 1: Basic single instrument level  ---
 base_instrument_level AS (
   SELECT
     'instrument'                          AS aggregation_level,
-    epoch_id,
+    is_latest_epoch,
     calendar_date,
     project_id,
     instrument_id,
@@ -170,14 +182,14 @@ base_instrument_level AS (
     COALESCE(daily_begin_market_value, 0) AS daily_begin_market_value,
     daily_end_market_value,
     daily_end_cashflow
-  FROM instrument_epoch
+  FROM instrument_present_epoch
 ),
 
 --- LEVEL 2: Instrument type level ---
 type_aggregation AS (
   SELECT
     'instrument_type'             AS aggregation_level,
-    epoch_id,
+    is_latest_epoch,
     calendar_date,
     project_id,
     NULL                          AS instrument_id,
@@ -189,14 +201,14 @@ type_aggregation AS (
     SUM(daily_end_market_value)   AS daily_end_market_value,
     SUM(daily_end_cashflow)       AS daily_end_cashflow
   FROM base_instrument_level
-  GROUP BY epoch_id, calendar_date, project_id, instrument_type_id
+  GROUP BY calendar_date, project_id, instrument_type_id, is_latest_epoch
 ),
 
 --- LEVEL 3: Project level ---
 project_aggregation AS (
   SELECT
     'project'                     AS aggregation_level,
-    epoch_id,
+    is_latest_epoch,
     calendar_date,
     project_id,
     NULL                          AS instrument_id,
@@ -208,7 +220,7 @@ project_aggregation AS (
     SUM(daily_end_market_value)   AS daily_end_market_value,
     SUM(daily_end_cashflow)       AS daily_end_cashflow
   FROM base_instrument_level
-  GROUP BY calendar_date, project_id, epoch_id
+  GROUP BY calendar_date, project_id, is_latest_epoch
 ),
 
 --- Combining all level together  ---
@@ -223,7 +235,7 @@ combined_levels AS (
 SELECT
   -- Metadata --
   aggregation_level,
-  epoch_id,
+  is_latest_epoch,
   calendar_date,
   project_id,
   instrument_id,
