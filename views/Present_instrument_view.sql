@@ -121,7 +121,7 @@ SELECT
   tvpi.transaction_date_ticker_amount AS current_amount,
   tvap.avg_buy_price                  AS transaction_avg_price,
   tvap.total_cost                     AS transaction_total_cost,
-  d.calendar_date                     AS calendar_date,
+  CAST(d.calendar_date AS STRING)     AS calendar_date,
   d.close                             AS current_price,
   SAFE_MULTIPLY(
     d.close,
