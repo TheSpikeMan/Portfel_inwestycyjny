@@ -1,5 +1,5 @@
 WITH
-transactions_view_dev_raw AS (SELECT * FROM `projekt-inwestycyjny.Transactions.Transactions_view_DEV`),
+transactions_view_dev_raw AS (SELECT * FROM `projekt-inwestycyjny.Transactions.Transactions_view`),
 daily_raw                 AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Daily`),
 
 --- FILTERING DATA ---
@@ -121,6 +121,7 @@ SELECT
   tvpi.transaction_date_ticker_amount AS current_amount,
   tvap.avg_buy_price                  AS transaction_avg_price,
   tvap.total_cost                     AS transaction_total_cost,
+  d.calendar_date                     AS calendar_date,
   d.close                             AS current_price,
   SAFE_MULTIPLY(
     d.close,
@@ -142,6 +143,5 @@ LEFT JOIN transaction_view_average_price AS tvap
   ON tvap.project_id = tvpi.project_id
   AND tvap.instrument_id = tvpi.instrument_id
 WHERE TRUE
-  AND tvpi.Project_id = 1
 ORDER BY
   Ticker
