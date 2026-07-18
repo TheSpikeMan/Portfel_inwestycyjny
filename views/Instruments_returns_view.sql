@@ -28,7 +28,8 @@ instruments AS (
     project_id,
     instrument_id,
     ticker,
-    instrument_type_id
+    instrument_type_id,
+    unit
   FROM Instruments_raw
 ),
 
@@ -60,6 +61,7 @@ cleaned_price_history AS (
     i.instrument_id,
     i.ticker,
     i.instrument_type_id,
+    i.unit,
     COALESCE(
       d.close,
       LAST_VALUE(d.close IGNORE NULLS) OVER (
@@ -117,6 +119,7 @@ daily_holdings_extended AS (
   SELECT
     d.*,
     adjusted_close *
+    unit *
     COALESCE(
       daily_transaction_amount_by_transactions,
       LAST_VALUE(daily_transaction_amount_by_transactions IGNORE NULLS) OVER(PARTITION BY Project_id, Instrument_id ORDER BY calendar_date ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING),
