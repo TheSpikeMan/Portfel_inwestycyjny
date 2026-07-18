@@ -256,9 +256,8 @@ def daily_webscraping_plus_currencies(cloud_event):
                 return query_job_1.to_dataframe(), query_job_2.to_dataframe()
             except:
                 print("Podczas pobierania danych instrumentów nastąpił błąd.")
-        
-        def znajdz_kursy_walut(self):
 
+        def znajdz_kursy_walut(self):
             """
             Znajdź aktualne kursy walut.
             Wykorzystywane są one do wyznaczenia wartość danego instrumentu w PLN.
@@ -294,9 +293,7 @@ def daily_webscraping_plus_currencies(cloud_event):
 
 
         def zbadaj_dane_inflacyjne(self):
-
             """
-
             Funkcja zwraca trzy rezultaty swojego działania:
             - query_job_1.to_dataframe() - DataFrame z danymi inflacyjnymi.
             - query_job_2.to_dataframe() - DataFrame z danymi wszystkich transakcji na obligacjach skarbowych.
@@ -564,10 +561,7 @@ def daily_webscraping_plus_currencies(cloud_event):
             print("Pobieranie danych z biznesradar zakończone powodzeniem.")
             return result_df
 
-
         def run_scraper(self):
-
-
             """
             Funkcja uruchamiająca sekwencyjne wszystkie poszczególne części składowe:
             - W pierwszym kroku pobierane są do zmiennych aktualne zagraniczne ETF oraz akcji polskich i polskie ETF.
@@ -579,14 +573,13 @@ def daily_webscraping_plus_currencies(cloud_event):
             - W siódmym kroku dokonywany jest eksport danych walutowych do tabeli w BigQuery.
             """
 
-            
             present_instruments_ETF, present_instruments_biznesradar = self.pobierz_aktualne_instrumenty()
             dane_inflacyjne, dane_transakcyjne, dane_marz = self.zbadaj_dane_inflacyjne()
             present_currencies = self.znajdz_kursy_walut()
             data_to_export_akcje = self.webscraping_biznesradar(website_stocks, present_instruments_biznesradar)
             data_to_export_ETFs = self.webscraping_markets_ft_webscraping(present_instruments_ETF,present_currencies)
             #data_to_export_catalyst = self.webscraping_biznesradar(website_catalyst, present_instruments_biznesradar) DO POPRAWKI
-            data_to_export_obligacje = self.treasury_bonds(dane_inflacyjne,dane_transakcyjne,dane_marz)
+            data_to_export_obligacje = self.treasury_bonds(dane_inflacyjne, dane_transakcyjne, dane_marz)
             data_to_export_etfs_pl = self.webscraping_biznesradar(website_etfs_pl, present_instruments_biznesradar)
             
             data_to_export = pd.concat([data_to_export_ETFs, 
@@ -594,7 +587,7 @@ def daily_webscraping_plus_currencies(cloud_event):
                                         #data_to_export_catalyst, 
                                         data_to_export_etfs_pl,
                                         data_to_export_obligacje],
-                                        ignore_index = True)
+                                        ignore_index=True)
             # Eksport danych
             exporterObject = BigQueryExporter()
             destination_table_daily = f"{self.project_id}.{self.dataset_daily }.{self.table_daily}"
@@ -603,49 +596,47 @@ def daily_webscraping_plus_currencies(cloud_event):
                                                                             destination_table_daily:data_to_export})
 
     # Definiowanie nazwy projektu
-    project_id              = 'projekt-inwestycyjny'
+    project_id = 'projekt-inwestycyjny'
 
     # Definiowanie nazw zbiorów tabel
-    dataset_instruments     = 'Dane_instrumentow'
-    dataset_currencies      = 'Waluty'
-    dataset_daily           = 'Dane_instrumentow'
-    dataset_inflation       = 'Inflation'
-    dataset_transactions    = 'Transactions'
+    dataset_instruments = 'Dane_instrumentow'
+    dataset_currencies = 'Waluty'
+    dataset_daily = 'Dane_instrumentow'
+    dataset_inflation = 'Inflation'
+    dataset_transactions = 'Transactions'
 
     # Definiowanie nazw tabel
-    table_instruments       = 'Instruments'
+    table_instruments = 'Instruments'
     table_instruments_types = 'Instrument_types'
-    table_currencies        = 'Currency'
-    table_daily             = 'Daily'
-    table_inflation         = 'Inflation'
-    table_treasury_bonds    = 'Treasury_Bonds'
+    table_currencies = 'Currency'
+    table_daily = 'Daily'
+    table_inflation = 'Inflation'
+    table_treasury_bonds = 'Treasury_Bonds'
 
     # Definiowanie nazw widoków
-    view_transactions       = 'Transactions_view'
+    view_transactions = 'Transactions_view'
 
     # Definiowanie nazw stron do scrapingu
-    website_stocks          = 'https://www.biznesradar.pl/gielda/akcje_gpw'
-    website_etfs_pl         = 'https://www.biznesradar.pl/gielda/etf'
-    website_catalyst        = 'https://www.biznesradar.pl/gielda/obligacje'
+    website_stocks = 'https://www.biznesradar.pl/gielda/akcje_gpw'
+    website_etfs_pl = 'https://www.biznesradar.pl/gielda/etf'
+    website_catalyst = 'https://www.biznesradar.pl/gielda/obligacje'
 
-    scraper = Scraper(project_id, 
-                    dataset_instruments,
-                    dataset_currencies,
-                    dataset_daily,
-                    dataset_inflation,
-                    dataset_transactions,
-                    table_instruments, 
-                    table_instruments_types,
-                    table_currencies,
-                    table_daily,
-                    table_inflation,
-                    table_treasury_bonds,
-                    view_transactions,
-                    website_stocks,
-                    website_etfs_pl,
-                    website_catalyst 
-                    )
-
+    scraper = Scraper(project_id,
+                      dataset_instruments,
+                      dataset_currencies,
+                      dataset_daily,
+                      dataset_inflation,
+                      dataset_transactions,
+                      table_instruments,
+                      table_instruments_types,
+                      table_currencies,
+                      table_daily,
+                      table_inflation,
+                      table_treasury_bonds,
+                      view_transactions,
+                      website_stocks,
+                      website_etfs_pl,
+                      website_catalyst)
     scraper.run_scraper()
 
 
