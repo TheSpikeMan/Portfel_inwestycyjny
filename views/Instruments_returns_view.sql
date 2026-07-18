@@ -138,7 +138,9 @@ daily_holdings_extended AS (
 daily_market_value_yesterday AS (
   SELECT
     d.*,
-    LAG(daily_end_market_value) OVER (PARTITION BY Project_id, Instrument_id ORDER BY calendar_date) AS daily_begin_market_value
+    COALESCE(
+      LAG(daily_end_market_value) OVER (PARTITION BY Project_id, Instrument_id ORDER BY calendar_date),
+      0) AS daily_begin_market_value
   FROM daily_holdings_extended AS d
 ),
 
