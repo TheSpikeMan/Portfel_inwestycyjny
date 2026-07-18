@@ -197,7 +197,7 @@ project_aggregation AS (
     calendar_date,
     project_id,
     NULL                          AS instrument_id,
-    NULL                          AS ticker,
+    CAST(NULL AS STRING)          AS ticker,
     NULL                          AS instrument_type_id,
     NULL                          AS adjusted_close,
     NULL                          AS daily_transaction_amount_by_transactions,
