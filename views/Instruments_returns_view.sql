@@ -4,6 +4,7 @@ WITH
 daily_raw                  AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Daily`),
 calendar_raw               AS (SELECT * FROM `projekt-inwestycyjny.Calendar.Dates`),
 instruments_raw            AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instruments`),
+instrument_types_raw       AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instrument_types`),
 transactions_view_raw      AS (SELECT * FROM `projekt-inwestycyjny.Transactions.Transactions_view`),
 
 --- Filtering data ---
@@ -33,6 +34,14 @@ instruments AS (
   FROM Instruments_raw
 ),
 
+instrument_types AS (
+  SELECT
+    instrument_type_id,
+    instrument_type,
+    instrument_type_main
+  FROM instrument_types_raw
+),
+
 transactions AS (
   SELECT DISTINCT
     project_id,
@@ -51,8 +60,20 @@ transactions AS (
   GROUP BY 1,2,3
 ),
 
-
 --- Joining together sources ---
+
+instruments_combined AS (
+  SELECT
+    i.project_id,
+    i.instrument_id,
+    i.ticker,
+    i.unit,
+    it.instrument_type_id,
+    it.instrument_type_main
+  FROM instruments AS i
+  LEFT JOIN instrument_types AS it ON TRUE
+    AND i.instrument_type_id = it.instrument_type_id
+),
 
 cleaned_price_history AS (
   SELECT
@@ -61,6 +82,7 @@ cleaned_price_history AS (
     i.instrument_id,
     i.ticker,
     i.instrument_type_id,
+    i.instrument_type_main,
     i.unit,
     COALESCE(
       d.close,
@@ -71,7 +93,7 @@ cleaned_price_history AS (
       )
     )                               AS adjusted_close
   FROM calendar                     AS c
-  CROSS JOIN instruments            AS i
+  CROSS JOIN instruments_combined   AS i
   LEFT JOIN daily                   AS d
     ON c.calendar_date = d.calendar_date
     AND d.ticker = i.ticker
@@ -184,6 +206,7 @@ base_instrument_level AS (
     instrument_id,
     ticker,
     instrument_type_id,
+    instrument_type_main,
     adjusted_close,
     daily_transaction_amount_by_transactions,
     COALESCE(daily_begin_market_value, 0) AS daily_begin_market_value,
@@ -203,6 +226,7 @@ type_aggregation AS (
     NULL                          AS instrument_id,
     CAST(NULL AS STRING)          AS ticker,
     instrument_type_id,
+    CAST(NULL AS STRING)          AS instument_type_main,
     NULL                          AS adjusted_close,
     NULL                          AS daily_transaction_amount_by_transactions,
     SUM(daily_begin_market_value) AS daily_begin_market_value,
@@ -212,7 +236,28 @@ type_aggregation AS (
   GROUP BY calendar_date, project_id, instrument_type_id, is_latest_epoch
 ),
 
---- LEVEL 3: Project level ---
+--- LEVEL 3: Instrument type main level ---
+type_main_aggregation AS (
+  SELECT
+    'instrument_type_main'        AS aggregation_level,
+    is_latest_epoch,
+    AVG(instrument_epoch_age)     AS instrument_epoch_age,
+    calendar_date,
+    project_id,
+    NULL                          AS instrument_id,
+    CAST(NULL AS STRING)          AS ticker,
+    NULL                          AS instrument_type_id,
+    instrument_type_main,
+    NULL                          AS adjusted_close,
+    NULL                          AS daily_transaction_amount_by_transactions,
+    SUM(daily_begin_market_value) AS daily_begin_market_value,
+    SUM(daily_end_market_value)   AS daily_end_market_value,
+    SUM(daily_end_cashflow)       AS daily_end_cashflow
+  FROM base_instrument_level
+  GROUP BY calendar_date, project_id, instrument_type_main, is_latest_epoch
+),
+
+--- LEVEL 4: Project level ---
 project_aggregation AS (
   SELECT
     'project'                     AS aggregation_level,
@@ -223,6 +268,7 @@ project_aggregation AS (
     NULL                          AS instrument_id,
     CAST(NULL AS STRING)          AS ticker,
     NULL                          AS instrument_type_id,
+    CAST(NULL AS STRING)           instrument_type_main,
     NULL                          AS adjusted_close,
     NULL                          AS daily_transaction_amount_by_transactions,
     SUM(daily_begin_market_value) AS daily_begin_market_value,
@@ -238,6 +284,8 @@ combined_levels AS (
   UNION ALL
   SELECT * FROM type_aggregation
   UNION ALL
+  SELECT * FROM type_main_aggregation
+  UNION ALL
   SELECT * FROM project_aggregation
 )
 
@@ -251,6 +299,7 @@ SELECT
   instrument_id,
   ticker,
   instrument_type_id,
+  instrument_type_main,
   -- Daily state --
   adjusted_close,
   daily_transaction_amount_by_transactions,
