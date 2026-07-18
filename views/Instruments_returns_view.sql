@@ -155,7 +155,7 @@ instrument_epoch AS (
 --- LEVEL 1: Basic single instrument level  ---
 base_instrument_level AS (
   SELECT
-    'Instrument'                          AS aggregation_level,
+    'instrument'                          AS aggregation_level,
     epoch_id,
     calendar_date,
     project_id,
@@ -173,7 +173,7 @@ base_instrument_level AS (
 --- LEVEL 2: Instrument type level ---
 type_aggregation AS (
   SELECT
-    'Instrument_type'             AS aggregation_level,
+    'instrument_type'             AS aggregation_level,
     epoch_id,
     calendar_date,
     project_id,
@@ -192,7 +192,7 @@ type_aggregation AS (
 --- LEVEL 3: Project level ---
 project_aggregation AS (
   SELECT
-    'PROJECT'                     AS aggregation_level,
+    'project'                     AS aggregation_level,
     epoch_id,
     calendar_date,
     project_id,
