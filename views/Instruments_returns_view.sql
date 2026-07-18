@@ -165,7 +165,11 @@ instrument_present_epoch AS (
       AND epoch_id <> 0
       THEN 1
       ELSE 0
-    END AS is_latest_epoch
+    END AS is_latest_epoch,
+    COUNT(calendar_date) OVER (
+      PARTITION BY ie.project_id, ie.instrument_id, epoch_id
+      ORDER BY calendar_date
+      ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS instrument_epoch_age
   FROM instrument_epoch AS ie
 ),
 
@@ -174,6 +178,7 @@ base_instrument_level AS (
   SELECT
     'instrument'                          AS aggregation_level,
     is_latest_epoch,
+    instrument_epoch_age,
     calendar_date,
     project_id,
     instrument_id,
@@ -192,6 +197,7 @@ type_aggregation AS (
   SELECT
     'instrument_type'             AS aggregation_level,
     is_latest_epoch,
+    AVG(instrument_epoch_age)     AS instrument_epoch_age,
     calendar_date,
     project_id,
     NULL                          AS instrument_id,
@@ -211,6 +217,7 @@ project_aggregation AS (
   SELECT
     'project'                     AS aggregation_level,
     is_latest_epoch,
+    AVG(instrument_epoch_age)     AS instrument_epoch_age,
     calendar_date,
     project_id,
     NULL                          AS instrument_id,
@@ -238,6 +245,7 @@ SELECT
   -- Metadata --
   aggregation_level,
   is_latest_epoch,
+  CAST(instrument_epoch_age AS INT64) AS instrument_epoch_age,
   calendar_date,
   project_id,
   instrument_id,
