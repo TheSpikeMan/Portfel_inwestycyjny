@@ -224,7 +224,7 @@ class BigQueryReaderAndExporter():
         WINDOW
         last_transaction_date_amount AS (
             PARTITION BY Ticker
-            ORDER BY Transaction_date DESC
+            ORDER BY Transaction_timestamp DESC
         )
         ORDER BY
         Ticker
