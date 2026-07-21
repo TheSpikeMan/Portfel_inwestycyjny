@@ -1,8 +1,28 @@
 WITH
-transactions_view_dev_raw AS (SELECT * FROM `projekt-inwestycyjny.Transactions.Transactions_view`),
+transactions_view_raw     AS (SELECT * FROM `projekt-inwestycyjny.Transactions.Transactions_view`),
 daily_raw                 AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Daily`),
+instruments_raw           AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instruments`),
+instrument_types_raw      AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Instrument_types`),
+
 
 --- FILTERING DATA ---
+
+instruments AS (
+  SELECT
+    project_id,
+    instrument_id,
+    ticker,
+    instrument_type_id
+  FROM instruments_raw
+),
+
+instrument_types AS (
+  SELECT
+    instrument_type_id,
+    instrument_type,
+    instrument_type_main
+  FROM instrument_types_raw
+),
 
 transactions_view AS (
   SELECT
@@ -22,7 +42,7 @@ transactions_view AS (
     --age_of_instrument,
     -- Instrument type information
     instrument_type_id
-  FROM transactions_view_dev_raw
+  FROM transactions_view_raw
   WHERE TRUE
     AND Transaction_type_group IN (
       "Buy_amount",
@@ -40,7 +60,7 @@ transactions_view_max_instrument_age AS (
     project_id,
     instrument_id,
     MAX(age_of_instrument) AS age_of_instrument
-  FROM transactions_view_dev_raw
+  FROM transactions_view_raw
   GROUP BY
     project_id,
     instrument_id
@@ -87,7 +107,7 @@ transaction_view_remaining_amount AS (
         transaction_date_buy_ticker_amount - COALESCE(cumulative_sell_amount_per_ticker, 0)
       )
     ) AS remaining_amount
-  FROM transactions_view_dev_raw
+  FROM transactions_view_raw
   WHERE TRUE
     AND transaction_type_group = "Buy_amount"
 ),
@@ -112,12 +132,15 @@ transaction_view_average_price AS (
   HAVING current_volume > 0
 )
 
---- JOINING TOGETHER TRANSACTIONS AND DAILY DATA ---
+--- JOINING TOGETHER TRANSACTIONS, INSTRUMENT AND DAILY DATA ---
 
 SELECT
   tvpi.project_id,
   tvpi.ticker,
   tvpi.instrument_id,
+  it.instrument_type_id,
+  it.instrument_type,
+  it.instrument_type_main,
   tvpi.transaction_date_ticker_amount AS current_amount,
   tvap.avg_buy_price                  AS transaction_avg_price,
   tvap.total_cost                     AS transaction_total_cost,
@@ -137,11 +160,15 @@ SELECT
   )                                   AS age_of_instrument
   */
 FROM transaction_view_present_instruments AS tvpi
-LEFT JOIN daily         AS d
+LEFT JOIN daily AS d
   ON tvpi.ticker = d.ticker
 LEFT JOIN transaction_view_average_price AS tvap
   ON tvap.project_id = tvpi.project_id
   AND tvap.instrument_id = tvpi.instrument_id
+LEFT JOIN instruments AS i
+  ON i.instrument_id = tvpi.instrument_id
+LEFT JOIN instrument_types AS it
+  ON it.instrument_type_id = i.instrument_type_id
 WHERE TRUE
 ORDER BY
   Ticker
