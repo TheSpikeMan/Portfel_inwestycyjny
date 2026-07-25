@@ -27,7 +27,20 @@ daily AS (
       ORDER BY date
       ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
     )
-    close
+    close,
+    CASE
+      WHEN EXTRACT(YEAR FROM date) = EXTRACT(YEAR FROM(CURRENT_DATE('Europe/Warsaw')))
+      THEN LAST_VALUE(close IGNORE NULLS) OVER (
+        PARTITION BY project_id, ticker
+        ORDER BY date
+        ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        )
+      ELSE LAST_VALUE(close IGNORE NULLS) OVER (
+        PARTITION BY project_id, ticker, EXTRACT(YEAR FROM date)
+        ORDER BY date
+        ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+      )
+      END AS evaluation_close -- Kurs akcji na koniec roku lub na ostatni dostępny dzień, przy obecnym roku
   FROM daily_raw
 ),
 
@@ -52,7 +65,8 @@ preliminary_aggregation AS (
     tv.transaction_price                      AS dividend_price,
     tv.transaction_value_pln                  AS transaction_value_pln,
     MAX(tv.Unit)                              AS unit,
-    MAX(d.Close)                             AS close,
+    MAX(d.Close)                              AS close,
+    MAX(d.evaluation_close)                   AS evaluation_close,
     SUM(SUM(tv.Transaction_value_pln)) OVER ticker_in_project_window
                                               AS dividend_sum_total_per_ticker,
     AVG(AVG(tv.Transaction_value_pln)) OVER ticker_in_project_window
