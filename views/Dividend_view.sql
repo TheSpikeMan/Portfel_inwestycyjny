@@ -44,7 +44,6 @@ daily AS (
   FROM daily_raw
 ),
 
-
 -- PRELIMINARY AGGREGATION --
 /*
 W kroku tym wyciągany jest rok, miesiąc i dzień wypłaty dywidendy.
@@ -105,9 +104,10 @@ initital_aggregation AS (
   SELECT
     *,
     SUM(transaction_value_pln) OVER(PARTITION BY project_id, ticker, year)    AS dividend_sum_per_ticker_and_year,
+    SUM(dividend_price)        OVER(PARTITION BY project_id, ticker, year)    AS dividend_price_sum_per_ticker_and_year,
     SUM(transaction_value_pln) OVER(PARTITION BY project_id, year)            AS dividend_sum_per_year,
     SUM(transaction_value_pln) OVER(PARTITION BY project_id, year, quarter)   AS dividend_sum_per_year_and_quarter,
-    100 * SAFE_DIVIDE(dividend_price, close * unit)                           AS dividend_ratio_pct
+    SAFE_DIVIDE(dividend_price, close * unit)                                 AS dividend_ratio_pct
   FROM preliminary_aggregation
 ),
 
@@ -140,24 +140,32 @@ mid_aggregation AS (
         OVER ticker_in_project_window_ordered, 0)
                                                   AS dividend_value_ticker_last_year,
     IFNULL(dividend_ratio_pct, 0)                 AS dividend_ratio_pct,
-    IFNULL
-    (
-        AVG(dividend_ratio_pct)
-        OVER ticker_in_project_window, 0)
-                                                  AS avg_dividend_ratio_per_ticker_pct
+    IFNULL(
+      SAFE_DIVIDE(
+        dividend_price_sum_per_ticker_and_year,
+        evaluation_close
+      ),
+      0
+    )                                             AS avg_dividend_ratio_per_ticker_and_year,
+    IFNULL(
+      AVG(
+        SAFE_DIVIDE(
+          dividend_price_sum_per_ticker_and_year,
+          evaluation_close))
+        OVER ticker_in_project_window, 0)         AS avg_dividend_ratio_per_ticker_pct
   FROM initital_aggregation
   WINDOW
+    ticker_in_project_window AS (
+      PARTITION BY
+        project_id,
+        ticker
+    ),
     ticker_in_project_window_ordered AS (
       PARTITION BY
         project_id,
         ticker
       ORDER BY
         year
-    ),
-    ticker_in_project_window AS (
-      PARTITION BY
-        project_id,
-        Ticker
     )
 ),
 
@@ -185,7 +193,8 @@ SELECT
   quarter,
   -- Wskaźniki prezentujące dane dla danego projektu i instrumentu --
   dividend_ratio_pct,                   -- Wartość % dywidendy wobec kursu aktualnego dzień wypłaty dywidendy dla danego instrumentu w projekcie
-  avg_dividend_ratio_per_ticker_pct,    -- Średnia wartość % dywidendy wobec kursu aktualnego na dzień wypłaty dywidendy dla danego instrumentu w projekcie
+  avg_dividend_ratio_per_ticker_and_year, -- Średnia wartość % dywdendy wobec kursu aktualnego na koniec roku/ostatniego dostępnego dla danego instrumentu w projekcie
+  avg_dividend_ratio_per_ticker_pct,    -- Średnia wartość % dywidendy wobec średniej rocznej dla danego instrumentu w projekcie
   dividend_value_change_per_ticker_and_year, -- Wartość % wzrostu lub spadku dywidendy dla danego instrumentu w projekcie
   dividend_value_pln,                   -- Wartość dywidendy
   dividend_sum_total_per_ticker,        -- Suma wartości wypłaconej dywidendy w całej historii dla danego instrumentu w projekcie
@@ -196,3 +205,7 @@ SELECT
   dividend_sum_per_year,                -- Suma wartości wypłaconej dywidendy w danym roku dla danego projektu
   dividend_sum_per_year_and_quarter     -- Suma wartośći wypłaconej dywidendy w danym roku i kwartale dla danego projektu
 FROM final_aggregation
+ORDER BY
+  ticker,
+  year DESC,
+  quarter
