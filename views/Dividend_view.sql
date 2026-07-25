@@ -127,6 +127,7 @@ mid_aggregation AS (
     month                                         AS month,
     day                                           AS day,
     quarter                                       AS quarter,
+    dividend_price,
     transaction_value_pln                         AS dividend_value_pln,
     dividend_sum_total_per_ticker,
     dividend_sum_per_ticker_and_year,
@@ -196,6 +197,7 @@ SELECT
   avg_dividend_ratio_per_ticker_and_year, -- Średnia wartość % dywdendy wobec kursu aktualnego na koniec roku/ostatniego dostępnego dla danego instrumentu w projekcie
   avg_dividend_ratio_per_ticker_pct,    -- Średnia wartość % dywidendy wobec średniej rocznej dla danego instrumentu w projekcie
   dividend_value_change_per_ticker_and_year, -- Wartość % wzrostu lub spadku dywidendy dla danego instrumentu w projekcie
+  dividend_price,
   dividend_value_pln,                   -- Wartość dywidendy
   dividend_sum_total_per_ticker,        -- Suma wartości wypłaconej dywidendy w całej historii dla danego instrumentu w projekcie
   dividend_sum_per_ticker_and_year,     -- Suma wartości wypłaconej dywidendy w danym roku dla danego instrumentu w projekcie
