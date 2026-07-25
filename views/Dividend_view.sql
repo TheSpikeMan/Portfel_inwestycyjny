@@ -52,18 +52,18 @@ preliminary_aggregation AS (
     tv.transaction_price                      AS dividend_price,
     tv.transaction_value_pln                  AS transaction_value_pln,
     MAX(tv.Unit)                              AS unit,
-    MAX(dd.Close)                             AS close,
+    MAX(d.Close)                             AS close,
     SUM(SUM(tv.Transaction_value_pln)) OVER ticker_in_project_window
                                               AS dividend_sum_total_per_ticker,
     AVG(AVG(tv.Transaction_value_pln)) OVER ticker_in_project_window
                                               AS dividend_average_total_per_ticker
   FROM transactions_view  AS tv
-  LEFT JOIN daily_data    AS dd
-    ON dd.Date = tv.transaction_date
-    AND tv.Ticker = dd.Ticker
+  LEFT JOIN daily         AS d
+    ON d.Date = tv.transaction_date
+    AND tv.Ticker = d.Ticker
     AND
-      (tv.Project_id = dd.Project_id
-      OR dd.Project_id IS NULL)
+      (tv.Project_id = d.Project_id
+      OR d.Project_id IS NULL)
   LEFT JOIN calendar AS c
     ON tv.transaction_date = c.date
   WHERE TRUE
