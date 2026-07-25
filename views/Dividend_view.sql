@@ -5,7 +5,7 @@ Pobranie danych z widoku transakcyjnego.
 
 WITH
 transactions_view_raw AS (SELECT * FROM `projekt-inwestycyjny.Transactions.Transactions_view`),
-daily_data            AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Daily`),
+daily_raw             AS (SELECT * FROM `projekt-inwestycyjny.Dane_instrumentow.Daily`),
 calendar              AS (SELECT * FROM `projekt-inwestycyjny.Calendar.Dates`),
 
 -- FILTOWANIE I CASTOWANIE DANYCH --
@@ -15,6 +15,20 @@ transactions_view AS (
     *,
     EXTRACT(DATE FROM transaction_timestamp) AS transaction_date
   FROM transactions_view_raw
+),
+
+daily AS (
+  SELECT
+    project_id,
+    ticker,
+    date,
+    LAST_VALUE(close IGNORE NULLS) OVER (
+      PARTITION BY project_id, ticker
+      ORDER BY date
+      ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+    )
+    close
+  FROM daily_raw
 ),
 
 
