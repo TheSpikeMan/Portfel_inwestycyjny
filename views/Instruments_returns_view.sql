@@ -213,25 +213,47 @@ base_instrument_level AS (
   FROM instrument_present_epoch
 ),
 
---- LEVEL 2: Instrument type level ---
-type_aggregation AS (
+--- LEVEL 2A: Instrument type - TOTAL (Cała historia) ---
+type_total_aggregation AS (
   SELECT
-    'instrument_type'             AS aggregation_level,
-    is_latest_epoch,
-    AVG(instrument_epoch_age)     AS instrument_epoch_age,
+    'instrument_type_total'       AS aggregation_level,
+    CAST(NULL AS INT64)           AS is_latest_epoch,
+    CAST(NULL AS INT64)           AS instrument_epoch_age,
     calendar_date,
     project_id,
     NULL                          AS instrument_id,
     CAST(NULL AS STRING)          AS ticker,
     instrument_type_id,
-    CAST(NULL AS STRING)          AS instument_type_main,
+    CAST(NULL AS STRING)          AS instrument_type_main,
     NULL                          AS adjusted_close,
     NULL                          AS daily_transaction_amount_by_transactions,
     SUM(daily_begin_market_value) AS daily_begin_market_value,
     SUM(daily_end_market_value)   AS daily_end_market_value,
     SUM(daily_end_cashflow)       AS daily_end_cashflow
   FROM base_instrument_level
-  GROUP BY calendar_date, project_id, instrument_type_id, is_latest_epoch
+  GROUP BY calendar_date, project_id, instrument_type_id
+),
+
+--- LEVEL 2B: Instrument type - CURRENT (Tylko obecne epoki) ---
+type_current_aggregation AS (
+  SELECT
+    'instrument_type_current'     AS aggregation_level,
+    1                             AS is_latest_epoch,
+    CAST(AVG(instrument_epoch_age) AS INT64) AS instrument_epoch_age,
+    calendar_date,
+    project_id,
+    NULL                          AS instrument_id,
+    CAST(NULL AS STRING)          AS ticker,
+    instrument_type_id,
+    CAST(NULL AS STRING)          AS instrument_type_main,
+    NULL                          AS adjusted_close,
+    NULL                          AS daily_transaction_amount_by_transactions,
+    SUM(daily_begin_market_value) AS daily_begin_market_value,
+    SUM(daily_end_market_value)   AS daily_end_market_value,
+    SUM(daily_end_cashflow)       AS daily_end_cashflow
+  FROM base_instrument_level
+  WHERE is_latest_epoch = 1
+  GROUP BY calendar_date, project_id, instrument_type_id
 ),
 
 --- LEVEL 3: Instrument type main level ---
