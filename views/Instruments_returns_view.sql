@@ -193,7 +193,7 @@ instrument_present_epoch AS (
   FROM instrument_epoch AS ie
 ),
 
---- LEVEL 1: Basic single instrument level  ---
+--- LEVEL 1: Basic single instrument level ---
 base_instrument_level AS (
   SELECT
     'instrument'                          AS aggregation_level,
@@ -256,12 +256,12 @@ type_current_aggregation AS (
   GROUP BY calendar_date, project_id, instrument_type_id
 ),
 
---- LEVEL 3: Instrument type main level ---
-type_main_aggregation AS (
+--- LEVEL 3A: Instrument type main - TOTAL ---
+type_main_total_aggregation AS (
   SELECT
-    'instrument_type_main'        AS aggregation_level,
-    is_latest_epoch,
-    AVG(instrument_epoch_age)     AS instrument_epoch_age,
+    'instrument_type_main_total'  AS aggregation_level,
+    CAST(NULL AS INT64)           AS is_latest_epoch,
+    CAST(NULL AS INT64)           AS instrument_epoch_age,
     calendar_date,
     project_id,
     NULL                          AS instrument_id,
@@ -274,39 +274,89 @@ type_main_aggregation AS (
     SUM(daily_end_market_value)   AS daily_end_market_value,
     SUM(daily_end_cashflow)       AS daily_end_cashflow
   FROM base_instrument_level
-  GROUP BY calendar_date, project_id, instrument_type_main, is_latest_epoch
+  GROUP BY calendar_date, project_id, instrument_type_main
 ),
 
---- LEVEL 4: Project level ---
-project_aggregation AS (
+--- LEVEL 3B: Instrument type main - CURRENT ---
+type_main_current_aggregation AS (
   SELECT
-    'project'                     AS aggregation_level,
-    is_latest_epoch,
-    AVG(instrument_epoch_age)     AS instrument_epoch_age,
+    'instrument_type_main_current' AS aggregation_level,
+    1                             AS is_latest_epoch,
+    CAST(AVG(instrument_epoch_age) AS INT64) AS instrument_epoch_age,
     calendar_date,
     project_id,
     NULL                          AS instrument_id,
     CAST(NULL AS STRING)          AS ticker,
     NULL                          AS instrument_type_id,
-    CAST(NULL AS STRING)           instrument_type_main,
+    instrument_type_main,
     NULL                          AS adjusted_close,
     NULL                          AS daily_transaction_amount_by_transactions,
     SUM(daily_begin_market_value) AS daily_begin_market_value,
     SUM(daily_end_market_value)   AS daily_end_market_value,
     SUM(daily_end_cashflow)       AS daily_end_cashflow
   FROM base_instrument_level
-  GROUP BY calendar_date, project_id, is_latest_epoch
+  WHERE is_latest_epoch = 1
+  GROUP BY calendar_date, project_id, instrument_type_main
 ),
 
---- Combining all level together  ---
+--- LEVEL 4A: Project - TOTAL (Cały portfel, cała historia) ---
+project_total_aggregation AS (
+  SELECT
+    'project_total'               AS aggregation_level,
+    CAST(NULL AS INT64)           AS is_latest_epoch,
+    CAST(NULL AS INT64)           AS instrument_epoch_age,
+    calendar_date,
+    project_id,
+    NULL                          AS instrument_id,
+    CAST(NULL AS STRING)          AS ticker,
+    NULL                          AS instrument_type_id,
+    CAST(NULL AS STRING)          AS instrument_type_main,
+    NULL                          AS adjusted_close,
+    NULL                          AS daily_transaction_amount_by_transactions,
+    SUM(daily_begin_market_value) AS daily_begin_market_value,
+    SUM(daily_end_market_value)   AS daily_end_market_value,
+    SUM(daily_end_cashflow)       AS daily_end_cashflow
+  FROM base_instrument_level
+  GROUP BY calendar_date, project_id
+),
+
+--- LEVEL 4B: Project - CURRENT (Cały portfel, tylko bieżące pozycje) ---
+project_current_aggregation AS (
+  SELECT
+    'project_current'             AS aggregation_level,
+    1                             AS is_latest_epoch,
+    CAST(AVG(instrument_epoch_age) AS INT64) AS instrument_epoch_age,
+    calendar_date,
+    project_id,
+    NULL                          AS instrument_id,
+    CAST(NULL AS STRING)          AS ticker,
+    NULL                          AS instrument_type_id,
+    CAST(NULL AS STRING)          AS instrument_type_main,
+    NULL                          AS adjusted_close,
+    NULL                          AS daily_transaction_amount_by_transactions,
+    SUM(daily_begin_market_value) AS daily_begin_market_value,
+    SUM(daily_end_market_value)   AS daily_end_market_value,
+    SUM(daily_end_cashflow)       AS daily_end_cashflow
+  FROM base_instrument_level
+  WHERE is_latest_epoch = 1
+  GROUP BY calendar_date, project_id
+),
+
+--- Combining all levels together ---
 combined_levels AS (
   SELECT * FROM base_instrument_level
   UNION ALL
-  SELECT * FROM type_aggregation
+  SELECT * FROM type_total_aggregation
   UNION ALL
-  SELECT * FROM type_main_aggregation
+  SELECT * FROM type_current_aggregation
   UNION ALL
-  SELECT * FROM project_aggregation
+  SELECT * FROM type_main_total_aggregation
+  UNION ALL
+  SELECT * FROM type_main_current_aggregation
+  UNION ALL
+  SELECT * FROM project_total_aggregation
+  UNION ALL
+  SELECT * FROM project_current_aggregation
 )
 
 SELECT
