@@ -1,0 +1,7 @@
+functions-framework==3.*
+beautifulsoup4==4.*
+requests==2.*
+pandas==2.*
+numpy==1.*
+pandas-gbq
+google-cloud-bigquery
