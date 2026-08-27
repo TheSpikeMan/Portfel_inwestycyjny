@@ -1,0 +1,21 @@
+# Środowiska wirtualne Python
+.venv/
+venv/
+ENV/
+env/
+
+# Pliki tymczasowe Pythona
+__pycache__/
+*.py[cod]
+
+# Pliki środowiskowe, logi i poświadczenia GCP
+*.json
+.env
+*.log
+
+# Pliki systemowe i edytorów
+.git/
+.gitignore
+.dockerignore
+.vscode/
+.idea/
