@@ -1,7 +1,7 @@
 apiVersion: serving.knative.dev/v1
 kind: Service
 metadata:
-  name: invest_project_cservice_eu-central2_webscraping_daily.py
+  name: invest-project-cservice-eu-central2-webscraping-daily
   labels:
     cloud.googleapis.com/location: europe-central2
   annotations:
@@ -16,7 +16,7 @@ spec:
       timeoutSeconds: 600
       serviceAccountName: sa-cr-cf-invoker@projekt-inwestycyjny.iam.gserviceaccount.com
       containers:
-      - image: europe-central2-docker.pkg.dev/projekt-inwestycyjny/cloud-run-source-deploy/invest_project_cservice_eu-central2_webscraping_daily.py:latest
+      - image: europe-central2-docker.pkg.dev/projekt-inwestycyjny/cloud-run-source-deploy/invest-project-cservice-eu-central2-webscraping-daily:latest
         resources:
           limits:
             cpu: 250m
