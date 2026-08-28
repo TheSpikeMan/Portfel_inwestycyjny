@@ -19,3 +19,6 @@ __pycache__/
 .dockerignore
 .vscode/
 .idea/
+
+# Instrukcje na użytek własny
+DEPLOYMENT.md
