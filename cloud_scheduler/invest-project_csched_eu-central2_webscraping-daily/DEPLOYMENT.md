@@ -2,12 +2,16 @@
 
 ### Wywołanie HTTP
 ```
-gcloud scheduler jobs create http my-cron-job \
-  --schedule="0 8 * * *" \
-  --uri="${SERVICE_URL}/api/tasks" \
-  --http-method=POST \
+gcloud scheduler jobs create http job-scheduler-name \
   --location=europe-central2 \
-  --oidc-service-account-email="moj-scheduler-sa@${PROJECT_ID}.iam.gserviceaccount.com"
+  --schedule="0 8 * * *" \
+  --time-zone="Europe/Warsaw" \
+  --uri="{URL}/{ENDPOINT}" \
+  --http-method=POST \
+  --headers="Content-Type=application/json" \
+  --message-body='{"action":"run_task"}' \
+  --oidc-service-account-email="{SA}" \
+  --oidc-token-audience="{URL}"
 ```
 ### Wywołanie Pub/Sub
 ```
